@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>Vault: Archive-It Digital Preservation Service</title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://partner.archive-it.org/static/app/bower_components/html5-boilerplate/css/normalize.css">
+	<link rel="stylesheet" href="https://partner.archive-it.org/static/app/bower_components/html5-boilerplate/css/main.css">
+	<link rel="stylesheet" href="https://partner.archive-it.org/static/app/css/app.css">
+	<link rel="apple-touch-icon" sizes="57x57" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-57x57.png">
+	<link rel="apple-touch-icon" sizes="60x60" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-60x60.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-72x72.png">
+	<link rel="apple-touch-icon" sizes="76x76" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-76x76.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-114x114.png">
+	<link rel="apple-touch-icon" sizes="120x120" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-120x120.png">
+	<link rel="apple-touch-icon" sizes="144x144" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-144x144.png">
+	<link rel="apple-touch-icon" sizes="152x152" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-152x152.png">
+	<link rel="apple-touch-icon" sizes="180x18s0" href="https://partner.archive-it.org/static/favicon/apple-touch-icon-180x180.png">
+	<link rel="icon" type="image/png" href="https://partner.archive-it.org/static/favicon/favicon-32x32.png" sizes="32x32">
+	<link rel="icon" type="image/png" href="https://partner.archive-it.org/static/favicon/favicon-194x194.png" sizes="194x194">
+	<link rel="icon" type="image/png" href="https://partner.archive-it.org/static/favicon/favicon-96x96.png" sizes="96x96">
+	<link rel="icon" type="image/png" href="https://partner.archive-it.org/static/favicon/android-chrome-192x192.png" sizes="192x192">
+	<link rel="icon" type="image/png" href="https://partner.archive-it.org/static/favicon/favicon-16x16.png" sizes="16x16">
+	<link rel="manifest" href="https://partner.archive-it.org/static/favicon/manifest.json">
+	<link rel="mask-icon" href="https://partner.archive-it.org/static/favicon/safari-pinned-tab.svg%22%20color%3D%22%235bbad5">
+	<link rel="shortcut icon" href="https://partner.archive-it.org/static/favicon/favicon.ico">
+	<meta name="msapplication-TileColor" content="#da532c">
+	<meta name="msapplication-TileImage" content="https://partner.archive-it.org/static/favicon/mstile-144x144.png">
+	<meta name="msapplication-config" content="https://partner.archive-it.org/static/favicon/browserconfig.xml">
+	<meta class="foundation-mq-topbar">
+	<meta class="foundation-mq-small">
+	<meta class="foundation-mq-medium">
+	<meta class="foundation-mq-large">
+	<script src="https://partner.archive-it.org/static/app/bower_components/jquery/dist/jquery.min.js"></script>
+</head>
+
+
+<body style="padding-top: 70px;" class="fullscreen-body">
+<noscript style="display:block;font-size:2rem;text-align:center;z-index:999;margin:8rem;padding:1rem;background-color:#700;color:#ccc">
+	javascript required :-\
+</noscript>
+<div class="fixed">
+	<div id="top-shim" style="background-color:#8C2A2D">
+	</div>
+    {% block topnav %}
+	<nav class="sticky top-bar top-bar" scrolltop="false">
+		<ul class="title-area">
+			<li class="name">
+			<h1>
+				<a style="background-color:#CC3D42" href="https://archive-it.org/"><img src="{{ static('vault-it-logo.png') }}" alt="Vault Logo"></a>
+			</h1>
+			</li>
+		</ul>
+		<section class="top-bar-section" style="left: 0%;">
+			<ul class="left">
+				<li><a href="{{ url('dashboard') }}">Dashboard</a></li>
+				<li><a href="{{ url('collections') }}">Collections</a></li>
+				<li><a href="{{ url('reports') }}">Reports</a></li>
+				<li><a href="{{ url('deposit') }}">Deposit</a></li>
+				<li><a href="{{ url('administration') }}">Administration</a></li>
+			</ul>
+		</section>
+		<section class="top-bar-section" style="left: 0%;">
+			<ul id="secondary-menu" class="right show-for-large-up">
+				<li><a target="_blank" href="https://support.archive-it.org/">Help Center</a></li>
+				<li class="has-dropdown not-click" has-dropdown=""> <a name="_welcome">Welcome, <span>{{ user.username }}</span></a>
+				<ul class="dropdown" top-bar-dropdown="">
+					<li class="title back js-generated">
+					<h5>
+						<a href="">Back</a>
+					</h5>
+					</li>
+					<li><a href="{{ url('administration') }}">Administration</a></li>
+					<li><a href="https://webdata.archive-it.org/ait/logout" target="_self">Log Out</a></li>
+				</ul>
+				</li>
+				<li><a href="https://partner.archive-it.org/login?next=https://webdata.archive-it.org/ait">Log In</a></li>
+			</ul>
+		</section>
+	</nav>
+    {% endblock topnav %}
+</div>
+
+
+<!--[if lt IE 7]>
+<p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+<![endif]-->
+
+
+{% block header %}
+<header>
+	<div class="row">
+		<div class="small-12 columns">
+            {% if breadcrumbs is defined %}
+                <ul class="breadcrumbs">
+                    {% for level, link in breadcrumbs %}
+                        <li><a href="{{ url(link) }}">{{ level }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+		</div>
+	</div>
+	<div class="row">
+		<div class="large-12 columns">
+			<div class="bottom medium-8">
+				<h1>
+					{% block header_title %}Dashboard{% endblock header_title %}
+				</h1>
+			</div>
+		</div>
+	</div>
+</header>
+{% endblock header %}
+
+
+<!-- Extra Message -->
+{% block sticky_message %}
+<sticky scroll-offset="60" classes="'sub header'" use-placeholder="1" placeholder-classes="'sub header placeholder'">
+<div class="sub header">
+	<div class="panel darker sub header margin-bottom zero">
+		<div class="row">
+			<div class="small-6 columns left">
+				Dashboard
+			</div>
+		</div>
+	</div>
+</div>
+<div class="sub header placeholder" style="height: 41px;">
+</div>
+</sticky>
+{% endblock sticky_message %}
+
+
+<!-- Subnav -->
+{% block subnav %}
+{% endblock subnav %}
+
+
+<!-- Content -->
+{% block content %}
+<div class="row">
+	<div class="small-12 columns">
+        <h2>Base Page</h2>
+	</div>
+</div>
+{% endblock content %}
+
+
+<!-- Footer -->
+{% block footer %}
+<div class="footer">
+	<div class="footer-link">
+		© Internet Archive&nbsp;&nbsp;&nbsp;&nbsp;Vault
+	</div>
+	<div class="footer-link">
+		<a target="_blank" href="https://support.archive-it.org/">Help Center</a>
+	</div>
+</div>
+{% endblock footer %}
+
+
+</body>
+</html>

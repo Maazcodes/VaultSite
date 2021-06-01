@@ -1,0 +1,23 @@
+{% extends "vault/deposit.html" %}
+{% set active_subnav = "web" %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Deposit", "deposit"), ("Web Uploader", "deposit_web")) %}
+{% block content %}
+    <div class="row">
+        <div class="small-12 columns">
+            <div class="row">
+                <div class="small-12 columns">
+                    <h3>Upload Files</h3>
+                    {% if collections %}
+                    <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post">
+                        {{ csrf_input }}
+                        {{ form }}
+                        <input type="submit" value="Upload Files" class="button small padding-top padding-bottom half left">
+                    </form>
+                    {% else %}
+                        <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

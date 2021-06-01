@@ -1,0 +1,23 @@
+{% extends "vault/base.html" %}
+{% block header_title %}Administration{% endblock header_title %}
+{% block sticky_message %}{% endblock sticky_message %}
+{% block subnav %}
+    <div class="row subnav">
+        <div class="small-12 columns">
+            <div class="row">
+                <div class="subnav-box columns">
+                    <div class="left subnav-link collections {% if active_subnav == 'plan' %}active{% endif %}">
+                        <a class="" href="{{ url('administration_plan') }}">Current Plan</a>
+                    </div>
+                    <div class="left subnav-link collections {% if active_subnav == 'users' %}active{% endif %}">
+                        <a class="" href="{{ url('administration_users') }}">Users</a>
+                    </div>
+                    <div class="left subnav-link collections {% if active_subnav == 'help' %}active{% endif %}">
+                        <a class="" href="{{ url('administration_help') }}">Help Center</a>
+                    </div>
+                    <hr>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock subnav %}
