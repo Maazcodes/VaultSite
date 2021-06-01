@@ -76,7 +76,12 @@ def administration(request):
 
 @login_required
 def administration_plan(request):
-    return TemplateResponse(request, "vault/administration_plan.html", {})
+    org = request.user.organization
+    plan = org.plan
+    return TemplateResponse(request, "vault/administration_plan.html", {
+        "organization": org,
+        "plan": plan,
+    })
 
 
 @login_required
