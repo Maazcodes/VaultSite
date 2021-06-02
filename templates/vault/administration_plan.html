@@ -5,9 +5,43 @@
     <div class="row">
         <div class="large-12 columns">
             <h2>Current Plan Information</h2>
-            <p>
-                {{ organization.name }} has the {{ plan.name }} plan.
+            <p style="margin-top:1em; margin-bottom:0px">
+                <span style="font-weight:bold">{{ organization.name }}</span> has the <span style="font-weight:bold">{{ plan.name }}</span> plan:
             </p>
+            <ul>
+                <li>Price per uploaded Terabyte: ${{ plan.price_per_terabyte }}</li>
+                <li>Default replication factor: 2 copies</li>
+            </ul>
+            <h2>Orders</h2>
+            {% if true %}
+                {% set headers = ("ID", "Type", "Collection", "Data", "Created", "Amount") %}
+                <table class="small-12 columns">
+                <thead>
+                {% for header in headers %}
+                    <th>{{ header }}</th>
+                {% endfor %}
+                <tr></tr>
+                </thead>
+                {% for i in range(4) %}
+                    <tbody>
+                    <tr>
+                        <td>123</td>
+                        <td>Upload</td>
+                        <td><a>Photos</a></td>
+                        <td>1 TB</td>
+                        <td>May 31, 2021</td>
+                        <td>$400</td>
+{#                        <td>{{ line_item.id }}</td>#}
+{#                        <td>{{ line_item.type }}</td>#}
+{#                        <td><a>{{ line_item.collection_name }}</a></td>#}
+{#                        <td>{{ line_item.data }}</td>#}
+{#                        <td>{{ line_item.created_at }}</td>#}
+{#                        <td>{{ line_item.amount }}</td>#}
+                    </tr>
+                    </tbody>
+                {% endfor %}
+                </table>
+            {% endif %}
         </div>
     </div>
 {% endblock content %}
