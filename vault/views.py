@@ -65,6 +65,11 @@ def deposit_mail(request):
 
 
 @login_required
+def deposit_debug(request):
+    return TemplateResponse(request, "vault/deposit_debug.html", {})
+
+
+@login_required
 def deposit_ait(request):
     return TemplateResponse(request, "vault/deposit_ait.html", {})
 

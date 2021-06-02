@@ -49,6 +49,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.RemoteUserMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -85,6 +86,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'vault_site.wsgi.application'
 
+# I am skeptical of the security of the ModelBackend,
+# but will give it the benefit of the doubt until I
+# understand it better.
+AUTHENTICATION_BACKENDS = [
+        'django.contrib.auth.backends.RemoteUserBackend',
+        'django.contrib.auth.backends.ModelBackend',
+        ]
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases

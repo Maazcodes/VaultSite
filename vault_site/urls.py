@@ -26,6 +26,7 @@ urlpatterns = [
     path('deposit/web', views.deposit_web, name='deposit_web'),
     path('deposit/cli', views.deposit_cli, name='deposit_cli'),
     path('deposit/mail', views.deposit_mail, name='deposit_mail'),
+    path('deposit/debug', views.deposit_debug, name='deposit_debug'),
     path('deposit/ait', views.deposit_ait, name='deposit_ait'),
     path('administration', views.administration, name='administration'),
     path('administration/plan', views.administration_plan, name='administration_plan'),
