@@ -1,5 +1,6 @@
 import logging
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from . import forms
@@ -54,16 +55,14 @@ def deposit_web(request):
     form = forms.FileFieldForm(collections)
     for field in inputs:
         files = request.FILES.getlist(field)
-        # if nothing: raise forms.ValidationError('Must select Files and/or Directories!')
         for f in files:
             fnames += f" f.file_name"
-    #if not fnames:
-    #    ValidationError(_('Must select Files and/or Directories!'))
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,
         "filenames": fnames,
         "form": form,
     })
+    #messages.error(request, 'Must select Files and/or Directories!')
 
 
 @login_required
