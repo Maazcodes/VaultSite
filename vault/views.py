@@ -1,9 +1,11 @@
+import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from . import forms
 from . import models
 
+logger = logging.getLogger(__name__)
 
 def index(request):
     return redirect("dashboard")
@@ -46,10 +48,20 @@ def deposit(request):
 
 @login_required
 def deposit_web(request):
+    inputs = [ 'file_field', 'dir_field' ]
+    fnames = ""
     collections = models.Collection.objects.filter(organization=request.user.organization)
-    form = forms.BasicFileUploadForm(collections)
+    form = forms.FileFieldForm(collections)
+    for field in inputs:
+        files = request.FILES.getlist(field)
+        # if nothing: raise forms.ValidationError('Must select Files and/or Directories!')
+        for f in files:
+            fnames += f" f.file_name"
+    #if not fnames:
+    #    ValidationError(_('Must select Files and/or Directories!'))
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,
+        "filenames": fnames,
         "form": form,
     })
 
