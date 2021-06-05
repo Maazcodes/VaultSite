@@ -1,0 +1,105 @@
+GET collections
+
+{
+    "collections" : [
+        {
+            "id" : "ARCHIVEIT-15228",
+            "name" : "Alex Dempsey's Public Bookmarks"
+        }
+    ]
+}
+
+
+GET reports
+
+{
+    "reports" : [
+        {
+            "id" : "2021-05-26T20-42-18-167Z",
+            "collection" : "ARCHIVEIT-16740"
+        }
+    ]
+}
+
+
+GET collection_stats
+
+{
+    "collections" : [
+        {
+            "id" : "ARCHIVEIT-15228",
+            "latestReport" : "2021-05-25T07-23-41-450Z",
+            "time" : "2021-05-25T09:26:30.564Z",
+            "fileCount" : 46513,
+            "totalSize" : 4732002614004,
+            "errorCount" : 1
+        }
+    ]
+}
+
+
+GET reports_files
+
+{
+    "reports" : [
+        {
+            "id" : "2021-05-14T11-44-51-494Z",
+            "collection" : "ARCHIVEIT-15228",
+            "fileCount" : 46335
+        }
+    ]
+}
+
+
+GET collections_summary
+
+{
+    "collections" : [
+        {
+            "id" : "ARCHIVEIT-15228",
+            "latestReport" : "2021-05-25T07-23-41-450Z",
+            "fileCount" : 46513,
+            "regions" : {
+                "us-west-1" : 46513,
+                "us-west-2" : 46513
+            },
+            "fileTypes" : {
+                "WARC" : 46488,
+                "ARC" : 25
+            },
+            "avgReplication" : 3.0
+        }
+    ]
+}
+
+
+GET reports_files/{collection_id}
+
+{
+    "reports" : [
+        {
+            "id" : "2021-05-14T11-44-51-494Z",
+            "collection" : "ARCHIVEIT-15228",
+            "fileCount" : 46335
+        }
+    ]
+}
+
+
+GET report_summary/{collection_id}/{report_id}
+
+{
+    "id" : "2021-05-26T20-42-18-167Z",
+    "fileCount" : 148,
+    "totalSize" : 151653723502,
+    "errorCount" : 19,
+    "regions" : {
+        "us-west-1" : 148,
+        "us-west-2" : 148
+    },
+    "fileTypes" : {
+        "WARC" : 129,
+        "WAT" : 19
+    },
+    "avgReplication" : 3.0
+}

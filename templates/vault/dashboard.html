@@ -1,14 +1,194 @@
 {% extends "vault/base.html" %}
 {% set breadcrumbs = (("Vault", "dashboard"), ("Dashboard", "dashboard")) %}
+
+
+{% block head %}
+{{ super() }}
+
+<link rel="stylesheet" href="{{ static("digipres/vendor/fontawesome-free/css/all.min.css") }}" type="text/css">
+<link rel="stylesheet" href="{{ static("digipres/css/digipres.css") }}">
+<link rel="stylesheet" href="{{ static("digipres/css/bootstrap-cards.css") }}">
+
+
+<script src="{{ static("digipres/vendor/jquery-twbsPagination/jquery.twbsPagination.min.js") }}"></script>
+
+<script src="{{ static("digipres/js/util.js") }}"></script>
+<script src="{{ static("digipres/js/chartalign.js") }}"></script>
+<script src="{{ static("digipres/js/pagetransitions.js") }}"></script>
+<script src="{{ static("digipres/js/sorttable.js") }}"></script>
+<script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
+<script src="{{ static("digipres/js/popper.min.js") }}"></script>
+{% endblock head %}
+
+{% block header %}{% endblock header %}
+
 {% block header_title %}Dashboard{% endblock header_title %}
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}
+
+
 {% block content %}
-    <div class="row">
-        <div class="small-12 columns">
-            <br>
-            <br>
-            <p>Link to Dashboard</p>
+<div id="content-row" class="row">
+
+<div id="dashboard">
+
+<div class="dashboard-col">
+    <div class="dashboard-card" id="dashboard-collections">
+        <div class="dashboard-card-head">
+            Collections (<a href="{{ url("collections") }}">new</a>)
+        </div>
+        <span class="spinner small"></span>
+        <div class="dashboard-list"></div>
+    </div>
+    <div class="dashboard-card" id="collections-chart">
+        <span class="spinner small"></span>
+        <div class="chart"></div>
+    </div>
+</div>
+
+<div class="dashboard-col">
+    <div class="dashboard-row" style="height: 45%;">
+        <div class="dashboard-card">
+            <div class="dashboard-card-head" style="text-align: center;" id="dashboard-statistics-title">
+                Account Statistics
+            </div>
+            <div style="display: flex; flex-direction:column; height: 100%; padding-bottom: 50px;">
+                <div style="display: flex; flex-direction:row; flex-grow: 1; margin-left: 3%;">
+                    <div style="flex-grow:1; text-align:center; margin: auto;">
+                        <div class="stats-item" id="dashboard-stats-files">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-copy stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Files</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex-grow:1; text-align:center; margin: auto;">
+                        <div class="stats-item" id="dashboard-stats-size">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-database stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Size</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: row; flex-grow: 1;">
+                    <div style="flex-grow:1; text-align:center; margin: auto; margin-left: 3%;">
+                        <div class="stats-item" id="dashboard-stats-regions">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-map-marker-alt stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Regions</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex-grow:1; text-align:center; margin: auto;">
+                        <div class="stats-item" id="dashboard-stats-repl">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-paste stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Avg. Repl.</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-card" id="dashboard-stats-report-card">
+            <div class="dashboard-card-head" style="text-align: center;" id="dashboard-report-title">
+                Recent Fixity Report
+            </div>
+            <div style="display: flex; flex-direction:column; height: 100%; padding-bottom: 50px;">
+                <div style="display: flex; flex-direction:row; flex-grow: 1; margin-left: 3%;">
+                    <div style="flex-grow:1; text-align:center; margin: auto;">
+                        <div class="stats-item" style="min-width: 100px;" id="dashboard-stats-report-date">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-calendar-alt stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Date</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex-grow:1; text-align:center; margin: auto;">
+                        <div class="stats-item" id="dashboard-stats-report-errors">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-exclamation-triangle stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Errors</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: row; flex-grow: 1;">
+                    <div style="flex-grow:1; text-align:center; margin: auto; margin-left: 3%;">
+                        <div class="stats-item" style="min-width: 100px;" id="dashboard-stats-report-files">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-copy stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Files</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex-grow:1; text-align:center; margin: auto;">
+                        <div class="stats-item" id="dashboard-stats-report-size">
+                            <span class="spinner small"></span>
+                            <div class="stats-icon fas fa-database stats-content"></div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Size</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+    <div class="dashboard-card" style="min-height: 200px; max-height: 400px; flex-grow: 10;">
+        <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 70%;" id="worldmap">
+            <div class="dashboard-card-head" style="text-align: center; margin-top: 10px;">
+                Regions
+            </div>
+            <span class="spinner small"></span>
+            <div class="chart" style="max-width: 450px; margin: auto; margin-top: -20px;"></div>
+        </div>
+        <div style="position: absolute; right: 0; top: 10px; bottom: 10px; width: 30%;" id="worldmap-histogram">
+            <span class="spinner small"></span>
+            <div class="chart" style="right: 20px;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-col">
+    <div class="dashboard-card" style="max-height: 150px;" id="dashboard-reports">
+        <div class="dashboard-card-head">
+            Fixity Reports
+        </div>
+        <span class="spinner small"></span>
+        <div class="dashboard-list"></div>
+    </div>
+    <div class="dashboard-card" style="max-height: 200px;" id="temporal-scans-chart">
+        <span class="spinner small"></span>
+        <div class="chart" style="margin-top: 30px;"></div>
+    </div>
+    <div class="dashboard-card" id="filetypes-chart">
+        <span class="spinner small"></span>
+        <div class="chart"></div>
+    </div>
+</div>
+
+</div>
+
+<script src="{{ static("digipres/js/d3.min.js") }}"></script>
+<script src="{{ static("digipres/js/topojson.min.js") }}"></script>
+<script src="{{ static("digipres/js/datamaps.world.min.js") }}"></script>
+
+<script src="{{ static("digipres/js/dashboard.js") }}"></script>
+
+<script type="text/javascript">
+    $(function () {
+        digipresDashboard.init("{{ user.username }}", false);
+    });
+</script>
+
+</div>
 {% endblock content %}
