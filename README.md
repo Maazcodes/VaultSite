@@ -7,21 +7,23 @@ Prototype Django UI for the Vault digital preservation service.
 - Python 3.8
 - Create a virtual env
 - Install requirements.txt (Django 3.2 and Jinja2)
-- Set DJANGO_SECRET_KEY environment variable (or app will fail to start)
-- Hot links some CSS from the production AIT partner site, as possible,
-  and see below for handling the special case of the admin page (!?!?)
+- Set a secret key in `/etc/_django_secret_key_vault_` (or app will fail to start)
+- Set `DJANGO_SETTINGS_MODULE` to one of vault_site.settings.{local, production} 
 - Create a local sqlite with `manage.py migrate`
 - Create initial user with `manage.py createsuperuser`
+  
+### If under Apache
 - Collect static files (css and js) with 'python3 manage.py collectstatic'
 - Link static files dir into Apache root: ln -s .../static .../django-admin-static-hack
 - And then add Apache config clause as doc'd here:
   https://docs.djangoproject.com/en/3.2/howto/deployment/wsgi/modwsgi/#serving-files
+
+### Finally
 - Log in to admin
-- Create an organization and associate your user with that org
+- Create a plan, an organization and associate your user with that org
 
 ## Todo
 
-- Configure REMOTE_USER support
 - Login page with REMOTE_USER support
-- Oh you know, actually upload files (current view left unfinished)
 - All production configuration
+- Should wsgi.py and asgi.py pick a different value for `os.environ.setdefault['DJANGO_SETTINGS_MODULE']`?

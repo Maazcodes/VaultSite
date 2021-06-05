@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -91,7 +91,7 @@ WSGI_APPLICATION = 'vault_site.wsgi.application'
 # understand it better.
 AUTHENTICATION_BACKENDS = [
         'django.contrib.auth.backends.RemoteUserBackend',
-        #'django.contrib.auth.backends.ModelBackend',
+        'django.contrib.auth.backends.ModelBackend',
         ]
 
 # Database
@@ -156,29 +156,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'vault.User'
 
 LOGIN_URL = '/vault/accounts/login/'
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'plain': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': '/opt/DPS/vault-site/django-debug.log',
-        },
-    },
-    'loggers': {
-        'vault': {
-            'handlers': ['file'],
-            'level': 'INFO',
-            'formatter': 'plain',
-            'propagate': True,
-        },
-    },
-}
