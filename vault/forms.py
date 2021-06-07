@@ -14,6 +14,8 @@ class FileFieldForm(forms.Form):
     dir_field = forms.FileField(required=False, widget=forms.ClearableFileInput(
         attrs={ 'webkitdirectory':True, 'multiple': True, }))
 
+    directories = forms.CharField(widget=forms.HiddenInput())
+
     def __init__(self, queryset, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['collection'].queryset = queryset

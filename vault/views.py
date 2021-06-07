@@ -1,4 +1,5 @@
 import logging
+import json
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import redirect
@@ -7,6 +8,7 @@ from . import forms
 from . import models
 
 logger = logging.getLogger(__name__)
+
 
 def index(request):
     return redirect("dashboard")
@@ -50,13 +52,19 @@ def deposit(request):
 @login_required
 def deposit_web(request):
     inputs = [ 'file_field', 'dir_field' ]
+    dir_json = request.POST.get("directories", "")
+    dir_json  = json.loads(dir_json)
     fnames = ""
     collections = models.Collection.objects.filter(organization=request.user.organization)
     form = forms.FileFieldForm(collections)
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
-            fnames += f" f.file_name"
+            if dir_json[f.name]:
+                fnames += f" {f.name} {dir_json[f.name]} - {f.temporary_file_path()} : {f.size}"
+            else:
+                fnames += f" {f.name} {f.name} - {f.temporary_file_path()} : {f.size}"
+    logger.info(fnames)
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,
         "filenames": fnames,
