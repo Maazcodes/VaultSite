@@ -40,6 +40,7 @@ urlpatterns = [
     path('api/collections_summary', api.collections_summary),
     path('api/reports_files/<collection_id>', api.reports_files_by_collection),
     path('api/report_summary/<collection_id>/<report_id>', api.report_summary),
+    path('api/report_files/<collection_id>/<report_id>', api.report_files),
 
     path('admin/', admin.site.urls),
 ]

@@ -43,7 +43,14 @@ def collections(request):
 
 @login_required
 def reports(request):
-    return TemplateResponse(request, "vault/reports.html", {})
+    org = request.user.organization
+    collection = models.Collection.objects.filter(organization=org).first()
+    report = models.Report.objects.filter(collection=collection).first()
+    return TemplateResponse(request, "vault/reports.html", {
+        "collection": collection,
+        "report": report,
+        "page_number": 1,
+    })
 
 
 @login_required

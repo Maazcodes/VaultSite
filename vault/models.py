@@ -33,3 +33,13 @@ class Collection(models.Model):
     def __str__(self):
         return self.name
 
+
+class Report(models.Model):
+    collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
+    total_size = models.PositiveBigIntegerField()
+    file_count = models.PositiveBigIntegerField()
+    error_count = models.PositiveBigIntegerField()
+    missing_location_count = models.PositiveBigIntegerField()
+    mismatch_count = models.PositiveBigIntegerField()
