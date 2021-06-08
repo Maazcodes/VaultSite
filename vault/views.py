@@ -7,6 +7,8 @@ from django.template.response import TemplateResponse
 from . import forms
 from . import models
 
+from django.views.decorators.csrf import csrf_exempt
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,20 +52,25 @@ def deposit(request):
 
 
 @login_required
+@csrf_exempt
 def deposit_web(request):
     inputs = [ 'file_field', 'dir_field' ]
     dir_json = request.POST.get("directories", "")
-    dir_json  = json.loads(dir_json)
+    if dir_json:
+        dir_json  = json.loads(dir_json)
     fnames = ""
     collections = models.Collection.objects.filter(organization=request.user.organization)
     form = forms.FileFieldForm(collections)
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
-            if dir_json[f.name]:
+            try:
                 fnames += f" {f.name} {dir_json[f.name]} - {f.temporary_file_path()} : {f.size}"
-            else:
-                fnames += f" {f.name} {f.name} - {f.temporary_file_path()} : {f.size}"
+            except (KeyError, TypeError) as e:
+                try:
+                    fnames += f" {f.name} {f.name} - {f.temporary_file_path()} : {f.size}"
+                except AttributeError:
+                    fnames += f" {f.name} {f.name} - No path : {f.size}"
     logger.info(fnames)
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,

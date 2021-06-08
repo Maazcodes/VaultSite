@@ -11,7 +11,7 @@
                     <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post">
                         {{ csrf_input }}
                         {{ form }}
-                        <input type="submit" value="Upload Files" class="button small padding-top padding-bottom half left">
+                        <input type="submit" name="Submit" value="Upload Files" class="button small padding-top padding-bottom half left">
                     </form>
                     {% else %}
                         <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
