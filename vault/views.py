@@ -50,11 +50,35 @@ def reports(request):
 def deposit(request):
     return redirect("deposit_web")
 
+def sha256sum(filename):
+    import hashlib
+    sha256_hash = hashlib.sha256()
+    with open(filename,"rb") as f:
+        # Read and update hash string value in blocks of 4K
+        for byte_block in iter(lambda: f.read(4096),b""):
+            sha256_hash.update(byte_block)
+    f.close()
+    return sha256_hash.hexdigest()
+
+@login_required
+def cli_web_deposit(request):
+    retval = dict()
+    metadata_fields = [ 'client', 'username', 'organization', 'collection',
+    'sha256sum', 'webkitRelativePath', 'name', 'size' ]
+    data = dict()
+    if request.method == 'POST':
+        data = request.POST
+        for key, value in data.items():
+            if key in metadata_fields:
+                retval[key] = value
+    return retval
 
 @login_required
 @csrf_exempt
 def deposit_web(request):
     inputs = [ 'file_field', 'dir_field' ]
+    attribs = cli_web_deposit(request)
+    logger.info(attribs)
     dir_json = request.POST.get("directories", "")
     if dir_json:
         dir_json  = json.loads(dir_json)
@@ -65,19 +89,34 @@ def deposit_web(request):
         files = request.FILES.getlist(field)
         for f in files:
             try:
-                fnames += f" {f.name} {dir_json[f.name]} - {f.temporary_file_path()} : {f.size}"
-            except (KeyError, TypeError) as e:
+                attribs['sizeV'] = f.size
+                tempfile = f.temporary_file_path()
+                attribs['name'] = dir_json[f.name]
+                attribs['tempfile'] = tempfile 
+                attribs['sha256sumV'] = sha256sum(tempfile)
+            except (KeyError, TypeError, AttributeError) as e:
                 try:
-                    fnames += f" {f.name} {f.name} - {f.temporary_file_path()} : {f.size}"
+                    attribs['sizeV'] = f.size
+                    tempfile = f.temporary_file_path()
+                    #attribs['name'] = dir_json[f.name]
+                    attribs['name'] = f.name
+                    attribs['tempfile'] = tempfile 
+                    attribs['sha256sumV'] = sha256sum(tempfile)
                 except AttributeError:
-                    fnames += f" {f.name} {f.name} - No path : {f.size}"
-    logger.info(fnames)
+                    attribs['sizeV'] = f.size
+                    # 'InMemoryUploadedFile' object has no attribute 'temporary_file_path'
+                    #tempfile = f.temporary_file_path()
+                    #attribs['name'] = dir_json[f.name]
+                    attribs['name'] = f.name
+                    #attribs['tempfile'] = tempfile
+                    # expected str, bytes or os.PathLike object, not _io.BytesIO
+                    #attribs['sha256sumV'] = sha256sum(f.file)
+            logger.info(attribs)
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,
         "filenames": fnames,
         "form": form,
     })
-    #messages.error(request, 'Must select Files and/or Directories!')
 
 
 @login_required
@@ -90,7 +129,7 @@ def deposit_mail(request):
     return TemplateResponse(request, "vault/deposit_mail.html", {})
 
 
-@login_required
+@login_required 
 def deposit_debug(request):
     return TemplateResponse(request, "vault/deposit_debug.html", {})
 
