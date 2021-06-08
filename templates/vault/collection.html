@@ -1,0 +1,19 @@
+{% extends "vault/base.html" %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, ("collection", collection.pk))) %}
+{% block header_title %}{{ collection.name }}{% endblock header_title %}
+{% block sticky_message %}{% endblock sticky_message %}
+{% block subnav %}{% endblock subnav %}
+{% block content %}
+    <div class="row">
+        <div class="small-12 columns">
+            <br>
+            <br>
+            <h2>Collection Settings</h2>
+            <ul>
+                <li>Replication Factor: {{ collection.get_target_replication_display() }}</li>
+                <li>Fixity Frequency: {{ collection.get_fixity_frequency_display() }}</li>
+                <li>Geolocations: {{ ", ".join(collection.target_geolocations.values_list("name", flat=True)) }}</li>
+            </ul>
+        </div>
+    </div>
+{% endblock content %}

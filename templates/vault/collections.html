@@ -27,7 +27,7 @@
                 {% for collection in collections %}
                     <tbody>
                     <tr>
-                        <td><a>{{ collection.name }}</a></td>
+                        <td><a href="{{ url("collection", args=(collection.pk,)) }}">{{ collection.name }}</a></td>
                         <td>10 GB</td>
                         <td>May 31, 2021</td>
                         <td>May 31, 2021</td>

@@ -21,6 +21,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('dashboard', views.dashboard, name='dashboard'),
     path('collections', views.collections, name='collections'),
+    path('collections/<int:pk>', views.collection, name='collection'),
     path('reports', views.reports, name='reports'),
     path('deposit', views.deposit, name='deposit'),
     path('deposit/web', views.deposit_web, name='deposit_web'),

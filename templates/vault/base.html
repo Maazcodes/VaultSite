@@ -99,7 +99,12 @@
             {% if breadcrumbs is defined %}
                 <ul class="breadcrumbs">
                     {% for level, link in breadcrumbs %}
-                        <li><a href="{{ url(link) }}">{{ level }}</a></li>
+                        {% if link is string %}
+                            <li><a href="{{ url(link) }}">{{ level }}</a></li>
+                        {% else %}
+                            {# if link isn't string, it should be a tuple (link_name, (arg1, ...)) #}
+                            <li><a href="{{ url(link[0], args=link[1:]) }}">{{ level }}</a></li>
+                        {% endif %}
                     {% endfor %}
                 </ul>
             {% endif %}

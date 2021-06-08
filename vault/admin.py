@@ -26,4 +26,10 @@ class CollectionAdmin(admin.ModelAdmin):
 class ReportAdmin(admin.ModelAdmin):
     pass
 
+
+@admin.register(models.Geolocation)
+class GeolocationAdmin(admin.ModelAdmin):
+    pass
+
+
 admin.site.site_header = "Vault Administration"
