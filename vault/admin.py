@@ -22,4 +22,14 @@ class CollectionAdmin(admin.ModelAdmin):
     list_display = ("name", "organization")
 
 
+@admin.register(models.Report)
+class ReportAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(models.Geolocation)
+class GeolocationAdmin(admin.ModelAdmin):
+    pass
+
+
 admin.site.site_header = "Vault Administration"

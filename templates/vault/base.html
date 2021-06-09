@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    {% block head %}
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<title>Vault: Archive-It Digital Preservation Service</title>
@@ -35,6 +36,7 @@
 	<meta class="foundation-mq-large">
 	<script src="/vault/static/js/jquery.min.js"></script>
     <script src="/vault/static/js/preserve-directory-info.js"></script>
+    {% endblock head %}
 </head>
 
 
@@ -97,7 +99,12 @@
             {% if breadcrumbs is defined %}
                 <ul class="breadcrumbs">
                     {% for level, link in breadcrumbs %}
-                        <li><a href="{{ url(link) }}">{{ level }}</a></li>
+                        {% if link is string %}
+                            <li><a href="{{ url(link) }}">{{ level }}</a></li>
+                        {% else %}
+                            {# if link isn't string, it should be a tuple (link_name, (arg1, ...)) #}
+                            <li><a href="{{ url(link[0], args=link[1:]) }}">{{ level }}</a></li>
+                        {% endif %}
                     {% endfor %}
                 </ul>
             {% endif %}

@@ -29,7 +29,9 @@ def collections(request):
         if form.is_valid():
             models.Collection.objects.create(
                 organization=org,
-                name=form.cleaned_data["name"]
+                name=form.cleaned_data["name"],
+                target_replication=org.plan.default_replication,
+                fixity_frequency=org.plan.default_fixity_frequency,
             )
         return redirect("collections")
     else:
@@ -42,8 +44,24 @@ def collections(request):
 
 
 @login_required
+def collection(request, pk):
+    org = request.user.organization
+    collection = models.Collection.objects.get(organization=org, pk=pk)
+    return TemplateResponse(request, "vault/collection.html", {
+        "collection": collection,
+    })
+
+
+@login_required
 def reports(request):
-    return TemplateResponse(request, "vault/reports.html", {})
+    org = request.user.organization
+    collection = models.Collection.objects.filter(organization=org).first()
+    report = models.Report.objects.filter(collection=collection).first()
+    return TemplateResponse(request, "vault/reports.html", {
+        "collection": collection,
+        "report": report,
+        "page_number": 1,
+    })
 
 
 @login_required

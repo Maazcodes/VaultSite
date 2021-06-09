@@ -15,12 +15,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from vault import views
+from vault import api, views
 
 urlpatterns = [
     path('', views.index, name='index'),
     path('dashboard', views.dashboard, name='dashboard'),
     path('collections', views.collections, name='collections'),
+    path('collections/<int:pk>', views.collection, name='collection'),
     path('reports', views.reports, name='reports'),
     path('deposit', views.deposit, name='deposit'),
     path('deposit/web', views.deposit_web, name='deposit_web'),
@@ -32,5 +33,15 @@ urlpatterns = [
     path('administration/plan', views.administration_plan, name='administration_plan'),
     path('administration/users', views.administration_users, name='administration_users'),
     path('administration/help', views.administration_help, name='administration_help'),
+
+    path('api/collections', api.collections),
+    path('api/reports', api.reports),
+    path('api/collections_stats', api.collections_stats),
+    path('api/reports_files', api.reports_files),
+    path('api/collections_summary', api.collections_summary),
+    path('api/reports_files/<collection_id>', api.reports_files_by_collection),
+    path('api/report_summary/<collection_id>/<report_id>', api.report_summary),
+    path('api/report_files/<collection_id>/<report_id>', api.report_files),
+
     path('admin/', admin.site.urls),
 ]
