@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
 
 
@@ -70,3 +71,27 @@ class Report(models.Model):
 
     def __str__(self):
         return f"{self.collection.pk}-{self.started_at}"
+
+
+md5_validator = RegexValidator(r'^[a-zA-Z0-9]{32}$', "only hex-encoded md5 hashes are allowed")
+sha1_validator = RegexValidator(r'^[a-zA-Z0-9]{40}$', "only hex-encoded sha1 hashes are allowed")
+sha256_validator = RegexValidator(r'^[a-zA-Z0-9]{64}$', "only hex-encoded sha256 hashes are allowed")
+
+
+class File(models.Model):
+    collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+    client_filename = models.TextField()
+    staging_filename = models.TextField()
+    md5_sum = models.CharField(max_length=32, validators=[md5_validator], blank=True, null=True)
+    sha1_sum = models.CharField(max_length=40, validators=[sha1_validator], blank=True, null=True)
+    sha256_sum = models.CharField(max_length=64, validators=[sha256_validator])
+    size = models.PositiveBigIntegerField()
+    file_type = models.CharField(max_length=255, blank=True, null=True)
+    creation_date = models.DateTimeField()
+    modified_date = models.DateTimeField()
+    deletion_date = models.DateTimeField(blank=True, null=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, blank=True, null=True)
+    comment = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.client_filename
