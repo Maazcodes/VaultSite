@@ -94,7 +94,9 @@
                     $list.empty();
                     if (activeRequest) activeRequest.abort();
                     {#let url = "/ait/<%=unescape(user.idStr)%>/digipres/api/report_files/<%=unescape(collectionId)%>/<%=unescape(reportId)%>?page=" + page <%=unescape(if (demo) " + \"&demo=true\"" else "")%>#}
-                    let url = "/api/report_files/{{ collection.id }}/{{ report.id }}?page={{ page_number }}"
+                    let url = "{{ url("api_report_files", args=(0, 0)) }}";
+                    let urlEnd = "/{{ collection.id }}/{{ report.id }}?page={{ page_number }}";
+                    url = url.replace("/0/0", urlEnd);
                     if (filterReport.filter) url += "&success=" + (filterReport.success ? "true" : "false");
                     activeRequest = $.getJSON(url, function (json) {
                         for (let file of json.files) {
