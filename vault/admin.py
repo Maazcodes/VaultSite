@@ -32,4 +32,9 @@ class GeolocationAdmin(admin.ModelAdmin):
     pass
 
 
+@admin.register(models.File)
+class FileAdmin(admin.ModelAdmin):
+    pass
+
+
 admin.site.site_header = "Vault Administration"
