@@ -70,6 +70,23 @@ def reports(request):
 def deposit(request):
     return redirect("deposit_web")
 
+
+def create_or_update_file(request, attribs):
+    collection = models.Collection.objects.get(pk=attribs['collection'])
+    models.File.objects.update_or_create(
+        collection       = collection,
+        client_filename  = attribs['name'],
+        staging_filename = attribs['staging_filename'],
+        sha256_sum       = attribs['sha256sumV'],
+        defaults = {
+                 'size': attribs['sizeV'],
+            'file_type': attribs['file_type'],
+          'uploaded_by': request.user,
+              'comment': attribs['comment'],
+        }
+    )
+
+
 @csrf_exempt
 def sha256sum(filename):
     import hashlib
@@ -91,6 +108,7 @@ def sha256sum(filename):
 @csrf_exempt
 def create_attribs_dict(request):
     retval = dict()
+    retval['comment'] = ""
     metadata_fields = [ 'client', 'username',  'organization', 'collection',
             'sha256sum', 'webkitRelativePath', 'name', 'size', 'collname' ]
     data = dict()
@@ -100,7 +118,7 @@ def create_attribs_dict(request):
             if key in metadata_fields:
                 retval[key] = value
     retval['username'] = request.META['REMOTE_USER']
-    retval['orgname'] = request.user.organization.name
+    retval['orgname']  = request.user.organization.name
     try:
         some_id = retval['collection']
         retval['collname'] = models.Collection.objects.get(pk=some_id).name
@@ -109,7 +127,8 @@ def create_attribs_dict(request):
     return retval
 
 @csrf_exempt
-def move_temp_file(attribs):
+def move_temp_file(request, attribs):
+    import filetype
     from pathlib import Path
     from sanitize_filename import sanitize
     from django.conf import settings
@@ -117,7 +136,9 @@ def move_temp_file(attribs):
     root = settings.MEDIA_ROOT
 
     temp_file = attribs['tempfile']
-
+    ftype = filetype.guess(temp_file)
+    if ftype:
+        attribs['file_type'] = ftype.mime
     org = Path(attribs['orgname'])
     coll = Path(attribs['collname'])
     filepath = Path(attribs['name'])
@@ -131,8 +152,10 @@ def move_temp_file(attribs):
     target_path = os.path.normpath(target_path)
     Path(target_path).mkdir(parents=True, exist_ok=True)
     target_file = target_path + '/' + fname
+    attribs['staging_filename'] = target_file
     # Move the file on the filesystem
     os.rename(temp_file, target_file)
+    create_or_update_file(request, attribs)
 
 #
 # If you don't use @csrf_exempt the extra javascript code is passed over!
@@ -181,19 +204,7 @@ def deposit_web(request):
                     # expected str, bytes or os.PathLike object, not _io.BytesIO
                     #attribs['sha256sumV'] = sha256sum(f.file)
 
-            models.File.objects.update_or_create(
-                collection=attribs['collection'],  # assuming this is integer collection ID
-                client_filename=attribs['name'],
-                staging_filename=attribs['staging_filename'],  # I think you still need to add this
-                sha256_sum=attribs['sha256sumV'],
-                defaults={
-                    'size': attribs['sizeV'],
-                    'file_type': attribs['file_type'],
-                    'uploaded_by': request.user,
-                    'comment': attribs['comment'],
-                }
-            )
-            move_temp_file(attribs)
+            move_temp_file(request, attribs)
             logger.info(attribs)
 
     collections = models.Collection.objects.filter(organization=request.user.organization)
