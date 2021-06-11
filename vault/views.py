@@ -1,3 +1,5 @@
+import os
+import re
 import logging
 import json
 from django.contrib.auth.decorators import login_required
@@ -68,6 +70,7 @@ def reports(request):
 def deposit(request):
     return redirect("deposit_web")
 
+@csrf_exempt
 def sha256sum(filename):
     import hashlib
     sha256_hash = hashlib.sha256()
@@ -78,31 +81,70 @@ def sha256sum(filename):
     f.close()
     return sha256_hash.hexdigest()
 
-@login_required
-def cli_web_deposit(request):
+@csrf_exempt
+def create_attribs_dict(request):
     retval = dict()
-    metadata_fields = [ 'client', 'username', 'organization', 'collection',
-    'sha256sum', 'webkitRelativePath', 'name', 'size' ]
+    metadata_fields = [ 'client', 'username',  'organization', 'collection',
+            'sha256sum', 'webkitRelativePath', 'name', 'size', 'collname' ]
     data = dict()
     if request.method == 'POST':
         data = request.POST
         for key, value in data.items():
             if key in metadata_fields:
                 retval[key] = value
+    retval['username'] = request.META['REMOTE_USER']
+    retval['orgname'] = request.user.organization.name
+    try:
+        some_id = retval['collection']
+        retval['collname'] = models.Collection.objects.get(pk=some_id).name
+    except KeyError:
+        retval['collname'] = {}
     return retval
 
+@csrf_exempt
+def move_temp_file(attribs):
+    from pathlib import Path
+    from sanitize_filename import sanitize
+    from django.conf import settings
+
+    root = settings.MEDIA_ROOT
+
+    temp_file = attribs['tempfile']
+
+    org = Path(attribs['orgname'])
+    coll = Path(attribs['collname'])
+    filepath = Path(attribs['name'])
+
+    fname = os.path.basename(filepath)
+    fname = sanitize(fname)
+
+    userdir = os.path.dirname(filepath)
+    target_path = os.path.join(root, org, coll, userdir)
+    target_path = re.sub('[^a-zA-Z0-9_\-\/\.]', '_', target_path)
+    target_path = os.path.normpath(target_path)
+    Path(target_path).mkdir(parents=True, exist_ok=True)
+    target_file = target_path + '/' + fname
+    # Move the file on the filesystem
+    os.rename(temp_file, target_file)
+
+#
+# If you don't use @csrf_exempt the extra javascript code is passed over!
+#
 @login_required
 @csrf_exempt
 def deposit_web(request):
-    inputs = [ 'file_field', 'dir_field' ]
-    attribs = cli_web_deposit(request)
-    logger.info(attribs)
+    # Accumulate request global attributes
+    # Possibly to be overwritten by file iteration below
+    attribs = create_attribs_dict(request)
+
     dir_json = request.POST.get("directories", "")
+    sha_json = request.POST.get("shasums", "")
     if dir_json:
         dir_json  = json.loads(dir_json)
-    fnames = ""
-    collections = models.Collection.objects.filter(organization=request.user.organization)
-    form = forms.FileFieldForm(collections)
+    if sha_json:
+        sha_json  = json.loads(sha_json)
+
+    inputs = [ 'file_field', 'dir_field' ]
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
@@ -110,29 +152,30 @@ def deposit_web(request):
                 attribs['sizeV'] = f.size
                 tempfile = f.temporary_file_path()
                 attribs['name'] = dir_json[f.name]
-                attribs['tempfile'] = tempfile 
+                attribs['sha256sum'] = sha_json[f.name]
+                attribs['tempfile'] = tempfile
                 attribs['sha256sumV'] = sha256sum(tempfile)
-            except (KeyError, TypeError, AttributeError) as e:
+            except (KeyError, AttributeError) as e:
                 try:
                     attribs['sizeV'] = f.size
                     tempfile = f.temporary_file_path()
-                    #attribs['name'] = dir_json[f.name]
                     attribs['name'] = f.name
-                    attribs['tempfile'] = tempfile 
+                    attribs['tempfile'] = tempfile
                     attribs['sha256sumV'] = sha256sum(tempfile)
                 except AttributeError:
                     attribs['sizeV'] = f.size
-                    # 'InMemoryUploadedFile' object has no attribute 'temporary_file_path'
-                    #tempfile = f.temporary_file_path()
-                    #attribs['name'] = dir_json[f.name]
                     attribs['name'] = f.name
-                    #attribs['tempfile'] = tempfile
                     # expected str, bytes or os.PathLike object, not _io.BytesIO
                     #attribs['sha256sumV'] = sha256sum(f.file)
+
+            move_temp_file(attribs)
             logger.info(attribs)
+
+    collections = models.Collection.objects.filter(organization=request.user.organization)
+    form = forms.FileFieldForm(collections)
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,
-        "filenames": fnames,
+        "filenames": "",
         "form": form,
     })
 
@@ -147,7 +190,7 @@ def deposit_mail(request):
     return TemplateResponse(request, "vault/deposit_mail.html", {})
 
 
-@login_required 
+@login_required
 def deposit_debug(request):
     return TemplateResponse(request, "vault/deposit_debug.html", {})
 
