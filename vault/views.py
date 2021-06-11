@@ -70,7 +70,6 @@ def reports(request):
 def deposit(request):
     return redirect("deposit_web")
 
-
 def create_or_update_file(request, attribs):
     collection = models.Collection.objects.get(pk=attribs['collection'])
     models.File.objects.update_or_create(
@@ -87,7 +86,6 @@ def create_or_update_file(request, attribs):
     )
 
 
-@csrf_exempt
 def sha256sum(filename):
     import hashlib
     sha256_hash = hashlib.sha256()
@@ -105,7 +103,6 @@ def sha256sum(filename):
 # slightly (haha) buggy in Django's debug mode that
 # is responsible.
 #
-@csrf_exempt
 def create_attribs_dict(request):
     retval = dict()
     retval['comment'] = ""
@@ -126,7 +123,6 @@ def create_attribs_dict(request):
         retval['collname'] = {}
     return retval
 
-@csrf_exempt
 def move_temp_file(request, attribs):
     import filetype
     from pathlib import Path
@@ -167,7 +163,6 @@ def move_temp_file(request, attribs):
 # on each item . :FIXME:
 #
 @login_required
-@csrf_exempt
 def deposit_web(request):
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
@@ -184,26 +179,15 @@ def deposit_web(request):
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
-            try:
-                attribs['sizeV'] = f.size
-                tempfile = f.temporary_file_path()
-                attribs['name'] = dir_json[f.name]
+            attribs['sizeV'] = f.size
+            tempfile = f.temporary_file_path()
+            attribs['name'] = dir_json[f.name]
+            attribs['tempfile'] = tempfile
+            attribs['sha256sumV'] = sha256sum(tempfile)
+            if sha_json:
                 attribs['sha256sum'] = sha_json[f.name]
-                attribs['tempfile'] = tempfile
-                attribs['sha256sumV'] = sha256sum(tempfile)
-            except (KeyError, TypeError, AttributeError) as e:
-                try:
-                    attribs['sizeV'] = f.size
-                    tempfile = f.temporary_file_path()
-                    attribs['name'] = f.name
-                    attribs['tempfile'] = tempfile
-                    attribs['sha256sumV'] = sha256sum(tempfile)
-                except AttributeError:
-                    attribs['sizeV'] = f.size
-                    attribs['name'] = f.name
-                    # expected str, bytes or os.PathLike object, not _io.BytesIO
-                    #attribs['sha256sumV'] = sha256sum(f.file)
-
+            else:
+                attribs['sha256sum'] = ""
             move_temp_file(request, attribs)
             logger.info(attribs)
 
