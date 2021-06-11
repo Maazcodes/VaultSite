@@ -58,6 +58,12 @@ function bytesToHexString(bytes) {
     return hexBytes.join("");
 }
 
+//
+// :FIXME: Fails on very large files.
+// Unfortunately, old non-native hashing methods only work reliably for md5.
+//
+// Size will have to serve for now. Sigh.
+//
 async function hashFile(file) {
     let buffer = await file.arrayBuffer();
     return crypto.subtle.digest("SHA-256", buffer).then(function (hash) {

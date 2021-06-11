@@ -81,6 +81,13 @@ def sha256sum(filename):
     f.close()
     return sha256_hash.hexdigest()
 
+#
+# Note the KeyError exception handler.
+# This should not be triggered during initial page
+# loading, but it is - I suspect that there is something
+# slightly (haha) buggy in Django's debug mode that
+# is responsible.
+#
 @csrf_exempt
 def create_attribs_dict(request):
     retval = dict()
@@ -129,6 +136,12 @@ def move_temp_file(attribs):
 
 #
 # If you don't use @csrf_exempt the extra javascript code is passed over!
+# The same is true of the above functions called from here.
+# There is also a bug, possibly in Django's debug mode, that raises
+# an error about typeError being undefined.
+#
+# The exception handling can be obviated by doing the proper tests
+# on each item . :FIXME:
 #
 @login_required
 @csrf_exempt
@@ -155,7 +168,7 @@ def deposit_web(request):
                 attribs['sha256sum'] = sha_json[f.name]
                 attribs['tempfile'] = tempfile
                 attribs['sha256sumV'] = sha256sum(tempfile)
-            except (KeyError, AttributeError) as e:
+            except (KeyError, TypeError, AttributeError) as e:
                 try:
                     attribs['sizeV'] = f.size
                     tempfile = f.temporary_file_path()
