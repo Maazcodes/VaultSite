@@ -87,6 +87,10 @@ def create_attribs_dict(request):
     metadata_fields = [ 'client', 'username',  'organization', 'collection',
             'sha256sum', 'webkitRelativePath', 'name', 'size', 'collname' ]
     data = dict()
+    # f = models.File.objects.create(
+    #     collection=collection.pk,
+    #     client_filename="blabla",
+    # )
     if request.method == 'POST':
         data = request.POST
         for key, value in data.items():
