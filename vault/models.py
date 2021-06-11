@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import UniqueConstraint
 
 
 class ReplicationFactor(models.IntegerChoices):
@@ -87,11 +88,23 @@ class File(models.Model):
     sha256_sum = models.CharField(max_length=64, validators=[sha256_validator])
     size = models.PositiveBigIntegerField()
     file_type = models.CharField(max_length=255, blank=True, null=True)
-    creation_date = models.DateTimeField()
-    modified_date = models.DateTimeField()
+    creation_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
     deletion_date = models.DateTimeField(blank=True, null=True)
     uploaded_by = models.ForeignKey(User, on_delete=models.PROTECT, blank=True, null=True)
     comment = models.TextField(blank=True, null=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=[
+                    "collection",
+                    "client_filename",
+                    "staging_filename",
+                    "sha256_sum"
+                ],
+                name="unique_file")
+        ]
 
     def __str__(self):
         return self.client_filename

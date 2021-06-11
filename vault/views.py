@@ -168,6 +168,18 @@ def deposit_web(request):
                     # expected str, bytes or os.PathLike object, not _io.BytesIO
                     #attribs['sha256sumV'] = sha256sum(f.file)
 
+            models.File.objects.update_or_create(
+                collection=attribs['collection'],  # assuming this is integer collection ID
+                client_filename=attribs['name'],
+                staging_filename=attribs['staging_filename'],  # I think you still need to add this
+                sha256_sum=attribs['sha256sumV'],
+                defaults={
+                    'size': attribs['sizeV'],
+                    'file_type': attribs['file_type'],
+                    'uploaded_by': request.user,
+                    'comment': attribs['comment'],
+                }
+            )
             move_temp_file(attribs)
             logger.info(attribs)
 
