@@ -34,14 +34,14 @@ urlpatterns = [
     path('administration/users', views.administration_users, name='administration_users'),
     path('administration/help', views.administration_help, name='administration_help'),
 
-    path('api/collections', api.collections),
-    path('api/reports', api.reports),
-    path('api/collections_stats', api.collections_stats),
-    path('api/reports_files', api.reports_files),
-    path('api/collections_summary', api.collections_summary),
-    path('api/reports_files/<collection_id>', api.reports_files_by_collection),
-    path('api/report_summary/<collection_id>/<report_id>', api.report_summary),
-    path('api/report_files/<collection_id>/<report_id>', api.report_files),
+    path('api/collections', api.collections, name='api_collection'),
+    path('api/reports', api.reports, name='api_reports'),
+    path('api/collections_stats', api.collections_stats, name='api_collections_stats'),
+    path('api/reports_files', api.reports_files, name='api_reports_files'),
+    path('api/collections_summary', api.collections_summary, name='api_collections_summary'),
+    path('api/reports_files/<collection_id>', api.reports_files_by_collection, name='api_reports_files_by_collection'),
+    path('api/report_summary/<collection_id>/<report_id>', api.report_summary, name='api_report_summary'),
+    path('api/report_files/<collection_id>/<report_id>', api.report_files, name='api_report_files'),
 
     path('admin/', admin.site.urls),
 ]
