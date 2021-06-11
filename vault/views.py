@@ -79,7 +79,7 @@ def create_or_update_file(request, attribs):
         sha256_sum       = attribs['sha256sumV'],
         defaults = {
                  'size': attribs['sizeV'],
-            'file_type': attribs['file_type'],
+            'file_type': attribs.get('file_type', None),
           'uploaded_by': request.user,
               'comment': attribs['comment'],
         }
