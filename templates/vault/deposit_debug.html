@@ -4,7 +4,7 @@
 {% block content %}
 {% if request.user.is_superuser %}
 <pre>
-{{request.META|pprint}}
+{#{{request.META|pprint}}#}
 </pre>
 {% else %}
 <h2>Unauthorized</h2>

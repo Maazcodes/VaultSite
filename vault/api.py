@@ -1,27 +1,52 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Sum, Max
 from django.http import JsonResponse
 
+from . import models
 
 @login_required
 def collections(request):
+    if request.GET.get("demo"):
+        return JsonResponse({
+            "collections": [
+                {
+                    "id": "ARCHIVEIT-15228",
+                    "name": "Alex Dempsey's Public Bookmarks"
+                }
+            ]
+        })
+
+    org = request.user.organization
+    collections = models.Collection.objects.filter(organization=org)
     return JsonResponse({
         "collections": [
-            {
-                "id": "ARCHIVEIT-15228",
-                "name": "Alex Dempsey's Public Bookmarks"
-            }
+            {"id": collection.pk, "name": collection.name}
+            for collection in collections
         ]
     })
 
 
 @login_required
 def reports(request):
+    if request.GET.get("demo"):
+        return JsonResponse({
+            "reports": [
+                {
+                    "id": "2021-05-26T20-42-18-167Z",
+                    "collection": "ARCHIVEIT-16740"
+                }
+            ]
+        })
+
+    org = request.user.organization
+    reports = models.Report.objects.filter(collection__organization=org).order_by("-ended_at")
     return JsonResponse({
         "reports": [
             {
-                "id": "2021-05-26T20-42-18-167Z",
-                "collection": "ARCHIVEIT-16740"
+                "id": report.ended_at.strftime("%B %-d, %Y"),
+                "collection": report.collection.name
             }
+            for report in reports
         ]
     })
 
@@ -40,6 +65,13 @@ def collections_stats(request):
             }
         ]
     })
+
+    # org = request.user.organization
+    # collection = models.Collection.objects.filter(organization=org).annotate(
+    #     file_count=Count("file"),
+    #     total_size=Sum("file__size"),
+    #     last_report=Max('report__ended_at'),
+    # )
 
 
 @login_required

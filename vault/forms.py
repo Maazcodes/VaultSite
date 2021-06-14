@@ -1,8 +1,17 @@
 from django import forms
+from django.forms import CheckboxSelectMultiple
+
+from . import models
 
 
-class CollectionForm(forms.Form):
+class CreateCollectionForm(forms.Form):
     name = forms.CharField(label='Collection Name', max_length=255)
+
+
+class EditCollectionSettingsForm(forms.Form):
+    target_replication = forms.ChoiceField(choices=models.ReplicationFactor.choices)
+    fixity_frequency = forms.ChoiceField(choices=models.FixityFrequency.choices)
+    target_geolocations = forms.ModelMultipleChoiceField(models.Geolocation.objects.all(), widget=CheckboxSelectMultiple)
 
 
 class FileFieldForm(forms.Form):

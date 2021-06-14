@@ -4,7 +4,10 @@ import logging
 import json
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.db import transaction
+from django.db.models import Max, Sum, Count
+from django.http import Http404
+from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from . import forms
 from . import models
@@ -27,7 +30,7 @@ def dashboard(request):
 def collections(request):
     org = request.user.organization
     if request.method == "POST":
-        form = forms.CollectionForm(request.POST)
+        form = forms.CreateCollectionForm(request.POST)
         if form.is_valid():
             models.Collection.objects.create(
                 organization=org,
@@ -37,8 +40,12 @@ def collections(request):
             )
         return redirect("collections")
     else:
-        form = forms.CollectionForm()
-        collections = models.Collection.objects.filter(organization=org)
+        form = forms.CreateCollectionForm()
+        collections = models.Collection.objects.filter(organization=org).annotate(
+            total_size=Sum("file__size"),
+            last_modified=Max("file__modified_date"),
+            last_report=Max('report__ended_at'),
+        )
         return TemplateResponse(request, "vault/collections.html", {
             "collections": collections,
             "form": form,
@@ -46,21 +53,47 @@ def collections(request):
 
 
 @login_required
-def collection(request, pk):
+def collection(request, collection_id):
     org = request.user.organization
-    collection = models.Collection.objects.get(organization=org, pk=pk)
+    if request.method == "POST":
+        form = forms.EditCollectionSettingsForm(request.POST)
+        collection = models.Collection.objects.select_for_update().get(pk=collection_id)
+        if form.is_valid() and collection.organization == org:
+            with transaction.atomic():
+                collection.target_replication = form.cleaned_data["target_replication"]
+                collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
+                collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
+                collection.save()
+    else:
+        form = None
+
+    collection = models.Collection.objects.filter(organization=org, pk=collection_id).annotate(
+        file_count=Count("file"),
+        total_size=Sum("file__size"),
+        last_modified=Max("file__modified_date"),
+        last_report=Max('report__ended_at'),
+    ).first()
+    form = forms.EditCollectionSettingsForm(initial=({
+        "target_replication": collection.target_replication,
+        "fixity_frequency": collection.fixity_frequency,
+        "target_geolocations": collection.target_geolocations.all(),
+    }))
+    reports = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at")
     return TemplateResponse(request, "vault/collection.html", {
         "collection": collection,
+        "form": form,
+        "reports": reports,
     })
 
 
 @login_required
-def reports(request):
+def report(request, report_id):
     org = request.user.organization
-    collection = models.Collection.objects.filter(organization=org).first()
-    report = models.Report.objects.filter(collection=collection).first()
-    return TemplateResponse(request, "vault/reports.html", {
-        "collection": collection,
+    report = get_object_or_404(models.Report, pk=report_id)
+    if report.collection.organization != org:
+        raise Http404
+    return TemplateResponse(request, "vault/report.html", {
+        "collection": report.collection,
         "report": report,
         "page_number": 1,
     })
@@ -189,9 +222,9 @@ def deposit_mail(request):
     return TemplateResponse(request, "vault/deposit_mail.html", {})
 
 
-@login_required
-def deposit_debug(request):
-    return TemplateResponse(request, "vault/deposit_debug.html", {})
+# @login_required
+# def deposit_debug(request):
+#     return TemplateResponse(request, "vault/deposit_debug.html", {})
 
 
 @login_required

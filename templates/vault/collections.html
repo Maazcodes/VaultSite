@@ -28,11 +28,11 @@
                     <tbody>
                     <tr>
                         <td><a href="{{ url("collection", args=(collection.pk,)) }}">{{ collection.name }}</a></td>
-                        <td>10 GB</td>
-                        <td>May 31, 2021</td>
-                        <td>May 31, 2021</td>
+                        <td>{{ collection.total_size|filesizeformat }}</td>
+                        <td>{{ collection.last_modified.strftime('%B %-d, %Y') }}</td>
+                        <td>{{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else '-' }}</td>
                         <td><a>View Files</a></td>
-                        <td><a>Edit Settings</a></td>
+                        <td><a href="{{ url("collection", args=(collection.pk,)) }}">Edit Settings</a></td>
                     </tr>
                     </tbody>
                 {% endfor %}

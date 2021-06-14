@@ -1,5 +1,5 @@
 {% extends "vault/base.html" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Reports", "reports")) %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, ("collection", collection.pk)), ("Report " + report.ended_at.strftime('%B %-d, %Y'), ("report", report.pk))) %}
 
 {% block head %}
 {{ super() }}
@@ -19,7 +19,7 @@
 <script src="{{ static("digipres/js/popper.min.js") }}"></script>
 {% endblock head %}
 
-{% block header_title %}Reports{% endblock header_title %}
+{% block header_title %}Report {{ report.ended_at.strftime('%B %-d, %Y') }}{% endblock header_title %}
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}
 {% block content %}

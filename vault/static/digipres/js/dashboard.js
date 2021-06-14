@@ -341,8 +341,7 @@ var digipresDashboard = (function () {
         var $container = $("#dashboard-reports .dashboard-list");
         $container.empty();
         for (let report of reports) {
-            let split = report.id.split("T");
-            let label = split[0] + " " + split[1].substr(0, 8).replace(/-/g, ":");
+            let label = report.id;
             let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
                 $("<span>").text(label),
                 $("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection + ")"),
