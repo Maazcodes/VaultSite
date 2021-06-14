@@ -5,15 +5,55 @@
 {% block subnav %}{% endblock subnav %}
 {% block content %}
     <div class="row">
-        <div class="small-12 columns">
+        <div class="large-8 columns">
+            <br>
+            <br>
+            <h2>Collection Stats</h2>
+            <ul>
+                <li>File Count: {{ collection.file_count }}</li>
+                <li>Total Size: {{ collection.total_size|filesizeformat }}</li>
+                <li>Last Modified: {{ collection.last_modified.strftime('%B %-d, %Y') }}</li>
+                <li>Last Report: {{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else 'No Reports' }}</li>
+            </ul>
+
+            <h2>Collection Reports</h2>
+            {% if reports %}
+                {% set headers = ("Report Started", "Report Completed", "Total Size", "File Count", "Error Count", "View Details") %}
+                <table class="small-12 columns">
+                <thead>
+                {% for header in headers %}
+                    <th>{{ header }}</th>
+                {% endfor %}
+                <tr></tr>
+                </thead>
+                {% for report in reports %}
+                    <tbody>
+                    <tr>
+                        <td>{{ report.started_at.strftime('%B %-d, %Y') }}</td>
+                        <td>{{ report.ended_at.strftime('%B %-d, %Y') }}</td>
+                        <td>{{ report.total_size|filesizeformat }}</td>
+                        <td>{{ report.file_count }}</td>
+                        <td>{{ report.error_count }}</td>
+                        <td><a href="{{ url('report', args=(report.pk,)) }}">View Details</a></td>
+                    </tr>
+                    </tbody>
+                {% endfor %}
+                </table>
+            {% else %}
+                <p>No reports yet.</p>
+            {% endif %}
+        </div>
+        <div class="large-4 columns">
             <br>
             <br>
             <h2>Collection Settings</h2>
-            <ul>
-                <li>Replication Factor: {{ collection.get_target_replication_display() }}</li>
-                <li>Fixity Frequency: {{ collection.get_fixity_frequency_display() }}</li>
-                <li>Geolocations: {{ ", ".join(collection.target_geolocations.values_list("name", flat=True)) }}</li>
-            </ul>
+            <div class="panel">
+            <form action="{{ url("collection", args=(collection.pk,)) }}" method="post">
+                {{ csrf_input }}
+                {{ form }}
+                <input type="submit" value="Edit Settings", class="button small padding-top padding-bottom half">
+            </form>
+            </div>
         </div>
     </div>
 {% endblock content %}
