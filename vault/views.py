@@ -96,18 +96,12 @@ def sha256sum(filename):
     f.close()
     return sha256_hash.hexdigest()
 
-#
-# Note the KeyError exception handler.
-# This should not be triggered during initial page
-# loading, but it is - I suspect that there is something
-# slightly (haha) buggy in Django's debug mode that
-# is responsible.
-#
+
 def create_attribs_dict(request):
     retval = dict()
     retval['comment'] = ""
     metadata_fields = [ 'client', 'username',  'organization', 'collection',
-            'sha256sum', 'webkitRelativePath', 'name', 'size', 'collname' ]
+            'sha256sum', 'webkitRelativePath', 'size', 'name', 'collname' ]
     data = dict()
     if request.method == 'POST':
         data = request.POST
@@ -153,41 +147,26 @@ def move_temp_file(request, attribs):
     os.rename(temp_file, target_file)
     create_or_update_file(request, attribs)
 
-#
-# If you don't use @csrf_exempt the extra javascript code is passed over!
-# The same is true of the above functions called from here.
-# There is also a bug, possibly in Django's debug mode, that raises
-# an error about typeError being undefined.
-#
-# The exception handling can be obviated by doing the proper tests
-# on each item . :FIXME:
-#
+
 @login_required
 def deposit_web(request):
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
     attribs = create_attribs_dict(request)
 
-    dir_json = request.POST.get("directories", "")
-    sha_json = request.POST.get("shasums", "")
-    if dir_json:
-        dir_json  = json.loads(dir_json)
-    if sha_json:
-        sha_json  = json.loads(sha_json)
+    directories = request.POST.get("directories", "")
+    directories = directories.split(",")
 
     inputs = [ 'file_field', 'dir_field' ]
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
-            attribs['sizeV'] = f.size
             tempfile = f.temporary_file_path()
-            attribs['name'] = dir_json[f.name]
-            attribs['tempfile'] = tempfile
-            attribs['sha256sumV'] = sha256sum(tempfile)
-            if sha_json:
-                attribs['sha256sum'] = sha_json[f.name]
-            else:
-                attribs['sha256sum'] = ""
+            attribs['sizeV']      = f.size
+            attribs['tempfile']   = tempfile
+            verification_hash     = sha256sum(tempfile)
+            attribs['sha256sumV'] = verification_hash
+            attribs['name']       = directories.pop(0)
             move_temp_file(request, attribs)
             logger.info(attribs)
 
