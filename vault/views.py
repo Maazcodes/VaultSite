@@ -32,12 +32,14 @@ def collections(request):
     if request.method == "POST":
         form = forms.CreateCollectionForm(request.POST)
         if form.is_valid():
-            models.Collection.objects.create(
+            new_collection = models.Collection.objects.create(
                 organization=org,
                 name=form.cleaned_data["name"],
                 target_replication=org.plan.default_replication,
                 fixity_frequency=org.plan.default_fixity_frequency,
             )
+            new_collection.target_geolocations.set(org.plan.default_geolocations.all())
+            new_collection.save()
         return redirect("collections")
     else:
         form = forms.CreateCollectionForm()
