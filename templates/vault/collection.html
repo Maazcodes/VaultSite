@@ -10,10 +10,22 @@
             <br>
             <h2>Collection Stats</h2>
             <ul>
-                <li>File Count: {{ collection.file_count }}</li>
-                <li>Total Size: {{ collection.total_size|filesizeformat }}</li>
-                <li>Last Modified: {{ collection.last_modified.strftime('%B %-d, %Y') }}</li>
-                <li>Last Report: {{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else 'No Reports' }}</li>
+                <li>File Count: {{ collection.file_count if collection.file_count is gt 0 else "-" }}</li>
+                {% if collection.total_size is none %}
+                    <li>Total Size: -</li>
+                {% else %}
+                    <li>Total Size: {{ collection.total_size|filesizeformat }}</li>
+                {% endif %}
+                {% if collection.last_modified is none %}
+                    <li>Last Modified: -</li>
+                {% else %}
+                    <li>Last Modified: {{ collection.last_modified.strftime('%B %-d, %Y') }}</li>
+                {% endif %}
+                {% if collection.last_report is none %}
+                    <li>Last Report: -</li>
+                {% else %}
+                    <li>Last Report: {{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else 'No Reports' }}</li>
+                {% endif %}
             </ul>
 
             <h2>Collection Reports</h2>
