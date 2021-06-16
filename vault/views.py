@@ -184,6 +184,7 @@ def move_temp_file(request, attribs):
 
 
 @login_required
+@csrf_exempt
 def deposit_web(request):
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
