@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
@@ -38,6 +40,9 @@ class Organization(models.Model):
     name = models.CharField(max_length=255)
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
 
+    def filepath(self):
+        return "files/{org}/".format(org=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name))
+
     def __str__(self):
         return self.name
 
@@ -55,6 +60,12 @@ class Collection(models.Model):
     target_replication = models.IntegerField(choices=ReplicationFactor.choices, default=ReplicationFactor.DEFAULT)
     target_geolocations = models.ManyToManyField(Geolocation)
     fixity_frequency = models.CharField(choices=FixityFrequency.choices, default=FixityFrequency.DEFAULT, max_length=50)
+
+    def filepath(self):
+        return "{org_filepath}{col}/".format(
+            org_filepath=self.organization.filepath(),
+            col=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name)
+        )
 
     def __str__(self):
         return self.name
