@@ -27,7 +27,9 @@
                     <li>Last Report: {{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else 'No Reports' }}</li>
                 {% endif %}
             </ul>
-            <a href="{{ collection.filepath() }}" class="button padding-top padding-bottom half">View Files</a>
+
+            <a href="{{ collection.filepath() }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
+
             <h2>Collection Reports</h2>
             {% if reports %}
                 {% set headers = ("Report Started", "Report Completed", "Total Size", "File Count", "Error Count", "View Details") %}
