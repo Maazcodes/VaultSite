@@ -41,7 +41,7 @@ class Organization(models.Model):
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
 
     def filepath(self):
-        return "files/{org}/".format(org=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name))
+        return "/files/{org}/".format(org=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name))
 
     def __str__(self):
         return self.name
