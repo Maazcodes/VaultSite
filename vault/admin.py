@@ -7,21 +7,26 @@ from . import models
 
 @admin.register(models.User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("organization", "username", "email")
+    list_display = ("username", "organization", "email")
 
 
 @admin.register(models.Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    pass
+    readonly_fields = ("name",)
 
 
 @admin.register(models.Plan)
 class PlanAdmin(admin.ModelAdmin):
-    list_display = ("name", "price_per_terabyte", "default_replication")
+    def geolocations(self, obj):
+        return ", ".join(str(loc) for loc in obj.default_geolocations.values_list("name", flat=True))
+
+    list_display = ("name", "price_per_terabyte", "default_replication", "default_fixity_frequency", "geolocations")
 
 
 @admin.register(models.Collection)
 class CollectionAdmin(admin.ModelAdmin):
+    readonly_fields = ("name",)
+
     def get_queryset(self, request):
         qs = super(CollectionAdmin, self).get_queryset(request)
         return qs.annotate(
