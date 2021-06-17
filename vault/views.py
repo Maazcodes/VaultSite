@@ -67,8 +67,7 @@ def collection(request, collection_id):
                 collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
                 collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
                 collection.save()
-    else:
-        form = None
+            messages.success(request, 'Collection settings updated.')
 
     collection = models.Collection.objects.filter(organization=org, pk=collection_id).annotate(
         file_count=Count("file"),

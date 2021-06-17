@@ -122,6 +122,20 @@
 </header>
 {% endblock header %}
 
+{% if messages %}
+<sticky scroll-offset="60" classes="'sub header'" use-placeholder="1" placeholder-classes="'sub header placeholder'">
+<div class="sub header">
+    {% for message in messages %}
+	<div class="panel primary sub header margin-bottom zero">
+		<div class="row">
+			<div class="small-6 columns left">
+                {{ message }}
+			</div>
+		</div>
+	</div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <!-- Extra Message -->
 {% block sticky_message %}
