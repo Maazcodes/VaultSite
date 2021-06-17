@@ -12,7 +12,13 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(models.Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    readonly_fields = ("name",)
+    def get_readonly_fields(self, request, obj=None):
+        # We need to be able to set an organization name at creation time
+        # but disallow editing it in the admin later.
+        if obj:  # obj is not None, so this is an edit
+            return ('name',)
+        else:  # This is an addition
+            return ()
 
 
 @admin.register(models.Plan)
@@ -25,7 +31,13 @@ class PlanAdmin(admin.ModelAdmin):
 
 @admin.register(models.Collection)
 class CollectionAdmin(admin.ModelAdmin):
-    readonly_fields = ("name",)
+    def get_readonly_fields(self, request, obj=None):
+        # We need to be able to set an collection name at creation time
+        # but disallow editing it in the admin later.
+        if obj:  # obj is not None, so this is an edit
+            return ('name',)
+        else:  # This is an addition
+            return ()
 
     def get_queryset(self, request):
         qs = super(CollectionAdmin, self).get_queryset(request)
