@@ -1,0 +1,10 @@
+#progress_bar {
+	height: 24px;
+	display: inline-block;
+	margin-left: 1em;
+}
+
+#stats {
+	padding-top: 2em;
+    
+}
