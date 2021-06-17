@@ -11,6 +11,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from . import forms
 from . import models
+from django.http import HttpResponse
 
 from django.views.decorators.csrf import csrf_exempt
 
@@ -143,11 +144,12 @@ def create_attribs_dict(request):
             if key in metadata_fields:
                 retval[key] = value
     retval['username'] = request.META['REMOTE_USER']
+    retval['organization']  = request.user.organization.id
     retval['orgname']  = request.user.organization.name
     try:
         some_id = retval['collection']
         retval['collname'] = models.Collection.objects.get(pk=some_id).name
-    except KeyError:
+    except (KeyError, AttributeError):
         retval['collname'] = {}
     return retval
 
@@ -181,7 +183,31 @@ def move_temp_file(request, attribs):
     os.rename(temp_file, target_file)
     create_or_update_file(request, attribs)
 
+def format_doaj_json(attribs):
+    attr = { 
+            'files': {
+                'name'  : attribs['name'],
+                'sha256': attribs['sha256sumV'],
+                }
+            }
+    return json.dumps(attr)
 
+def return_json_report(attribs):
+        data = format_doaj_json(attribs)
+        return HttpResponse(data, content_type='application/json')
+
+def return_reload_deposit_web(request):
+    collections = models.Collection.objects.filter(organization=request.user.organization)
+    form = forms.FileFieldForm(collections)
+    return TemplateResponse(request, "vault/deposit_web.html", {
+        "collections": collections,
+        "filenames": "",
+        "form": form,
+    })
+
+#
+# @csrf_exempt required for curl, for example.
+#
 @login_required
 @csrf_exempt
 def deposit_web(request):
@@ -202,17 +228,15 @@ def deposit_web(request):
             verification_hash     = sha256sum(tempfile)
             attribs['sha256sumV'] = verification_hash
             attribs['name']       = directories.pop(0)
+
             move_temp_file(request, attribs)
+
             logger.info(attribs)
 
-    collections = models.Collection.objects.filter(organization=request.user.organization)
-    form = forms.FileFieldForm(collections)
-    return TemplateResponse(request, "vault/deposit_web.html", {
-        "collections": collections,
-        "filenames": "",
-        "form": form,
-    })
-
+    if attribs.get('client', None) == 'DOAJ_CLI':
+        return return_json_report(attribs)
+    else:
+        return return_reload_deposit_web(request)
 
 @login_required
 def deposit_cli(request):
