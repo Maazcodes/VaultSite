@@ -193,9 +193,12 @@ def format_doaj_json(attribs):
             }
     return json.dumps(attr)
 
-def return_json_report(attribs):
+def return_doaj_report(attribs):
         data = format_doaj_json(attribs)
         return HttpResponse(data, content_type='application/json')
+
+def return_text_report(data):
+    return HttpResponse(data, content_type='text/plain')
 
 def return_reload_deposit_web(request):
     collections = models.Collection.objects.filter(organization=request.user.organization)
@@ -220,10 +223,11 @@ def deposit_web(request):
     directories = directories.split(",")
 
     inputs = [ 'file_field', 'dir_field' ]
+    reply = [];
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
-            tempfile = f.temporary_file_path()
+            tempfile              = f.temporary_file_path()
             attribs['sizeV']      = f.size
             attribs['tempfile']   = tempfile
             verification_hash     = sha256sum(tempfile)
@@ -231,11 +235,13 @@ def deposit_web(request):
             attribs['name']       = directories.pop(0)
 
             move_temp_file(request, attribs)
-
+            reply.append(attribs)
             logger.info(attribs)
 
     if attribs.get('client', None) == 'DOAJ_CLI':
-        return return_json_report(attribs)
+        return return_doaj_report(attribs)
+    elif reply:
+        return return_text_report(reply)
     else:
         return return_reload_deposit_web(request)
 

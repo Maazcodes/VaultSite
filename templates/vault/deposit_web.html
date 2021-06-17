@@ -11,8 +11,11 @@
                     <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post">
                         {{ csrf_input }}
                         {{ form }}
+			<label for="progress_bar">Uploading:</label>
+                        <progress id="progress_bar" value="0" max="100"> 0% </progress>
                         <input type="submit" name="Submit" value="Upload Files" class="button small padding-top padding-bottom half left">
                     </form>
+		    <div id="stats" name="stats"></div>
                     {% else %}
                         <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
                     {% endif %}
