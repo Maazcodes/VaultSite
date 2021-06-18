@@ -4,7 +4,7 @@
     {% block head %}
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>Vault: Archive-It Digital Preservation Service</title>
+	<title>Vault: Digital Repository & Preservation Service</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="/vault/static/css/html5-bp/css/normalize.css">
@@ -53,7 +53,7 @@
 		<ul class="title-area">
 			<li class="name">
 			<h1>
-				<a style="background-color:#CC3D42" href="https://archive-it.org/"><img src="{{ static('vault-it-logo.png') }}" alt="Vault Logo"></a>
+				<a style="background-color:#CC3D42"><img src="{{ static('vault-it-logo.png') }}" alt="Vault Logo"></a>
 			</h1>
 			</li>
 		</ul>
@@ -67,7 +67,8 @@
 		</section>
 		<section class="top-bar-section" style="left: 0%;">
 			<ul id="secondary-menu" class="right show-for-large-up">
-				<li><a target="_blank" href="https://support.archive-it.org/">Help Center</a></li>
+{#				<li><a target="_blank" href="https://support.archive-it.org/">Help Center</a></li>#}
+				<li><a target="_blank" href="{{ url("administration_users") }}">{{ user.organization.name }}</a></li>
 				<li class="has-dropdown not-click" has-dropdown=""> <a name="_welcome">Welcome, <span>{{ user.username }}</span></a>
 				<ul class="dropdown" top-bar-dropdown="">
 					<li class="title back js-generated">
@@ -76,10 +77,10 @@
 					</h5>
 					</li>
 					<li><a href="{{ url('administration') }}">Administration</a></li>
-					<li><a href="https://webdata.archive-it.org/ait/logout" target="_self">Log Out</a></li>
+{#					<li><a href="https://webdata.archive-it.org/ait/logout" target="_self">Log Out</a></li>#}
 				</ul>
 				</li>
-				<li><a href="https://partner.archive-it.org/login?next=https://webdata.archive-it.org/ait">Log In</a></li>
+{#				<li><a href="https://partner.archive-it.org/login?next=https://webdata.archive-it.org/ait">Log In</a></li>#}
 			</ul>
 		</section>
 	</nav>
@@ -176,9 +177,9 @@
 	<div class="footer-link">
 		© Internet Archive&nbsp;&nbsp;&nbsp;&nbsp;Vault
 	</div>
-	<div class="footer-link">
-		<a target="_blank" href="https://support.archive-it.org/">Help Center</a>
-	</div>
+{#	<div class="footer-link">#}
+{#		<a target="_blank" href="https://support.archive-it.org/">Help Center</a>#}
+{#	</div>#}
 </div>
 {% endblock footer %}
 

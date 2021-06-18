@@ -12,8 +12,8 @@
                 <li>Price per uploaded Terabyte: ${{ plan.price_per_terabyte }}</li>
                 <li>Default replication factor: 2 copies</li>
             </ul>
+            {% if False %}
             <h2>Orders</h2>
-            {% if true %}
                 {% set headers = ("ID", "Type", "Collection", "Data", "Created", "Amount") %}
                 <table class="small-12 columns">
                 <thead>

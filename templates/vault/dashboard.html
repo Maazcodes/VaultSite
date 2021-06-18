@@ -35,7 +35,7 @@
 <div class="dashboard-col">
     <div class="dashboard-card" id="dashboard-collections">
         <div class="dashboard-card-head">
-            Collections (<a href="{{ url("collections") }}">new</a>)
+            Collections (<a href="{{ url("collections") }}">Create New</a>)
         </div>
         <span class="spinner small"></span>
         <div class="dashboard-list"></div>
@@ -97,7 +97,7 @@
         </div>
         <div class="dashboard-card" id="dashboard-stats-report-card">
             <div class="dashboard-card-head" style="text-align: center;" id="dashboard-report-title">
-                Recent Fixity Report
+                Most Recent Report
             </div>
             <div style="display: flex; flex-direction:column; height: 100%; padding-bottom: 50px;">
                 <div style="display: flex; flex-direction:row; flex-grow: 1; margin-left: 3%;">
@@ -114,7 +114,7 @@
                         <div class="stats-item" id="dashboard-stats-report-errors">
                             <span class="spinner small"></span>
                             <div class="stats-icon fas fa-exclamation-triangle stats-content"></div>
-                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Errors</div>
+                            <div class="text-xs font-weight-bold text-uppercase mb-1 stats-content" style="color: #2991CC;">Repairs</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800 stats-value stats-content">
                             </div>
                         </div>
@@ -161,7 +161,7 @@
 <div class="dashboard-col">
     <div class="dashboard-card" style="max-height: 150px;" id="dashboard-reports">
         <div class="dashboard-card-head">
-            Fixity Reports
+            Reports
         </div>
         <span class="spinner small"></span>
         <div class="dashboard-list"></div>
@@ -508,8 +508,8 @@
             $container.empty();
             for (let collection of json.collections) {
                 let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
-                    $("<span>").text(collection.id),
-                    $("<span>").addClass("dashboard-list-item-sub").text(" (" + collection.name + ")"),
+                    {#$("<span>").text(collection.id),#}
+                    $("<span>").text(collection.name),
                 ]).click(function () {
                     selectCollection(collection.id, $item);
                 });
@@ -599,13 +599,13 @@
 
         if (latest.latestReport) {
             $("#dashboard-report-title").empty().append([
-                $("<span>").text("Recent Fixity Report"),
+                $("<span>").text("Most Recent Report"),
                 " (",
                 $("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + latest.id + "/" + latest.latestReport + (demoMode ? "?demo=true" : "")).text("show"),
                 ")"
             ]);
         } else {
-            $("#dashboard-report-title").text("Recent Fixity Report");
+            $("#dashboard-report-title").text("Most Recent Report");
         }
 
         $("#dashboard-stats-report-date .stats-value").text((latest.time || "N/A").substr(0, 10));

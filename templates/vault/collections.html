@@ -16,7 +16,7 @@
                     <input type="submit" value="Create Collection" class="button small padding-top padding-bottom half" style="margin:0">
                 </form>
                 </div>
-                {% set headers = ("Collection Name", "Total Size", "Last Modified", "Last Report", "View Files", "Edit Settings") %}
+                {% set headers = ("Collection Name", "Total Size", "File Count", "Most Recent Deposit", "Most Recent Report", "View Files", "Edit Settings") %}
                 <table class="small-12 columns">
                 <thead>
                 {% for header in headers %}
@@ -33,6 +33,7 @@
                         {% else %}
                             <td>{{ collection.total_size|filesizeformat }}</td>
                         {% endif %}
+                        <td>{{ collection.file_count }}</td>
                         {% if collection.last_modified is none %}
                             <td>-</td>
                         {% else %}

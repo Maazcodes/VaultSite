@@ -10,22 +10,9 @@
             <br>
             <h2>Collection Stats</h2>
             <ul>
+                <li>Total Size: {% if collection.total_size is none %}-{% else %}{{ collection.total_size|filesizeformat }}{% endif %}</li>
                 <li>File Count: {{ collection.file_count if collection.file_count is gt 0 else "-" }}</li>
-                {% if collection.total_size is none %}
-                    <li>Total Size: -</li>
-                {% else %}
-                    <li>Total Size: {{ collection.total_size|filesizeformat }}</li>
-                {% endif %}
-                {% if collection.last_modified is none %}
-                    <li>Last Modified: -</li>
-                {% else %}
-                    <li>Last Modified: {{ collection.last_modified.strftime('%B %-d, %Y') }}</li>
-                {% endif %}
-                {% if collection.last_report is none %}
-                    <li>Last Report: -</li>
-                {% else %}
-                    <li>Last Report: {{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else 'No Reports' }}</li>
-                {% endif %}
+                <li>Most Recent Deposit: {% if collection.last_modified is none %}-{% else %}{{ collection.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
             </ul>
 
             <a href="{{ collection.filepath() }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>

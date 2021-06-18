@@ -6,24 +6,7 @@
         <div class="large-12 columns">
             <h2>How to Deposit Files by Mailing a Hard Drive</h2>
             <p>
-                For a full set of instructions for creating and downloading ARS datasets through the Web Archiving Systems API (WASAPI), including command line and browser-based methods, please <a href="https://support.archive-it.org/hc/en-us/articles/360028548952-Request-and-download-web-archive-derivatives-with-WASAPI-" target="_blank">view the the documentation here.</a>
-            </p>
-            <h3>A quick-start method for partners with a Unix environment:</h3>
-            <p>
-                It's possible to use the command line to automatically download WARC and/or derivative data files through WASAPI. In order to do either, it is necessary to first parse the storage locations with a JSON processor like <a href="https://stedolan.github.io/jq/" target="_blank">jq</a>, then to download the files with a retrieval tool like <a href="https://www.gnu.org/software/wget/" target="_blank">wget</a>.  Ensure that your machine has jq and wget, and then follow the below steps:
-            </p>
-            <blockquote>
-                <ol type="1">
-                    <li>To create a list of storage locations for your files from a WASAPI query:</li>
-                    <pre class="code"> $ curl -u &lt;user&gt;:&lt;password&gt; "https://warcs.archive-it.org/wasapi/v1/webdata?&lt;your-parameters&gt;" | jq -r .files[].locations[0] &gt; url.list</pre>
-                    <li>To then download the files from their storage locations:</li>
-                    <pre class="code"> $ wget --http-user=&lt;user&gt; --http-password=&lt;password&gt; --accept txt,gz -i url.list </pre>
-                </ol>
-            </blockquote>
-            <p></p>
-            You can refine your file lists further and specify the precise derivative files that you wish to download either from the web browser or command line by using the <a href="https://support.archive-it.org/hc/en-us/articles/360015225051-Find-and-download-your-WARC-files-with-WASAPI#AdvancedUse" target="_blank">advanced instructions here</a>.
-            <p>
-
+                Coming Soon
             </p>
         </div>
     </div>

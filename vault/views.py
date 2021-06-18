@@ -46,6 +46,7 @@ def collections(request):
         form = forms.CreateCollectionForm()
         collections = models.Collection.objects.filter(organization=org).annotate(
             total_size=Sum("file__size"),
+            file_count=Count("file"),
             last_modified=Max("file__modified_date"),
             last_report=Max('report__ended_at'),
         )
