@@ -230,8 +230,6 @@ def deposit_web(request):
     sizes = request.POST.get("sizes", "")
     sizes = sizes.split(",")
 
-    # Blast, need sizes too!
-
     inputs = [ 'file_field', 'dir_field' ]
 
     for field in inputs:
