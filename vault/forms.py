@@ -33,9 +33,9 @@ class FileFieldForm(forms.Form):
     #
     directories = forms.CharField(widget=forms.HiddenInput())
     shasums     = forms.CharField(widget=forms.HiddenInput())
-    collname    = forms.CharField(widget=forms.HiddenInput())
+    sizes       = forms.CharField(widget=forms.HiddenInput())
     comment     = forms.CharField(required=False, widget=forms.Textarea(
-        attrs={ 'rows': 1, 'cols': 1, }))
+         attrs={ 'rows': 1, 'cols': 1, }))
 
 
     def __init__(self, queryset, *args, **kwargs):

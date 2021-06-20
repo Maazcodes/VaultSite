@@ -45,10 +45,10 @@ def collections(request):
     else:
         form = forms.CreateCollectionForm()
         collections = models.Collection.objects.filter(organization=org).annotate(
-            total_size=Sum("file__size"),
-            file_count=Count("file"),
-            last_modified=Max("file__modified_date"),
-            last_report=Max('report__ended_at'),
+            total_size    = Sum("file__size"),
+            file_count    = Count("file"),
+            last_modified = Max("file__modified_date"),
+            last_report   = Max('report__ended_at'),
         )
         return TemplateResponse(request, "vault/collections.html", {
             "collections": collections,
@@ -108,6 +108,7 @@ def deposit(request):
 
 def create_or_update_file(request, attribs):
     collection = models.Collection.objects.get(pk=attribs['collection'])
+
     models.File.objects.update_or_create(
         collection       = collection,
         client_filename  = attribs['name'],
@@ -135,24 +136,19 @@ def sha256sum(filename):
 
 def create_attribs_dict(request):
     retval = dict()
-    retval['comment'] = ""
-    metadata_fields = [ 'client', 'username',  'organization', 'collection',
-            'sha256sum', 'webkitRelativePath', 'size', 'name', 'collname' ]
-    data = dict()
-    if request.method == 'POST':
-        data = request.POST
-        for key, value in data.items():
-            if key in metadata_fields:
-                retval[key] = value
-    retval['username'] = request.META['REMOTE_USER']
+    retval['comment']       = request.POST.get('comment', "")
+    retval['client']        = request.POST.get('client', "")
+    retval['collection']    = request.POST.get('collection', None)
+    retval['username']      = request.META.get('REMOTE_USER', "")
     retval['organization']  = request.user.organization.id
-    retval['orgname']  = request.user.organization.name
+    retval['orgname']       = request.user.organization.name
     try:
-        some_id = retval['collection']
-        retval['collname'] = models.Collection.objects.get(pk=some_id).name
-    except (KeyError, AttributeError):
-        retval['collname'] = {}
+        pk_id = retval['collection']
+        retval['collname']  = models.Collection.objects.get(pk=pk_id).name
+    except:
+        retval['collname']  = ""
     return retval
+
 
 def move_temp_file(request, attribs):
     import filetype
@@ -166,8 +162,8 @@ def move_temp_file(request, attribs):
     ftype = filetype.guess(temp_file)
     if ftype:
         attribs['file_type'] = ftype.mime
-    org = Path(attribs['orgname'])
-    coll = Path(attribs['collname'])
+    org      = Path(attribs['orgname'])
+    coll     = Path(attribs['collname'])
     filepath = Path(attribs['name'])
 
     fname = os.path.basename(filepath)
@@ -181,11 +177,12 @@ def move_temp_file(request, attribs):
     target_file = target_path + '/' + fname
     attribs['staging_filename'] = target_file
     # Move the file on the filesystem
-    os.rename(temp_file, target_file)
+    os.rename(temp_file.encode('U8'), target_file.encode('U8'))
     create_or_update_file(request, attribs)
 
+
 def format_doaj_json(attribs):
-    attr = { 
+    attr = {
             'files': {
                 'name'  : attribs['name'],
                 'sha256': attribs['sha256sumV'],
@@ -193,12 +190,15 @@ def format_doaj_json(attribs):
             }
     return json.dumps(attr)
 
+
 def return_doaj_report(attribs):
         data = format_doaj_json(attribs)
         return HttpResponse(data, content_type='application/json')
 
+
 def return_text_report(data):
     return HttpResponse(data, content_type='text/plain')
+
 
 def return_reload_deposit_web(request):
     collections = models.Collection.objects.filter(organization=request.user.organization)
@@ -209,12 +209,14 @@ def return_reload_deposit_web(request):
         "form": form,
     })
 
+
 #
 # @csrf_exempt required for curl, for example.
 #
 @login_required
 @csrf_exempt
 def deposit_web(request):
+    reply = ""
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
     attribs = create_attribs_dict(request)
@@ -222,8 +224,16 @@ def deposit_web(request):
     directories = request.POST.get("directories", "")
     directories = directories.split(",")
 
+    shasums = request.POST.get("shasums", "")
+    shasums = shasums.split(",")
+
+    sizes = request.POST.get("sizes", "")
+    sizes = sizes.split(",")
+
+    # Blast, need sizes too!
+
     inputs = [ 'file_field', 'dir_field' ]
-    reply = [];
+
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
@@ -233,10 +243,12 @@ def deposit_web(request):
             verification_hash     = sha256sum(tempfile)
             attribs['sha256sumV'] = verification_hash
             attribs['name']       = directories.pop(0)
+            attribs['sha256sum']  = shasums.pop(0)
+            attribs['size']       = sizes.pop(0)
 
+            logger.info(json.dumps(attribs))
             move_temp_file(request, attribs)
-            reply.append(attribs)
-            logger.info(attribs)
+            reply+=(json.dumps(attribs))
 
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)
