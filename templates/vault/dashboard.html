@@ -203,28 +203,28 @@
 
     var regionDetails = {
         "us-west-1": {
-            location: "300 Funston",
+            location: "California 1",
             radius: 10,
             country: "USA",
             fillKey: "regions",
             latitude: 37.782523,
             longitude: -130
         }, "us-west-2": {
-            location: "2512 Florida",
+            location: "California 2",
             radius: 10,
             country: "USA",
             fillKey: "regions",
             latitude: 37.9292582,
             longitude: -122
         }, "eu-west-1": {
-            location: "Amsterdam",
+            location: "EU West 1",
             radius: 10,
             country: "NL (Europe)",
             fillKey: "regions",
             latitude: 52.3546449,
             longitude: 4.8339212
-        }, "ca-east-1": {
-            location: "IAC",
+        }, "ca-west-1": {
+            location: "CA West 1",
             radius: 10,
             country: "Canada",
             fillKey: "regions",
@@ -303,7 +303,7 @@
                 options: {
                     title: {
                         display: true,
-                        text: 'Files Evolution per Check'
+                        text: 'Total Files Deposited'
                     },
                     maintainAspectRatio: false,
                     scales: {
@@ -526,6 +526,12 @@
         var reports = (collectionId && (collectionReports[collectionId] || [])) || allReports;
         var $container = $("#dashboard-reports .dashboard-list");
         $container.empty();
+        if (reports.length === 0) {
+            let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
+                $("<span>").text("Coming Soon"),
+            ]);
+            $container.append($item);
+        }
         for (let report of reports) {
             let label = report.id;
             let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
@@ -601,7 +607,7 @@
             $("#dashboard-report-title").empty().append([
                 $("<span>").text("Most Recent Report"),
                 " (",
-                $("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + latest.id + "/" + latest.latestReport + (demoMode ? "?demo=true" : "")).text("show"),
+                $("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + latest.id + "/" + latest.latestReport ).text("show"),
                 ")"
             ]);
         } else {

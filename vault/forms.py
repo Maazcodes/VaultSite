@@ -9,9 +9,9 @@ class CreateCollectionForm(forms.Form):
 
 
 class EditCollectionSettingsForm(forms.Form):
-    target_replication = forms.ChoiceField(choices=models.ReplicationFactor.choices)
+    target_replication = forms.ChoiceField(choices=models.ReplicationFactor.choices, label="Replication")
     fixity_frequency = forms.ChoiceField(choices=models.FixityFrequency.choices)
-    target_geolocations = forms.ModelMultipleChoiceField(models.Geolocation.objects.all(), widget=CheckboxSelectMultiple)
+    target_geolocations = forms.ModelMultipleChoiceField(models.Geolocation.objects.all(), widget=CheckboxSelectMultiple, label="Geolocations")
 
 
 class FileFieldForm(forms.Form):

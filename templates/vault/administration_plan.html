@@ -6,12 +6,17 @@
         <div class="large-12 columns">
             <h2>Current Plan Information</h2>
             <p style="margin-top:1em; margin-bottom:0px">
-                <span style="font-weight:bold">{{ organization.name }}</span> has the <span style="font-weight:bold">{{ plan.name }}</span> plan:
+                <span style="font-weight:bold">{{ organization.name }}</span> is enrolled in <span style="font-weight:bold">{{ plan.name }}</span> plan:
             </p>
             <ul>
-                <li>Price per uploaded Terabyte: ${{ plan.price_per_terabyte }}</li>
-                <li>Default replication factor: 2 copies</li>
+                <li>Price per upload: ${{ plan.price_per_terabyte }}/TB</li>
+                <li>Replication: {{ plan.default_replication }} copies</li>
+                <li>Locations: {{ plan.default_geolocations.all().values_list("name", flat=True)|join(', ') }}</li>
+                <li>Fixity: {{ plan.default_fixity_frequency }}</li>
             </ul>
+            <div class="panel">
+                <p>More feature options will be available in later stages of the pilot and will be added in this space.</p>
+            </div>
             {% if False %}
             <h2>Orders</h2>
                 {% set headers = ("ID", "Type", "Collection", "Data", "Created", "Amount") %}
