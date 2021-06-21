@@ -123,15 +123,23 @@ def create_or_update_file(request, attribs):
     )
 
 
-def sha256sum(filename):
+def generateHashes(filename):
+    hashes = dict()
     import hashlib
+    md5_hash    = hashlib.md5()
+    sha1_hash   = hashlib.sha1()
     sha256_hash = hashlib.sha256()
     with open(filename,"rb") as f:
         # Read and update hash string value in blocks of 4K
         for byte_block in iter(lambda: f.read(4096),b""):
+            md5_hash.update(byte_block)
+            sha1_hash.update(byte_block)
             sha256_hash.update(byte_block)
     f.close()
-    return sha256_hash.hexdigest()
+    hashes['md5']    =    md5_hash.hexdigest()
+    hashes['sha1']   =   sha1_hash.hexdigest()
+    hashes['sha256'] = sha256_hash.hexdigest()
+    return hashes
 
 
 def create_attribs_dict(request):
@@ -197,7 +205,7 @@ def return_doaj_report(attribs):
 
 
 def return_text_report(data):
-    return HttpResponse(data, content_type='text/plain')
+    return HttpResponse(data, content_type='application/json')
 
 
 def return_reload_deposit_web(request):
@@ -216,7 +224,7 @@ def return_reload_deposit_web(request):
 @login_required
 @csrf_exempt
 def deposit_web(request):
-    reply = ""
+    reply = []
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
     attribs = create_attribs_dict(request)
@@ -238,20 +246,22 @@ def deposit_web(request):
             tempfile              = f.temporary_file_path()
             attribs['sizeV']      = f.size
             attribs['tempfile']   = tempfile
-            verification_hash     = sha256sum(tempfile)
-            attribs['sha256sumV'] = verification_hash
+            hashes                = generateHashes(tempfile)
+            attribs['md5sumV']    = hashes['md5']
+            attribs['sha1sumV']   = hashes['sha1']
+            attribs['sha256sumV'] = hashes['sha256']
             attribs['name']       = directories.pop(0)
             attribs['sha256sum']  = shasums.pop(0)
             attribs['size']       = sizes.pop(0)
 
-            logger.info(json.dumps(attribs))
             move_temp_file(request, attribs)
-            reply+=(json.dumps(attribs))
+            logger.info(json.dumps(attribs))
+            reply.append(json.dumps(attribs))
 
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)
     elif reply:
-        return return_text_report(reply)
+        return return_text_report(json.dumps(reply))
     else:
         return return_reload_deposit_web(request)
 
