@@ -113,6 +113,8 @@ def create_or_update_file(request, attribs):
         collection       = collection,
         client_filename  = attribs['name'],
         staging_filename = attribs['staging_filename'],
+        md5_sum          = attribs['md5sumV'],
+        sha1_sum         = attribs['sha1sumV'],
         sha256_sum       = attribs['sha256sumV'],
         defaults = {
                  'size': attribs['sizeV'],
