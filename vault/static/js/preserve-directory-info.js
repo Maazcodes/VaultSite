@@ -54,7 +54,6 @@ window.onload = function () {
         start = performance.now();
 
         let collection = document.querySelector("#id_collection").value;
-        let comment    = document.querySelector("#id_comment").value;
 
         let files = [];
         if (document.querySelector("#id_file_field").disabled == true) {
@@ -72,7 +71,7 @@ window.onload = function () {
          };
 
             let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/vault/deposit/web', true);
+            xhr.open('POST', '/deposit/web', true);
 
             xhr.onerror = function () {
                 console.error('<b>Request Failed: Network Error.</b>');
