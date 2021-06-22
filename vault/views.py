@@ -120,7 +120,6 @@ def create_or_update_file(request, attribs):
                  'size': attribs['sizeV'],
             'file_type': attribs.get('file_type', None),
           'uploaded_by': request.user,
-              'comment': attribs['comment'],
         }
     )
 
@@ -146,7 +145,6 @@ def generateHashes(filename):
 
 def create_attribs_dict(request):
     retval = dict()
-    retval['comment']       = request.POST.get('comment', "")
     retval['client']        = request.POST.get('client', "")
     retval['collection']    = request.POST.get('collection', None)
     retval['username']      = request.META.get('REMOTE_USER', "")
