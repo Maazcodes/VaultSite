@@ -32,7 +32,7 @@ def collections(request):
     org = request.user.organization
     if request.method == "POST":
         form = forms.CreateCollectionForm(request.POST)
-        if form.is_valid():
+        if org and form.is_valid():
             new_collection = models.Collection.objects.create(
                 organization=org,
                 name=form.cleaned_data["name"],
@@ -41,7 +41,9 @@ def collections(request):
             )
             new_collection.target_geolocations.set(org.plan.default_geolocations.all())
             new_collection.save()
-        return redirect("collections")
+            return redirect("collections")
+        else:
+            return redirect("dashboard")
     else:
         form = forms.CreateCollectionForm()
         collections = models.Collection.objects.filter(organization=org).annotate(
@@ -150,13 +152,17 @@ def create_attribs_dict(request):
     retval['client']        = request.POST.get('client', "")
     retval['collection']    = request.POST.get('collection', None)
     retval['username']      = request.META.get('REMOTE_USER', "")
-    retval['organization']  = request.user.organization.id
-    retval['orgname']       = request.user.organization.name
-    try:
-        pk_id = retval['collection']
-        retval['collname']  = models.Collection.objects.get(pk=pk_id).name
-    except:
-        retval['collname']  = ""
+
+    org = request.user.organization
+
+    if org:
+        retval['organization'] = request.user.organization.id
+        retval['orgname']      = request.user.organization.name
+        try:
+            pk_id = retval['collection']
+            retval['collname'] = models.Collection.objects.get(pk=pk_id).name
+        except:
+            retval['collname'] = ""
     return retval
 
 
@@ -295,11 +301,14 @@ def administration(request):
 @login_required
 def administration_plan(request):
     org = request.user.organization
-    plan = org.plan
-    return TemplateResponse(request, "vault/administration_plan.html", {
-        "organization": org,
-        "plan": plan,
-    })
+    if org:
+        plan = org.plan
+        return TemplateResponse(request, "vault/administration_plan.html", {
+            "organization": org,
+            "plan": plan,
+        })
+    else:
+        return redirect("dashboard")
 
 
 @login_required
