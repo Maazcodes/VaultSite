@@ -38,13 +38,13 @@ window.onload = function () {
 
     function formatBytes(bytes, decimals = 2) {
         if (bytes === 0) return '0 Bytes';
-    
+
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    
+
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     }
 
@@ -54,6 +54,7 @@ window.onload = function () {
         start = performance.now();
 
         let collection = document.querySelector("#id_collection").value;
+        let comment    = document.querySelector("#id_comment").value;
 
         let files = [];
         if (document.querySelector("#id_file_field").disabled == true) {
