@@ -146,7 +146,6 @@ def create_attribs_dict(request):
     retval['client']        = request.POST.get('client', "")
     retval['collection']    = request.POST.get('collection', None)
     retval['username']      = request.META.get('REMOTE_USER', "")
-    retval['username']      = request.user.username
     retval['organization']  = request.user.organization.id
     retval['orgname']       = request.user.organization.name
     try:
