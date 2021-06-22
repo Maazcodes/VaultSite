@@ -15,13 +15,13 @@ class EditCollectionSettingsForm(forms.Form):
 
 
 class FileFieldForm(forms.Form):
-    collection = forms.ModelChoiceField(queryset=None)
+    collection = forms.ModelChoiceField(queryset=None, empty_label='Select Collection for Deposit')
 
     file_field = forms.FileField(required=False, widget=forms.ClearableFileInput(
-        attrs={ 'multiple': True, }))
+        attrs={ 'multiple': True, }), label='Files')
 
     dir_field = forms.FileField(required=False, widget=forms.ClearableFileInput(
-        attrs={ 'webkitdirectory':True, 'multiple': True, }))
+        attrs={ 'webkitdirectory':True, 'multiple': True, }), label='Directory')
 
     # Store user inputs - Protected from Django sanitization
     #
@@ -34,8 +34,6 @@ class FileFieldForm(forms.Form):
     directories = forms.CharField(widget=forms.HiddenInput())
     shasums     = forms.CharField(widget=forms.HiddenInput())
     sizes       = forms.CharField(widget=forms.HiddenInput())
-    comment     = forms.CharField(required=False, widget=forms.Textarea(
-         attrs={ 'rows': 1, 'cols': 1, }))
 
 
     def __init__(self, queryset, *args, **kwargs):
