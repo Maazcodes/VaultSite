@@ -36,6 +36,18 @@ window.onload = function () {
         XHRuploadFiles(form);
     })
 
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+    
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
     async function XHRuploadFiles (form) {
         let total_size = 0;
         let num_files  = 0;
@@ -79,13 +91,12 @@ window.onload = function () {
 
             xhr.onloadend = function() {
                 let end = performance.now();
-                let runtime = end - start;
+                let runtime = ((end - start) / 1000).toFixed(2);
                 start = end;
                 let msg = "";
-                msg += 'Return Code: ' + xhr.status;
-                msg += ' Number of files transferred: ' + num_files;
-                msg += ' Total Bytes: ' + total_size;
-                msg += ' Runtime: ' + runtime + 'ms';
+                msg += ' Files transfered: ' + num_files + ',';
+                msg += ' Size: ' + formatBytes(total_size);
+                msg += ' and Runtime: ' + runtime + 's';
                 document.querySelector('#stats').innerHTML += '<pre>' + msg + '</pre>'
                 console.log(msg);
                 console.log(xhr.response);
