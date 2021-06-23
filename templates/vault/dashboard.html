@@ -202,34 +202,27 @@
     });
 
     var regionDetails = {
-        "us-west-1": {
-            location: "California 1",
+        "US West": {
+            location: "San Francisco",
             radius: 10,
             country: "USA",
             fillKey: "regions",
             latitude: 37.782523,
             longitude: -130
-        }, "us-west-2": {
-            location: "California 2",
+        }, "EU West": {
+            location: "Amsterdam",
             radius: 10,
-            country: "USA",
-            fillKey: "regions",
-            latitude: 37.9292582,
-            longitude: -122
-        }, "eu-west-1": {
-            location: "EU West 1",
-            radius: 10,
-            country: "NL (Europe)",
+            country: "Netherlands",
             fillKey: "regions",
             latitude: 52.3546449,
             longitude: 4.8339212
-        }, "ca-west-1": {
-            location: "CA West 1",
+        }, "CA West": {
+            location: "Vancouver",
             radius: 10,
             country: "Canada",
             fillKey: "regions",
-            latitude: 45.4200567,
-            longitude: -75.8479716
+            latitude: 49.28,
+            longitude: -123.12
         }
     };
 
@@ -251,7 +244,8 @@
                 },
                 data: {
                     'USA': {fillKey: 'countries'},
-                    'NLD': {fillKey: 'countries'}
+                    'NLD': {fillKey: 'countries'},
+                    'CAN': {fillKey: 'countries'},
                 }
             });
 
@@ -740,7 +734,7 @@
 
             for (let collection of json.collections) {
                 collectionsSummary[collection.id] = collection;
-                collections.push(collection.id);
+                collections.push(collection.name);
                 fileCounts.push(collection.fileCount || 1);
                 filesTotal += collection.fileCount || 0;
                 weightedReplAvgSum += ((collection.avgReplication || 0) * (collection.fileCount || 0));
