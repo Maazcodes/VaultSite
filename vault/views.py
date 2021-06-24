@@ -1,3 +1,4 @@
+import datetime
 import os
 import re
 import logging
@@ -146,23 +147,16 @@ def generateHashes(filename):
     return hashes
 
 
-def create_attribs_dict(request):
+def create_attribs_dict(request, collection):
     retval = dict()
     retval['comment']       = request.POST.get('comment', "")
     retval['client']        = request.POST.get('client', "")
-    retval['collection']    = request.POST.get('collection', None)
-    retval['username']      = request.META.get('REMOTE_USER', "")
+    retval['collection']    = collection.pk
+    retval['username']      = request.user.username
+    retval['organization']  = request.user.organization.id
+    retval['orgname']       = request.user.organization.name
+    retval['collname']      = collection.name
 
-    org = request.user.organization
-
-    if org:
-        retval['organization'] = request.user.organization.id
-        retval['orgname']      = request.user.organization.name
-        try:
-            pk_id = retval['collection']
-            retval['collname'] = models.Collection.objects.get(pk=pk_id).name
-        except:
-            retval['collname'] = ""
     return retval
 
 
@@ -232,10 +226,21 @@ def return_reload_deposit_web(request):
 @login_required
 @csrf_exempt
 def deposit_web(request):
+    if request.method != "POST":
+        return return_reload_deposit_web(request)
+
+    user_org = request.user.organization
+    if not user_org:
+        return redirect("dashboard")
+    collection_id = request.POST.get("collection", None)
+    collection = get_object_or_404(models.Collection, pk=collection_id)
+    if collection.organization != user_org:
+        raise Http404
+
     reply = []
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
-    attribs = create_attribs_dict(request)
+    attribs = create_attribs_dict(request, collection)
 
     directories = request.POST.get("directories", "")
     directories = directories.split(",")
@@ -245,6 +250,9 @@ def deposit_web(request):
 
     sizes = request.POST.get("sizes", "")
     sizes = sizes.split(",")
+
+    validated_total_size = 0
+    validated_file_count = 0
 
     inputs = [ 'file_field', 'dir_field' ]
 
@@ -265,6 +273,29 @@ def deposit_web(request):
             move_temp_file(request, attribs)
             logger.info(json.dumps(attribs))
             reply.append(json.dumps(attribs))
+            validated_total_size += f.size
+            validated_file_count += 1
+
+    collection = models.Collection.objects.filter(pk=collection_id).annotate(
+        file_count=Count("file"),
+        total_size=Sum("file__size"),
+    ).first()
+
+    # TODO: get actual started_at value so we can keep track of upload duration
+    models.Report.objects.create(
+        collection=collection,
+        report_type=models.Report.ReportType.DEPOSIT,
+        started_at=datetime.datetime.now(datetime.timezone.utc),
+        ended_at=datetime.datetime.now(datetime.timezone.utc),
+        total_size=validated_total_size,
+        file_count=validated_file_count,
+        collection_total_size=collection.total_size,
+        collection_file_count=collection.file_count,
+        error_count=0,
+        missing_location_count=0,
+        mismatch_count=0,
+        avg_replication=collection.target_replication,
+    )
 
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)

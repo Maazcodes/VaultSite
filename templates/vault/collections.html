@@ -44,7 +44,7 @@
                         {% else %}
                             <td>{{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else '-' }}</td>
                         {% endif %}
-                        <td><a href="{{ collection.filepath() }}" target="_blank">View Files</a></td>
+                        <td>{% if collection.file_count is gt 0 %}<a href="{{ collection.filepath() }}" target="_blank">View Files</a>{% else %} - {% endif %}</td>
                         <td><a href="{{ url("collection", args=(collection.pk,)) }}">Edit Settings</a></td>
                     </tr>
                     </tbody>

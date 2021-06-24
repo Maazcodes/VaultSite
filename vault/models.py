@@ -6,6 +6,9 @@ from django.db import models
 from django.db.models import UniqueConstraint
 
 
+TEBIBYTE = 2**40
+
+
 class ReplicationFactor(models.IntegerChoices):
     DEFAULT = 2, "2x"
     THREE = 3, "3x"
@@ -39,6 +42,7 @@ class Plan(models.Model):
 class Organization(models.Model):
     name = models.CharField(max_length=255)
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
+    quota_bytes = models.PositiveBigIntegerField(default=TEBIBYTE)
 
     def filepath(self):
         return "/files/{org}/".format(org=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name))

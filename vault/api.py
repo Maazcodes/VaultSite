@@ -44,8 +44,10 @@ def reports(request):
     return JsonResponse({
         "reports": [
             {
-                "id": report.ended_at.strftime("%B %-d, %Y"),
-                "collection": report.collection.name
+                "id": report.pk,
+                "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                "collection_name": report.collection.name,
+                "collection_id": report.collection.pk
             }
             for report in reports
         ]
@@ -68,6 +70,7 @@ def collections_stats(request):
             {
                 "id": collection.pk,
                 "latestReport": reports.get(collection.last_report, {}).get("ended_at"),
+                "latestReportId": collection.last_report,
                 "time": collection.last_modified,
                 "fileCount": collection.file_count,
                 "totalSize": collection.total_size,
@@ -100,9 +103,10 @@ def reports_files(request):
     return JsonResponse({
         "reports": [
             {
-                "id": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                "id": report.pk,
+                "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
                 "collection": report.collection.pk,
-                "fileCount": report.file_count,
+                "fileCount": report.collection_file_count,
             }
             for report in reports
         ]
@@ -172,8 +176,9 @@ def reports_files_by_collection(request, collection_id):
         "reports": [
             {
                 "id": report.pk,
+                "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
                 "collection": report.collection.pk,
-                "fileCount": report.file_count,
+                "fileCount": report.collection_file_count,
             }
             for report in reports
         ]
@@ -182,21 +187,44 @@ def reports_files_by_collection(request, collection_id):
 
 @login_required
 def report_summary(request, collection_id, report_id):
+    # return JsonResponse({
+    #     "id": 1,
+    #     "endedAt": "2021-05-26T20-42-18-167Z",
+    #     "fileCount": 148,
+    #     "totalSize": 151653723502,
+    #     "errorCount": 19,
+    #     "regions": {
+    #         "US West": 148,
+    #     },
+    #     "fileTypes": {
+    #         "WARC": 129,
+    #         "WAT": 19
+    #     },
+    #     "avgReplication": 3.0
+    # })
+    user_org = request.user.organization
+    collection = get_object_or_404(models.Collection, pk=collection_id)
+    if collection.organization != user_org:
+        raise Http404
+
+    report = get_object_or_404(models.Report, pk=report_id)
+    if report.collection != collection:
+        raise Http404
+
     return JsonResponse({
-        "id": "2021-05-26T20-42-18-167Z",
-        "fileCount": 148,
-        "totalSize": 151653723502,
-        "errorCount": 19,
+        "id": report.pk,
+        "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+        "fileCount": report.collection_file_count,
+        "totalSize": report.collection_total_size,
+        "errorCount": report.error_count,
         "regions": {
-            "us-west-1": 148,
-            "us-west-2": 148
+            region: report.collection_file_count
+            for region in collection.target_geolocations.values_list("name", flat=True)
         },
-        "fileTypes": {
-            "WARC": 129,
-            "WAT": 19
-        },
-        "avgReplication": 3.0
+        "fileTypes": {},
+        "avgReplication": collection.target_replication
     })
+
 
 
 @login_required
