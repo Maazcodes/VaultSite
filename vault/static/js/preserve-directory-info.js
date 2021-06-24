@@ -72,7 +72,7 @@ window.onload = function () {
          };
 
             let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/deposit/web', true);
+            xhr.open('POST', '/vault/deposit/web', true);
 
             xhr.onerror = function () {
                 console.error('<b>Request Failed: Network Error.</b>');
