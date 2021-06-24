@@ -27,6 +27,31 @@ def index(request):
 def dashboard(request):
     return TemplateResponse(request, "vault/dashboard.html", {})
 
+@login_required
+@csrf_exempt
+def create_collection(request):
+    response = {}
+    if request.method == "POST":
+        org = request.user.organization
+        name = request.POST.get('name')
+        if org:
+            collection = models.Collection.objects.filter(organization=org, name=name)
+            if collection:
+                response["code"] = 0
+                response["message"] = "Collection with name '" + name + "' already exists."
+                return return_text_report(json.dumps(response))
+            
+            new_collection = models.Collection.objects.create(
+                organization=org,
+                name=name,
+                target_replication=org.plan.default_replication,
+                fixity_frequency=org.plan.default_fixity_frequency,
+            )
+            new_collection.target_geolocations.set(org.plan.default_geolocations.all())
+            new_collection.save()
+            response["code"] = 1
+            response["message"] = "Collection created Successfully."
+    return return_text_report(json.dumps(response))
 
 @login_required
 def collections(request):
@@ -296,6 +321,10 @@ def deposit_web(request):
         mismatch_count=0,
         avg_replication=collection.target_replication,
     )
+
+    report = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at").first()
+    if report:
+        reply.append({"report_id": report.id})
 
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)

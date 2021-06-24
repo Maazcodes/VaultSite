@@ -20,6 +20,7 @@ from vault import api, views
 urlpatterns = [
     path('', views.index, name='index'),
     path('dashboard', views.dashboard, name='dashboard'),
+    path('create_collection', views.create_collection, name='create_collection'),
     path('collections', views.collections, name='collections'),
     path('collections/<int:collection_id>', views.collection, name='collection'),
     path('reports/<int:report_id>', views.report, name='report'),
