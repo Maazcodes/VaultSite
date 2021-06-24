@@ -32,6 +32,15 @@ window.onload = function () {
     const form = document.querySelector('form')
     form.addEventListener('submit', event => {
         event.preventDefault();
+        
+        // Empty message box 
+        document.querySelector('#stats').innerHTML = '';
+
+        //Showing progress bar
+        document.getElementById('progress_bar').style.display = 'inline-block';
+        
+        $('#deposit_submit_btn').val('Uploading...');
+        
         // It amazes me that the shasums are available!
         XHRuploadFiles(form);
     })
@@ -90,6 +99,8 @@ window.onload = function () {
             };
 
             xhr.onloadend = function() {
+                let res = JSON.parse(xhr.response);
+                let report_id = res[res.length - 1]["report_id"];
                 let end = performance.now();
                 let runtime = ((end - start) / 1000).toFixed(2);
                 start = end;
@@ -97,9 +108,17 @@ window.onload = function () {
                 msg += ' Files transfered: ' + num_files + ',';
                 msg += ' Size: ' + formatBytes(total_size);
                 msg += ' and Runtime: ' + runtime + 's';
+                msg += '<a href="/vault/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
+                
                 document.querySelector('#stats').innerHTML += '<pre>' + msg + '</pre>'
                 console.log(msg);
                 console.log(xhr.response);
+
+                //Hiding progress bar
+                document.getElementById('progress_bar').style.display = 'none';
+
+                $('#deposit_submit_btn').val('Upload Files');
+
                 resetForm();
             };
 
