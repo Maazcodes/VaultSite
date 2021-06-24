@@ -202,34 +202,27 @@
     });
 
     var regionDetails = {
-        "us-west-1": {
-            location: "California 1",
+        "US West": {
+            location: "San Francisco",
             radius: 10,
             country: "USA",
             fillKey: "regions",
             latitude: 37.782523,
             longitude: -130
-        }, "us-west-2": {
-            location: "California 2",
+        }, "EU West": {
+            location: "Amsterdam",
             radius: 10,
-            country: "USA",
-            fillKey: "regions",
-            latitude: 37.9292582,
-            longitude: -122
-        }, "eu-west-1": {
-            location: "EU West 1",
-            radius: 10,
-            country: "NL (Europe)",
+            country: "Netherlands",
             fillKey: "regions",
             latitude: 52.3546449,
             longitude: 4.8339212
-        }, "ca-west-1": {
-            location: "CA West 1",
+        }, "CA West": {
+            location: "Vancouver",
             radius: 10,
             country: "Canada",
             fillKey: "regions",
-            latitude: 45.4200567,
-            longitude: -75.8479716
+            latitude: 49.28,
+            longitude: -123.12
         }
     };
 
@@ -251,7 +244,8 @@
                 },
                 data: {
                     'USA': {fillKey: 'countries'},
-                    'NLD': {fillKey: 'countries'}
+                    'NLD': {fillKey: 'countries'},
+                    'CAN': {fillKey: 'countries'},
                 }
             });
 
@@ -388,6 +382,13 @@
                     ]
                 },
                 options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero: true,
+                            }
+                        }]
+                    },
                     legend: {display: false},
                     title: {
                         display: true,
@@ -528,17 +529,17 @@
         $container.empty();
         if (reports.length === 0) {
             let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
-                $("<span>").text("Coming Soon"),
+                $("<span>").text("No Reports"),
             ]);
             $container.append($item);
         }
         for (let report of reports) {
-            let label = report.id;
+            let label = report.endedAt.substr(0, 10);
             let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
                 $("<span>").text(label),
-                $("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection + ")"),
+                $("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),
             ]).click(function () {
-                selectReport(report.collection, report.id, $item);
+                selectReport(report.collection_id, report.id, $item);
             });
             $container.append($item);
         }
@@ -549,8 +550,8 @@
         fetching += 1;
         activeRequests[url] = $.getJSON(url, function (json) {
             for (let report of json.reports) {
-                collectionReports[report.collection] = collectionReports[report.collection] || [];
-                collectionReports[report.collection].push(report);
+                collectionReports[report.collection_id] = collectionReports[report.collection_id] || [];
+                collectionReports[report.collection_id].push(report);
             }
             allReports = json.reports;
             showReports();
@@ -590,10 +591,14 @@
         var latest = stats.recentReport || stats || {};
 
         if (collectionStats) {
+            let collectionUrl = "{{ url("collection", args=(0,)) }}";
+            collectionUrl = collectionUrl.replace("/0", "/" + collectionId);
+
             $("#dashboard-statistics-title").empty().append([
                 $("<span>").text("Collection Statistics"),
                 " (",
-                $("<a>").attr("href", "/ait/" + userId + "/digipres/collections/" + collectionId + (demoMode ? "?demo=true" : "")).text("browse"),
+                {#$("<a>").attr("href", "/ait/" + userId + "/digipres/collections/" + collectionId + (demoMode ? "?demo=true" : "")).text("browse"),#}
+                $("<a>").attr("href", collectionUrl).text("View"),
                 ")"
             ]);
         } else {
@@ -604,10 +609,14 @@
         $("#dashboard-stats-size .stats-value").text(formatBytes(stats.totalSize || 0));
 
         if (latest.latestReport) {
+            let reportUrl = "{{ url("report", args=(0,)) }}";
+            reportUrl = reportUrl.replace("/0", "/" + latest.latestReportId);
+
             $("#dashboard-report-title").empty().append([
                 $("<span>").text("Most Recent Report"),
                 " (",
-                $("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + latest.id + "/" + latest.latestReport ).text("show"),
+                {#$("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + latest.id + "/" + latest.latestReport ).text("show"),#}
+                $("<a>").attr("href", reportUrl).text("View"),
                 ")"
             ]);
         } else {
@@ -668,13 +677,13 @@
             var dataPoints = [];
             var collectionsFiles = {};
             for (let report of json.reports) {
-                collectionsFiles[report.collection] = report.fileCount;
+                collectionsFiles[report.collection_id] = report.fileCount;
                 let totalFileCount = 0;
                 for (let fileCount of Object.values(collectionsFiles)) totalFileCount += fileCount;
                 dataPoints.push(totalFileCount);
-                let year = report.id.substr(2, 2);
-                let month = months[parseInt(report.id.substr(5, 2)) - 1];
-                labels.push(month + " " + parseInt(report.id.substr(8, 2)) + ", " + year);
+                let year = report.endedAt.substr(2, 2);
+                let month = months[parseInt(report.endedAt.substr(5, 2)) - 1];
+                labels.push(month + " " + parseInt(report.endedAt.substr(8, 2)) + ", " + year);
             }
             if (labels.length === 1) {
                 labels.push(labels[0]);
@@ -740,7 +749,7 @@
 
             for (let collection of json.collections) {
                 collectionsSummary[collection.id] = collection;
-                collections.push(collection.id);
+                collections.push(collection.name);
                 fileCounts.push(collection.fileCount || 1);
                 filesTotal += collection.fileCount || 0;
                 weightedReplAvgSum += ((collection.avgReplication || 0) * (collection.fileCount || 0));
@@ -776,10 +785,12 @@
     }
 
     function fetchReportSummary(collectionId, reportId) {
+        let reportUrl = "{{ url("report", args=(0,)) }}";
+        reportUrl = reportUrl.replace("/0", "/" + reportId);
         $("#dashboard-report-title").empty().append([
             $("<span>").text("Report Statistics"),
             " (",
-            $("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + collectionId + "/" + reportId + (demoMode ? "?demo=true" : "")).text("show"),
+            $("<a>").attr("href", reportUrl).text("View"),
             ")"
         ]);
 
@@ -808,7 +819,7 @@
 
         fetching += 1;
         activeRequests[url] = $.getJSON(url, function (report) {
-            $("#dashboard-stats-report-date .stats-value").text((report.id || "").substr(0, 10));
+            $("#dashboard-stats-report-date .stats-value").text((report.endedAt || "").substr(0, 10));
             $("#dashboard-stats-report-errors .stats-value").text(formatNumber(report.errorCount || 0));
             $("#dashboard-stats-report-files .stats-value").text(formatNumber(report.fileCount || 0));
             $("#dashboard-stats-report-size .stats-value").text(formatBytes(report.totalSize || 0));

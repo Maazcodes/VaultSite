@@ -6,6 +6,9 @@ from django.db import models
 from django.db.models import UniqueConstraint
 
 
+TEBIBYTE = 2**40
+
+
 class ReplicationFactor(models.IntegerChoices):
     DEFAULT = 2, "2x"
     THREE = 3, "3x"
@@ -39,6 +42,7 @@ class Plan(models.Model):
 class Organization(models.Model):
     name = models.CharField(max_length=255)
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
+    quota_bytes = models.PositiveBigIntegerField(default=TEBIBYTE)
 
     def filepath(self):
         return "/files/{org}/".format(org=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name))
@@ -72,17 +76,25 @@ class Collection(models.Model):
 
 
 class Report(models.Model):
+    class ReportType(models.TextChoices):
+        FIXITY = "FIXITY", "Fixity"
+        DEPOSIT = "DEPOSIT", "Deposit"
+
     collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+    report_type = models.CharField(choices=ReportType.choices, max_length=20, default=ReportType.FIXITY)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
     total_size = models.PositiveBigIntegerField()
     file_count = models.PositiveBigIntegerField()
+    collection_total_size = models.PositiveBigIntegerField()
+    collection_file_count = models.PositiveBigIntegerField()
     error_count = models.PositiveBigIntegerField()
     missing_location_count = models.PositiveBigIntegerField()
     mismatch_count = models.PositiveBigIntegerField()
+    avg_replication = models.PositiveSmallIntegerField()
 
     def __str__(self):
-        return f"{self.collection.pk}-{self.started_at}"
+        return f"{self.report_type}-{self.collection.pk}-{self.started_at}"
 
 
 md5_validator = RegexValidator(r'^[a-zA-Z0-9]{32}$', "only hex-encoded md5 hashes are allowed")

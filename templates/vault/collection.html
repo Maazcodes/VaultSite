@@ -15,11 +15,13 @@
                 <li>Most Recent Deposit: {% if collection.last_modified is none %}-{% else %}{{ collection.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
             </ul>
 
-            <a href="{{ collection.filepath() }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
+            {% if collection.file_count is gt 0 %}
+                <a href="{{ collection.filepath() }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
+            {% endif %}
 
             <h2>Collection Reports</h2>
             {% if reports %}
-                {% set headers = ("Report Started", "Report Completed", "Total Size", "File Count", "Error Count", "View Details") %}
+                {% set headers = ("Report Type", "Report Started", "Report Completed", "Total Size", "File Count", "Error Count", "View Details") %}
                 <table class="small-12 columns">
                 <thead>
                 {% for header in headers %}
@@ -30,6 +32,7 @@
                 {% for report in reports %}
                     <tbody>
                     <tr>
+                        <td>{{ report.report_type }}</td>
                         <td>{{ report.started_at.strftime('%B %-d, %Y') }}</td>
                         <td>{{ report.ended_at.strftime('%B %-d, %Y') }}</td>
                         <td>{{ report.total_size|filesizeformat }}</td>
