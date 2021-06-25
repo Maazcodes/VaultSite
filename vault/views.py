@@ -51,6 +51,7 @@ def create_collection(request):
             new_collection.save()
             response["code"] = 1
             response["message"] = "Collection created Successfully."
+            response["collection_id"] = new_collection.pk
     return return_text_report(json.dumps(response))
 
 @login_required
@@ -177,7 +178,7 @@ def create_attribs_dict(request, collection):
     retval['comment']       = request.POST.get('comment', "")
     retval['client']        = request.POST.get('client', "")
     retval['collection']    = collection.pk
-    retval['username']      = request.user.username
+    retval['username']      = request.META.get('REMOTE_USER', "")
     retval['organization']  = request.user.organization.id
     retval['orgname']       = request.user.organization.name
     retval['collname']      = collection.name

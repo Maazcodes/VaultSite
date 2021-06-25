@@ -110,7 +110,7 @@ window.onload = function () {
                 msg += ' and Runtime: ' + runtime + 's';
                 msg += '<a href="/vault/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
                 
-                document.querySelector('#stats').innerHTML += '<pre>' + msg + '</pre>'
+                document.querySelector('#stats').innerHTML = '<p>' + msg + '</p>'
                 console.log(msg);
                 console.log(xhr.response);
 

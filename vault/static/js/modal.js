@@ -10,12 +10,21 @@ let span = document.getElementsByClassName("close")[0];
 // When the user clicks on the button, open the modal
 function show_modal() {
   modal.style.display = "block";
+  document.querySelector('#modal-message').innerHTML = '';
+  $('#collection_name').val('');
 }
 
 // When the user clicks on <span> (x), close the modal
 span.onclick = function() {
   modal.style.display = "none";
 }
+
+//Closing modal on pressing escape key
+$(document).keydown(function(event) { 
+  if (event.keyCode == 27) { 
+    span.click();
+  }
+});
 
 // When the user clicks anywhere outside of the modal, close it
 window.onclick = function(event) {
@@ -45,10 +54,10 @@ create_collection_form.addEventListener('submit', event => {
       
       if (response['code'] == 1) {
         document.getElementById("modal-message").style.color = 'green';
-        document.querySelector('#modal-message').innerHTML = response['message'] + ' Page reloading in 5 seconds ...';
-        setTimeout(function () {
-          window.location.reload();
-        }, 5000);
+        document.querySelector('#modal-message').innerHTML = response['message'];
+        $('#id_collection').append(new Option(name, response['collection_id']));
+        $('#id_collection').val(response['collection_id'])
+        setTimeout(function(){ span.click(); }, 500);
       }
       else {
         document.querySelector('#modal-message').innerHTML = response['message'];
