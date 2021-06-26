@@ -71,6 +71,9 @@ class Collection(models.Model):
             col=re.sub('[^a-zA-Z0-9_\-\/\.]', '_', self.name)
         )
 
+    def last_fixity_report(self):
+        return Report.objects.filter(collection__pk=self.pk, report_type=Report.ReportType.FIXITY).order_by("-ended_at").first()
+
     def __str__(self):
         return self.name
 

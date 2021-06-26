@@ -16,7 +16,7 @@
                     <input type="submit" value="Create Collection" class="button small padding-top padding-bottom half" style="margin:0">
                 </form>
                 </div>
-                {% set headers = ("Collection Name", "Total Size", "File Count", "Most Recent Deposit", "Most Recent Report", "View Files", "Edit Settings") %}
+                {% set headers = ("Collection Name", "Total Size", "File Count", "Most Recent Deposit", "Most Recent Fixity Report", "View Files", "Edit Settings") %}
                 <table class="small-12 columns">
                 <thead>
                 {% for header in headers %}
@@ -39,10 +39,10 @@
                         {% else %}
                             <td>{{ collection.last_modified.strftime('%B %-d, %Y') }}</td>
                         {% endif %}
-                        {% if collection.last_report is none %}
+                        {% if collection.last_fixity_report() is none %}
                             <td>-</td>
                         {% else %}
-                            <td>{{ collection.last_report.strftime('%B %-d, %Y') if collection.last_report else '-' }}</td>
+                            <td>{{ collection.last_fixity_report().ended_at.strftime('%B %-d, %Y') }}</td>
                         {% endif %}
                         <td>{% if collection.file_count is gt 0 %}<a href="{{ collection.filepath() }}" target="_blank">View Files</a>{% else %} - {% endif %}</td>
                         <td><a href="{{ url("collection", args=(collection.pk,)) }}">Edit Settings</a></td>

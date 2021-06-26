@@ -77,7 +77,6 @@ def collections(request):
             total_size    = Sum("file__size"),
             file_count    = Count("file"),
             last_modified = Max("file__modified_date"),
-            last_report   = Max('report__ended_at'),
         )
         return TemplateResponse(request, "vault/collections.html", {
             "collections": collections,
@@ -103,7 +102,6 @@ def collection(request, collection_id):
         file_count=Count("file"),
         total_size=Sum("file__size"),
         last_modified=Max("file__modified_date"),
-        last_report=Max('report__ended_at'),
     ).first()
     form = forms.EditCollectionSettingsForm(initial=({
         "target_replication": collection.target_replication,

@@ -97,7 +97,7 @@
         </div>
         <div class="dashboard-card" id="dashboard-stats-report-card">
             <div class="dashboard-card-head" style="text-align: center;" id="dashboard-report-title">
-                Most Recent Report
+                Most Recent Fixity Report
             </div>
             <div style="display: flex; flex-direction:column; height: 100%; padding-bottom: 50px;">
                 <div style="display: flex; flex-direction:row; flex-grow: 1; margin-left: 3%;">
@@ -159,9 +159,10 @@
 </div>
 
 <div class="dashboard-col">
-    <div class="dashboard-card" style="max-height: 150px;" id="dashboard-reports">
+{#    <div class="dashboard-card" style="max-height: 150px;" id="dashboard-reports">#}
+    <div class="dashboard-card" id="dashboard-reports">
         <div class="dashboard-card-head">
-            Reports
+            Events
         </div>
         <span class="spinner small"></span>
         <div class="dashboard-list"></div>
@@ -170,10 +171,10 @@
         <span class="spinner small"></span>
         <div class="chart" style="margin-top: 30px;"></div>
     </div>
-    <div class="dashboard-card" id="filetypes-chart">
-        <span class="spinner small"></span>
-        <div class="chart"></div>
-    </div>
+{#    <div class="dashboard-card" id="filetypes-chart">#}
+{#        <span class="spinner small"></span>#}
+{#        <div class="chart"></div>#}
+{#    </div>#}
 </div>
 
 </div>
@@ -529,17 +530,17 @@
         $container.empty();
         if (reports.length === 0) {
             let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
-                $("<span>").text("No Reports"),
+                $("<span>").text("No Events"),
             ]);
             $container.append($item);
         }
         for (let report of reports) {
-            let label = report.endedAt.substr(0, 10);
+            let label = report.endedAt.substr(0, 10) + " - " + report.reportType;
             let $item = $("<div>").addClass("dashboard-list-item dashboard-list-report").append([
                 $("<span>").text(label),
-                $("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),
+                {#$("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),#}
             ]).click(function () {
-                selectReport(report.collection_id, report.id, $item);
+                {#selectReport(report.collection_id, report.id, $item);#}
             });
             $container.append($item);
         }
@@ -588,7 +589,7 @@
     function showStats(collectionId) {
         var collectionStats = (collectionId && collectionsStats[collectionId]);
         var stats = collectionStats || accountStats;
-        var latest = stats.recentReport || stats || {};
+        var latest = stats.recentReport || stats.latestReport || {};
 
         if (collectionStats) {
             let collectionUrl = "{{ url("collection", args=(0,)) }}";
@@ -610,23 +611,23 @@
 
         if (latest.latestReport) {
             let reportUrl = "{{ url("report", args=(0,)) }}";
-            reportUrl = reportUrl.replace("/0", "/" + latest.latestReportId);
+            reportUrl = reportUrl.replace("/0", "/" + latest.pk);
 
             $("#dashboard-report-title").empty().append([
-                $("<span>").text("Most Recent Report"),
+                $("<span>").text("Most Recent Fixity Report"),
                 " (",
                 {#$("<a>").attr("href", "/ait/" + userId + "/digipres/reports/" + latest.id + "/" + latest.latestReport ).text("show"),#}
                 $("<a>").attr("href", reportUrl).text("View"),
                 ")"
             ]);
         } else {
-            $("#dashboard-report-title").text("Most Recent Report");
+            $("#dashboard-report-title").text("Most Recent Fixity Report");
         }
 
-        $("#dashboard-stats-report-date .stats-value").text((latest.time || "N/A").substr(0, 10));
-        $("#dashboard-stats-report-errors .stats-value").text(formatNumber(latest.errorCount || 0));
-        $("#dashboard-stats-report-files .stats-value").text(formatNumber(latest.fileCount || 0));
-        $("#dashboard-stats-report-size .stats-value").text(formatBytes(latest.totalSize || 0));
+        $("#dashboard-stats-report-date .stats-value").text((latest.ended_at || "-").substr(0, 10));
+        $("#dashboard-stats-report-errors .stats-value").text((latest.error_count || latest.error_count === 0) && formatNumber(latest.error_count) || "-");
+        $("#dashboard-stats-report-files .stats-value").text((latest.file_count || latest.file_count === 0) && formatNumber(latest.file_count) || "-");
+        $("#dashboard-stats-report-size .stats-value").text((latest.total_size || latest.total_size === 0) && formatBytes(latest.total_size) || "-");
     }
 
     function fetchStats() {
@@ -640,12 +641,12 @@
             accountStats = {};
             for (let collection of json.collections) {
                 collectionsStats[collection.id] = collection;
-                if (collection.latestReport && (!latest || collection.latestReport > latest.latestReport)) latest = collection;
+                {#if (collection.latestReport && (!latest || collection.latestReport > latest.latestReport)) latest = collection;#}
                 accountStats.fileCount = (accountStats.fileCount || 0) + (collection.fileCount || 0);
                 accountStats.totalSize = (accountStats.totalSize || 0) + (collection.totalSize || 0);
             }
 
-            accountStats.recentReport = latest;
+            accountStats.recentReport = json.latestReport;
 
             showStats();
             readyStats(loadContainers);
@@ -711,7 +712,7 @@
         $("#dashboard-stats-repl .stats-value").text(formatNumber(summary.avgReplication || 0, 2));
         $("#dashboard-stats-regions .stats-value").text(formatNumber(Object.keys(summary.regions || {}).length));
 
-        createFiletypesChart(Object.keys(summary.fileTypes || {}), Object.values(summary.fileTypes || {}));
+        {#createFiletypesChart(Object.keys(summary.fileTypes || {}), Object.values(summary.fileTypes || {}));#}
         createWorldmap(Object.keys(summary.regions || {}));
         createFilesRegionChart(Object.keys(summary.regions || {}), Object.values(summary.regions || {}));
     }
@@ -720,10 +721,10 @@
         var $collectionsChart = $("#collections-chart .chart");
         $collectionsChart.hide();
 
-        var $filetypesChart = $("#filetypes-chart .chart");
-        $filetypesChart.hide();
-        var $filetypesChartSpinner = $("#filetypes-chart .spinner");
-        $filetypesChartSpinner.show();
+        {#var $filetypesChart = $("#filetypes-chart .chart");#}
+        {#$filetypesChart.hide();#}
+        {#var $filetypesChartSpinner = $("#filetypes-chart .spinner");#}
+        {#$filetypesChartSpinner.show();#}
 
         var $worldMap = $("#worldmap .chart");
         $worldMap.hide();
@@ -769,8 +770,8 @@
             $collectionsChart.show();
             createCollectionsChart(collections, fileCounts);
 
-            $filetypesChartSpinner.hide();
-            $filetypesChart.show();
+            {#$filetypesChartSpinner.hide();#}
+            {#$filetypesChart.show();#}
             $worldMapSpinner.hide();
             $worldMap.show();
             $filesRegionChartSpinner.hide();
@@ -794,10 +795,10 @@
             ")"
         ]);
 
-        var $filetypesChart = $("#filetypes-chart .chart");
-        $filetypesChart.hide();
-        var $filetypesChartSpinner = $("#filetypes-chart .spinner");
-        $filetypesChartSpinner.show();
+        {#var $filetypesChart = $("#filetypes-chart .chart");#}
+        {#$filetypesChart.hide();#}
+        {#var $filetypesChartSpinner = $("#filetypes-chart .spinner");#}
+        {#$filetypesChartSpinner.show();#}
 
         var $worldMap = $("#worldmap .chart");
         $worldMap.hide();
@@ -826,9 +827,9 @@
 
             readyStats(loadContainers);
 
-            $filetypesChartSpinner.hide();
-            $filetypesChart.show();
-            createFiletypesChart(Object.keys(report.fileTypes), Object.values(report.fileTypes));
+            {#$filetypesChartSpinner.hide();#}
+            {#$filetypesChart.show();#}
+            {#createFiletypesChart(Object.keys(report.fileTypes), Object.values(report.fileTypes));#}
 
             $worldMapSpinner.hide();
             $worldMap.show();

@@ -11,8 +11,8 @@
             <ul>
                 <li>Price per upload: ${{ plan.price_per_terabyte }}/TB</li>
                 <li>Replication: {{ plan.default_replication }} copies</li>
-                <li>Locations: {{ plan.default_geolocations.all().values_list("name", flat=True)|join(', ') }}</li>
-                <li>Fixity: {{ plan.default_fixity_frequency }}</li>
+                <li>Locations: {{ plan.default_geolocations.values_list("name", flat=True)|join(', ') }}</li>
+                <li>Fixity: {{ plan.get_default_fixity_frequency_display() }}</li>
             </ul>
             <div class="panel">
                 <p>More feature options will be available in later stages of the pilot and will be added in this space.</p>
