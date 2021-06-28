@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import CheckboxSelectMultiple
 
-from . import models
+from vault import models
 
 
 class CreateCollectionForm(forms.Form):
@@ -9,8 +9,8 @@ class CreateCollectionForm(forms.Form):
 
 
 class EditCollectionSettingsForm(forms.Form):
-    target_replication = forms.ChoiceField(choices=models.ReplicationFactor.choices, label="Replication")
-    fixity_frequency = forms.ChoiceField(choices=models.FixityFrequency.choices)
+    target_replication  = forms.ChoiceField(choices=models.ReplicationFactor.choices, label="Replication")
+    fixity_frequency    = forms.ChoiceField(choices=models.FixityFrequency.choices)
     target_geolocations = forms.ModelMultipleChoiceField(models.Geolocation.objects.all(), widget=CheckboxSelectMultiple, label="Geolocations")
 
 

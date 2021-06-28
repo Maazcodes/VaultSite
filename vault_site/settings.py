@@ -20,6 +20,10 @@ MEDIA_ROOT = Path('/opt/DPS/files/')
 
 FILE_UPLOAD_TEMP_DIR = Path('/opt/DPS/tmp/')
 
+#LOGIN_REDIRECT_URL = '/dashboard'
+
+EMAIL_HOST = 'mail.archive.org'
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
@@ -69,7 +73,7 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
-            'environment': 'vault_site.jinja2.environment',
+            'environment': 'vault_site.jinja2env.environment',
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -79,13 +83,14 @@ TEMPLATES = [
         },
     },
     {
-        "BACKEND": 'django.template.backends.django.DjangoTemplates',
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         }
     }
@@ -179,6 +184,10 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'filename': '/opt/DPS/vault-site/django-debug.log',
         },
+    },
+    'root': {
+        'handlers': ['file'],
+        'level': 'INFO',
     },
     'loggers': {
         'vault': {
