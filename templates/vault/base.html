@@ -36,6 +36,9 @@
 	<meta class="foundation-mq-medium">
 	<meta class="foundation-mq-large">
 	<script src="/vault/static/js/jquery.min.js"></script>
+	{# Upload specific JS not loaded by default #}
+	{% block head_deposit %}{% endblock head_deposit %}
+
     {% endblock head %}
 </head>
 
