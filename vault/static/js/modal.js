@@ -15,8 +15,10 @@ function show_modal() {
 }
 
 // When the user clicks on <span> (x), close the modal
-span.onclick = function() {
-  modal.style.display = "none";
+if (span) {
+  span.onclick = function() {
+    modal.style.display = "none";
+  }
 }
 
 //Closing modal on pressing escape key
@@ -34,38 +36,40 @@ window.onclick = function(event) {
 }
 
 const create_collection_form = document.querySelector('#create_collection')
-create_collection_form.addEventListener('submit', event => {
-    event.preventDefault();
+if (create_collection_form) {
+  create_collection_form.addEventListener('submit', event => {
+      event.preventDefault();
 
-    document.querySelector('#modal-message').innerHTML = '';
-    $('#create_collection_submit_btn').attr("disabled", true);
-    
-    let xhr = new XMLHttpRequest();
-    xhr.open('POST', '/vault/create_collection');
-
-    let name = $('#collection_name').val();
-
-    let data = new FormData();
-    data.append('name', name);
-
-    xhr.onloadend = function() {
+      document.querySelector('#modal-message').innerHTML = '';
+      $('#create_collection_submit_btn').attr("disabled", true);
       
-      response = JSON.parse(xhr.response)
+      let xhr = new XMLHttpRequest();
+      xhr.open('POST', '/vault/create_collection');
+
+      let name = $('#collection_name').val();
+
+      let data = new FormData();
+      data.append('name', name);
+
+      xhr.onloadend = function() {
+        
+        response = JSON.parse(xhr.response)
+        
+        if (response['code'] == 1) {
+          document.getElementById("modal-message").style.color = 'green';
+          document.querySelector('#modal-message').innerHTML = response['message'];
+          $('#id_collection').append(new Option(name, response['collection_id']));
+          $('#id_collection').val(response['collection_id'])
+          setTimeout(function(){ span.click(); }, 500);
+        }
+        else {
+          document.querySelector('#modal-message').innerHTML = response['message'];
+          document.getElementById("modal-message").style.color = 'red';
+        }
+        $('#create_collection_submit_btn').attr("disabled", false);
       
-      if (response['code'] == 1) {
-        document.getElementById("modal-message").style.color = 'green';
-        document.querySelector('#modal-message').innerHTML = response['message'];
-        $('#id_collection').append(new Option(name, response['collection_id']));
-        $('#id_collection').val(response['collection_id'])
-        setTimeout(function(){ span.click(); }, 500);
       }
-      else {
-        document.querySelector('#modal-message').innerHTML = response['message'];
-        document.getElementById("modal-message").style.color = 'red';
-      }
-      $('#create_collection_submit_btn').attr("disabled", false);
-    
-    }
-    
-    xhr.send(data);
-})
+      
+      xhr.send(data);
+  })
+}

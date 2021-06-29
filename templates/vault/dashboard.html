@@ -159,7 +159,6 @@
 </div>
 
 <div class="dashboard-col">
-{#    <div class="dashboard-card" style="max-height: 150px;" id="dashboard-reports">#}
     <div class="dashboard-card" id="dashboard-reports">
         <div class="dashboard-card-head">
             Events
@@ -171,10 +170,6 @@
         <span class="spinner small"></span>
         <div class="chart" style="margin-top: 30px;"></div>
     </div>
-{#    <div class="dashboard-card" id="filetypes-chart">#}
-{#        <span class="spinner small"></span>#}
-{#        <div class="chart"></div>#}
-{#    </div>#}
 </div>
 
 </div>
@@ -540,6 +535,9 @@
                 $("<span>").text(label),
                 {#$("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),#}
             ]).click(function () {
+                let report_url = "{{ url("report", args=(0,)) }}";
+                report_url = report_url.replace("/0", "/" + String(report.id));
+                window.open(report_url, '_blank');
                 {#selectReport(report.collection_id, report.id, $item);#}
             });
             $container.append($item);
