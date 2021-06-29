@@ -3,6 +3,8 @@ import os
 import re
 import logging
 import json
+# :FIXME: - Required to make Apache use Django auth
+#from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
@@ -10,8 +12,8 @@ from django.db.models import Max, Sum, Count
 from django.http import Http404
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
-from . import forms
-from . import models
+from vault import forms
+from vault import models
 from django.http import HttpResponse
 
 from django.views.decorators.csrf import csrf_exempt
@@ -40,7 +42,7 @@ def create_collection(request):
                 response["code"] = 0
                 response["message"] = "Collection with name '" + name + "' already exists."
                 return return_text_report(json.dumps(response))
-            
+
             new_collection = models.Collection.objects.create(
                 organization=org,
                 name=name,

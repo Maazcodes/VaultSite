@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db.models import Count, Sum, Max
 from django.template.defaultfilters import filesizeformat
 
-from . import models
+from vault import models
 
 
 @admin.register(models.User)

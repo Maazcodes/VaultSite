@@ -32,15 +32,15 @@ window.onload = function () {
     const form = document.querySelector('form')
     form.addEventListener('submit', event => {
         event.preventDefault();
-        
-        // Empty message box 
+
+        // Empty message box
         document.querySelector('#stats').innerHTML = '';
 
         //Showing progress bar
         document.getElementById('progress_bar').style.display = 'inline-block';
-        
+
         $('#deposit_submit_btn').val('Uploading...');
-        
+
         // It amazes me that the shasums are available!
         XHRuploadFiles(form);
     })
@@ -55,7 +55,7 @@ window.onload = function () {
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    }
+    };
 
     async function XHRuploadFiles (form) {
         let total_size = 0;
@@ -80,59 +80,60 @@ window.onload = function () {
             data.append('file', f);
          };
 
-            let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/vault/deposit/web', true);
+         let xhr = new XMLHttpRequest();
+         xhr.open('POST', '/vault/deposit/web', true);
 
-            xhr.onerror = function () {
-                console.error('<b>Request Failed: Network Error.</b>');
-            };
+         xhr.onerror = function () {
+             console.error('<b>Request Failed: Network Error.</b>');
+         };
 
-            xhr.onabort = function () {
-                console.error('<b>Request Aborted.</b>');
-            };
+         xhr.onabort = function () {
+             console.error('<b>Request Aborted.</b>');
+         };
 
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    let progress = Math.round((e.loaded / e.total)*100);
-                    document.querySelector('#progress_bar').value = progress;
-                };
-            };
+         xhr.upload.onprogress = function(e) {
+             if (e.lengthComputable) {
+                 let progress = Math.round((e.loaded / e.total)*100);
+                 document.querySelector('#progress_bar').value = progress;
+             };
+         };
 
-            xhr.onloadend = function() {
-                let res = JSON.parse(xhr.response);
-                let report_id = res[res.length - 1]["report_id"];
-                let end = performance.now();
-                let runtime = ((end - start) / 1000).toFixed(2);
-                start = end;
-                let msg = "";
-                msg += ' Files transfered: ' + num_files + ',';
-                msg += ' Size: ' + formatBytes(total_size);
-                msg += ' and Runtime: ' + runtime + 's';
-                msg += '<a href="/vault/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
-                
-                document.querySelector('#stats').innerHTML = '<p>' + msg + '</p>'
-                console.log(msg);
-                console.log(xhr.response);
+         xhr.onloadend = function() {
+             let res       = JSON.parse(xhr.response);
+             let report_id = res[res.length - 1]["report_id"];
+             let end       = performance.now();
+             let runtime   = ((end - start) / 1000).toFixed(2);
+             start         = end;
+             let msg = "";
+             msg += ' Files transfered: ' + num_files + ',';
+             msg += ' Size: ' + formatBytes(total_size);
+             msg += ' and Runtime: ' + runtime + 's';
+             msg += '<a href="/vault/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
 
-                //Hiding progress bar
-                document.getElementById('progress_bar').style.display = 'none';
+             document.querySelector('#stats').innerHTML = '<p>' + msg + '</p>'
+             console.log(msg);
+             console.log(xhr.response);
 
-                $('#deposit_submit_btn').val('Upload Files');
+             //Hiding progress bar
+             document.getElementById('progress_bar').style.display = 'none';
 
-                resetForm();
-            };
+             $('#deposit_submit_btn').val('Upload Files');
 
-            xhr.send(data);
-    }
+             resetForm();
+         };
+
+         xhr.send(data);
+    };
+
 
     function resetForm() {
-        form.reset()
+        form.reset();
         document.querySelector("#id_file_field").disabled = false;
         document.querySelector("#id_dir_field").disabled = false;
         document.querySelector('#progress_bar').value = 0;
-    }
+    };
 
-    shasumsGlobal = [];
+
     function bytesToHexString(bytes) {
         if (!bytes)
             return null;
@@ -143,34 +144,59 @@ window.onload = function () {
             if (byteString.length < 2)
                 byteString = "0" + byteString;
             hexBytes.push(byteString);
-        }
+        };
         return hexBytes.join("");
-    }
+    };
 
 
     async function sha256HashFile(file, idx) {
         let buffer = await file.arrayBuffer();
         return crypto.subtle.digest("SHA-256", buffer).then(function (hash) {
-            shasumsGlobal[idx] = bytesToHexString(hash);
+            shasumsList[idx] = bytesToHexString(hash);
         });
     };
+
 
     async function doSomeSums(files) {
         let tooBig = 1024*1024*1024;
         let promises = [];
         let idx = 0;
-        shasumsGlobal = [];
+        shasumsList = [];
         for (var file of files) {
             if (file.size < tooBig) {
                 promises.push(sha256HashFile(file, idx));
             } else {
-                shasumsGlobal[idx] = 'DEADBEEF';
-            }
+                shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
+                //MD5HashFile(file, idx);
+            };
             idx++;
         };
         Promise.allSettled(promises).then(() => {
-            document.querySelector("#id_shasums").value = shasumsGlobal.toString();
+            document.querySelector("#id_shasums").value = shasumsList.toString();
         });
     };
-}
 
+
+    // call: await sleep(ms)
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    };
+
+
+    function MD5HashFile (file) {
+        let spark  = new SparkMD5.ArrayBuffer();
+        let reader = new ChunkedFileReader();
+
+        reader.subscribe('chunk', function (e) {
+            spark.append(e.chunk);
+        });
+
+        reader.subscribe('end', function (e) {
+            let hash = spark.end();
+            console.log(hash);
+        });
+
+        reader.readChunks(file);
+    };
+
+};
