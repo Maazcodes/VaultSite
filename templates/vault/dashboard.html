@@ -503,15 +503,6 @@
             $spinner.hide();
             var $container = $("#dashboard-collections .dashboard-list");
             $container.empty();
-            for (let collection of json.collections) {
-                let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
-                    {#$("<span>").text(collection.id),#}
-                    $("<span>").text(collection.name),
-                ]).click(function () {
-                    selectCollection(collection.id, $item);
-                });
-                $container.append($item);
-            }
             if (json.collections.length == 0) {
                 let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
                     $("<span>").text("No Collections"),
@@ -529,9 +520,17 @@
                     showStats();
                     showFilesEvolutions();
                     showSummary();
-                });;
+                });
                 $container.append($item);
-            }
+                for (let collection of json.collections) {
+                    let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
+                        $("<span>").text(collection.name),
+                    ]).click(function () {
+                        selectCollection(collection.id, $item);
+                    });
+                    $container.append($item);
+                }
+            }   
             fetching -= 1;
         });
     }
