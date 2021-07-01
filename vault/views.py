@@ -14,6 +14,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from vault import forms
 from vault import models
+from vault.file_management import *
 from django.http import HttpResponse
 
 from django.views.decorators.csrf import csrf_exempt
@@ -29,12 +30,13 @@ def index(request):
 def dashboard(request):
     return TemplateResponse(request, "vault/dashboard.html", {})
 
+
 @login_required
 @csrf_exempt
 def create_collection(request):
     response = {}
     if request.method == "POST":
-        org = request.user.organization
+        org  = request.user.organization
         name = request.POST.get('name')
         if org:
             collection = models.Collection.objects.filter(organization=org, name=name)
@@ -44,17 +46,18 @@ def create_collection(request):
                 return return_text_report(json.dumps(response))
 
             new_collection = models.Collection.objects.create(
-                organization=org,
-                name=name,
-                target_replication=org.plan.default_replication,
-                fixity_frequency=org.plan.default_fixity_frequency,
+                organization       = org,
+                name               = name,
+                target_replication = org.plan.default_replication,
+                fixity_frequency   = org.plan.default_fixity_frequency,
             )
             new_collection.target_geolocations.set(org.plan.default_geolocations.all())
             new_collection.save()
-            response["code"] = 1
-            response["message"] = "Collection created Successfully."
+            response["code"]          = 1
+            response["message"]       = "Collection created Successfully."
             response["collection_id"] = new_collection.pk
     return return_text_report(json.dumps(response))
+
 
 @login_required
 def collections(request):
@@ -101,13 +104,13 @@ def collection(request, collection_id):
             messages.success(request, 'Collection settings updated.')
 
     collection = models.Collection.objects.filter(organization=org, pk=collection_id).annotate(
-        file_count=Count("file"),
-        total_size=Sum("file__size"),
-        last_modified=Max("file__modified_date"),
+        file_count    = Count("file"),
+        total_size    = Sum("file__size"),
+        last_modified = Max("file__modified_date"),
     ).first()
     form = forms.EditCollectionSettingsForm(initial=({
-        "target_replication": collection.target_replication,
-        "fixity_frequency": collection.fixity_frequency,
+        "target_replication":  collection.target_replication,
+        "fixity_frequency":    collection.fixity_frequency,
         "target_geolocations": collection.target_geolocations.all(),
     }))
     reports = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at")
@@ -135,43 +138,6 @@ def report(request, report_id):
 def deposit(request):
     return redirect("deposit_web")
 
-def create_or_update_file(request, attribs):
-    collection = models.Collection.objects.get(pk=attribs['collection'])
-
-    models.File.objects.update_or_create(
-        collection       = collection,
-        client_filename  = attribs['name'],
-        staging_filename = attribs['staging_filename'],
-        md5_sum          = attribs['md5sumV'],
-        sha1_sum         = attribs['sha1sumV'],
-        sha256_sum       = attribs['sha256sumV'],
-        defaults = {
-                 'size': attribs['sizeV'],
-            'file_type': attribs.get('file_type', None),
-          'uploaded_by': request.user,
-              'comment': attribs['comment'],
-        }
-    )
-
-
-def generateHashes(filename):
-    hashes = dict()
-    import hashlib
-    md5_hash    = hashlib.md5()
-    sha1_hash   = hashlib.sha1()
-    sha256_hash = hashlib.sha256()
-    with open(filename,"rb") as f:
-        # Read and update hash string value in blocks of 4K
-        for byte_block in iter(lambda: f.read(4096),b""):
-            md5_hash.update(byte_block)
-            sha1_hash.update(byte_block)
-            sha256_hash.update(byte_block)
-    f.close()
-    hashes['md5']    =    md5_hash.hexdigest()
-    hashes['sha1']   =   sha1_hash.hexdigest()
-    hashes['sha256'] = sha256_hash.hexdigest()
-    return hashes
-
 
 def create_attribs_dict(request, collection):
     retval = dict()
@@ -184,37 +150,6 @@ def create_attribs_dict(request, collection):
     retval['collname']      = collection.name
 
     return retval
-
-
-def move_temp_file(request, attribs):
-    import filetype
-    from pathlib import Path
-    from sanitize_filename import sanitize
-    from django.conf import settings
-
-    root = settings.MEDIA_ROOT
-
-    temp_file = attribs['tempfile']
-    ftype = filetype.guess(temp_file)
-    if ftype:
-        attribs['file_type'] = ftype.mime
-    org      = Path(attribs['orgname'])
-    coll     = Path(attribs['collname'])
-    filepath = Path(attribs['name'])
-
-    fname = os.path.basename(filepath)
-    fname = sanitize(fname)
-
-    userdir = os.path.dirname(filepath)
-    target_path = os.path.join(root, org, coll, userdir)
-    target_path = re.sub('[^a-zA-Z0-9_\-\/\.]', '_', target_path)
-    target_path = os.path.normpath(target_path)
-    Path(target_path).mkdir(parents=True, exist_ok=True)
-    target_file = target_path + '/' + fname
-    attribs['staging_filename'] = target_file
-    # Move the file on the filesystem
-    os.rename(temp_file.encode('U8'), target_file.encode('U8'))
-    create_or_update_file(request, attribs)
 
 
 def format_doaj_json(attribs):
@@ -246,6 +181,18 @@ def return_reload_deposit_web(request):
     })
 
 
+def validate_collection(request):
+    user_org = request.user.organization
+    if not user_org:
+        return redirect("dashboard")
+
+    collection_id = request.POST.get("collection", None)
+    collection    = get_object_or_404(models.Collection, pk=collection_id)
+    if collection.organization != user_org:
+        raise Http404
+    return collection_id
+
+
 #
 # @csrf_exempt required for curl, for example.
 #
@@ -255,13 +202,8 @@ def deposit_web(request):
     if request.method != "POST":
         return return_reload_deposit_web(request)
 
-    user_org = request.user.organization
-    if not user_org:
-        return redirect("dashboard")
-    collection_id = request.POST.get("collection", None)
-    collection = get_object_or_404(models.Collection, pk=collection_id)
-    if collection.organization != user_org:
-        raise Http404
+    collection_id = validate_collection(request)
+    collection    = get_object_or_404(models.Collection, pk=collection_id)
 
     reply = []
     # Accumulate request global attributes
@@ -302,25 +244,25 @@ def deposit_web(request):
             validated_total_size += f.size
             validated_file_count += 1
 
-    collection = models.Collection.objects.filter(pk=collection_id).annotate(
-        file_count=Count("file"),
-        total_size=Sum("file__size"),
+    collection     = models.Collection.objects.filter(pk=collection_id).annotate(
+        file_count = Count("file"),
+        total_size = Sum("file__size"),
     ).first()
 
     # TODO: get actual started_at value so we can keep track of upload duration
     models.Report.objects.create(
-        collection=collection,
-        report_type=models.Report.ReportType.DEPOSIT,
-        started_at=datetime.datetime.now(datetime.timezone.utc),
-        ended_at=datetime.datetime.now(datetime.timezone.utc),
-        total_size=validated_total_size,
-        file_count=validated_file_count,
-        collection_total_size=collection.total_size,
-        collection_file_count=collection.file_count,
-        error_count=0,
-        missing_location_count=0,
-        mismatch_count=0,
-        avg_replication=collection.target_replication,
+        collection             = collection,
+        report_type            = models.Report.ReportType.DEPOSIT,
+        started_at             = datetime.datetime.now(datetime.timezone.utc),
+        ended_at               = datetime.datetime.now(datetime.timezone.utc),
+        total_size             = validated_total_size,
+        file_count             = validated_file_count,
+        collection_total_size  = collection.total_size,
+        collection_file_count  = collection.file_count,
+        error_count            = 0,
+        missing_location_count = 0,
+        mismatch_count         = 0,
+        avg_replication        = collection.target_replication,
     )
 
     report = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at").first()
@@ -333,6 +275,7 @@ def deposit_web(request):
         return return_text_report(json.dumps(reply))
     else:
         return return_reload_deposit_web(request)
+
 
 @login_required
 def deposit_cli(request):
