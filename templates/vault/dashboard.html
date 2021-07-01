@@ -518,6 +518,18 @@
                 ]);
                 $container.append($item);
             }
+            else {
+                let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
+                    $("<span>").text("All Collections"),
+                ]).click(function () {
+                    selectedCollectionId = null;
+                    showReports();
+                    showStats();
+                    showFilesEvolutions();
+                    showSummary();
+                });;
+                $container.append($item);
+            }
             fetching -= 1;
         });
     }
