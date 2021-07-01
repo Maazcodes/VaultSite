@@ -519,10 +519,12 @@
                 $container.append($item);
             }
             else {
-                let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
+                let $item = $("<div id='all-collections'>").addClass("dashboard-list-item dashboard-list-collection selected").append([
                     $("<span>").text("All Collections"),
                 ]).click(function () {
                     selectedCollectionId = null;
+                    $(".dashboard-list-collection").removeClass("selected");
+                    $('#all-collections').addClass('selected');
                     showReports();
                     showStats();
                     showFilesEvolutions();
