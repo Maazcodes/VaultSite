@@ -512,6 +512,12 @@
                 });
                 $container.append($item);
             }
+            if (json.collections.length == 0) {
+                let $item = $("<div>").addClass("dashboard-list-item dashboard-list-collection").append([
+                    $("<span>").text("No Collections"),
+                ]);
+                $container.append($item);
+            }
             fetching -= 1;
         });
     }
