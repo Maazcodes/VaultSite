@@ -710,6 +710,9 @@
             }
             if (!collectionId) {
                 accountFilesEvolution.labels = labels;
+                for (let i=1;i< dataPoints.length;i++) {
+                    dataPoints[i] += dataPoints[i-1];
+                }
                 accountFilesEvolution.dataPoints = dataPoints;
             }
 
