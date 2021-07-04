@@ -78,29 +78,22 @@ def posix_path(s):
 
 
 def db_file_update(fname, bakname):
-    from django.http import HttpResponse
-    from django.db import transaction
-
-    class dbFileUpdateError(Exception):
+    class DBFileUpdateError(Exception):
         pass
 
-    f = models.File.objects.select_for_update().filter(
-            staging_filename=fname,
-            )
-    if f.count()   == 0:
+    try:
+        f = models.File.objects.get(staging_filename=fname)
+        f.staging_filename = bakname
+        f.save()
+        logger.info(f"staging_filename updated from {fname} to {bakname}")
+    except models.File.DoesNotExist:
         pass
-    elif f.count() == 1:
-        with transaction.atomic():
-            try:
-                f[0].staging_filename = bakname
-                f[0].save()
-                logger.info(f"staging_filename updated from {fname} to {bakname}")
-            except Exception as e:
-                logger.error(f"While handling {bakname} : {e}")
-    else:
-        err = f"db_file_update: {f.count()} db rows matched {fname}"
+    except models.File.MultipleObjectsReturned:
+        err = f"db_file_update: multiple db rows matched {fname}"
         logger.error(err)
-        raise dbFileUpdateError(err)
+        raise DBFileUpdateError(err)
+    except Exception as e:
+        logger.error(f"While handling {bakname} : {e}")
 
 
 def file_backup(fname):
