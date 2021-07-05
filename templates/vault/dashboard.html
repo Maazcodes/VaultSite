@@ -460,6 +460,8 @@
             $(".dashboard-list-collection").removeClass("selected");
             if (selectedCollectionId === collectionId) {
                 selectedCollectionId = null;
+                $(".dashboard-list-collection").removeClass("selected");
+                $('#all-collections').addClass('selected');
                 showReports();
                 showStats();
                 showFilesEvolutions();
