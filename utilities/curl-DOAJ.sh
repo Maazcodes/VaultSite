@@ -32,7 +32,7 @@ exit
 }
 
 set -o noglob
-LC_ALL=C
+#LC_ALL=C
 
 # Set DISABLED to something other than 0
 # for diagnostic output with no service
@@ -43,7 +43,7 @@ USER='doaj_uploader:Jasper2021!!'
 
 EMPTY='{}'
 
-#UPLOADER=https://phil-dev.us.archive.org/vault/deposit/web
+#UPLOADER=https://phil-dev.us.archive.org/deposit/web
 UPLOADER=https://wbgrp-svc600.us.archive.org/vault/deposit/web
 
 COOKIEJAR=${HOME}/.archiveOrg-curl-cookie-jar
@@ -63,25 +63,21 @@ chmod 0600 $COOKIEJAR
 # --proxy   socks5://localhost:1080
 #
 
-curl_command='curl  --globoff --insecure --silent --show-error
+curl_command='curl --globoff --insecure --silent --show-error
                 --user    $USER
                 --proxy   socks5://localhost:1080
                 --form    client=DOAJ_CLI
-                --form    username=${USER%:*}
                 --form    size=$size_bytes
                 --form    directories=$filepath
                 --form    organization=$ORGANIZATION_ID
-                --form    orgname=$EMPTY
                 --form    collection=$COLLECTION_ID
-                --form    collname=$COLLECTION
                 --form    file_field=$EMPTY
                 --form    dir_field=@$filepath
                 --form    webkitRelativePath=$filepath
-                --form    name=$filepath
                 --form    sha256sum=$SHA_256_SUM
                 --cookie  $COOKIEJAR --cookie-jar $COOKIEJAR
                 --referer $UPLOADER $UPLOADER'
-
+ 
 
 fsize() {
     local size=0
@@ -114,7 +110,7 @@ do
     then
          size_bytes=$(fsize "$filepath")
          SHA_256_SUM=$(shasum "$filepath")
-
+         
          #
          # In the Django views.py, the --form options are accessible as:
          #
@@ -128,16 +124,21 @@ do
          #
          #    With attributes: f.name f.size
          #
-
+        
         if [[ "$DISABLED" -eq 0 ]]
             then
                 json=$(eval $curl_command)
-
+            
                 if [ $? -gt 0 ]; then
-                    echo "$filepath : Transfer FAILED!:\n$err"
+                    echo "$filepath : Transfer FAILED!:\n$json"
                 else
                     #echo "$filepath : $size_bytes Bytes sent."
-                    echo "$json"
+                    if [ ${#json} -eq 0 ]; then
+                        echo "$filepath : Transfer FAILED!!"
+                        echo "Try using the --location-trusted option"
+                    else
+                        echo "$json"
+                    fi
                 fi
         else
             echo "$filepath $size_bytes Bytes. sha256sum: $SHA_256_SUM"
