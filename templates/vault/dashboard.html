@@ -255,8 +255,12 @@
             var bombs = [];
             for (let region of regions.reverse()) {
                 let details = regionDetails[region];
-                details.name = region;
-                bombs.push(details);
+		if (details === undefined) {
+		    console.log("details undefined for region: " + region);
+		} else {
+                    details.name = region;
+                    bombs.push(details);
+		}
             }
 
             bombMap.bubbles(bombs, {
@@ -708,9 +712,13 @@
                 let totalFileCount = 0;
                 for (let fileCount of Object.values(collectionsFiles)) totalFileCount += fileCount;
                 dataPoints.push(totalFileCount);
-                let year = report.endedAt.substr(2, 2);
-                let month = months[parseInt(report.endedAt.substr(5, 2)) - 1];
-                labels.push(month + " " + parseInt(report.endedAt.substr(8, 2)) + ", " + year);
+		if (report.endedAt === undefined) {
+		    console.log("report.endedAt is undefined!");
+		} else {
+                    let year = report.endedAt.substr(2, 2);
+                    let month = months[parseInt(report.endedAt.substr(5, 2)) - 1];
+                    labels.push(month + " " + parseInt(report.endedAt.substr(8, 2)) + ", " + year);
+		}
             }
             if (labels.length === 1) {
                 labels.push(labels[0]);
