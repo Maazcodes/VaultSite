@@ -1,4 +1,6 @@
 window.onload = function () {
+    if ( ! document.querySelector('#id_dir_field') ) { return }
+
     document.querySelector("#id_dir_field").addEventListener("change", function() {
         document.querySelector("#id_file_field").disabled = true;
         let directories = [];
@@ -182,7 +184,7 @@ window.onload = function () {
         return new Promise(resolve => setTimeout(resolve, ms));
     };
 
-
+    // needs to be called a level up so that it can return the hash value
     function MD5HashFile (file) {
         let spark  = new SparkMD5.ArrayBuffer();
         let reader = new ChunkedFileReader();
