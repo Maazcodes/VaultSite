@@ -26,7 +26,7 @@
 # Blame: phil@archive.org
 #
 
-LC_ALL=C
+export LANG="en_US.UTF-8"
 set -o noglob
 
 LOCKFILE="${HOME}/RSYNC_LOGS/rsync_vault.lock"
