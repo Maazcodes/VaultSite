@@ -29,4 +29,4 @@ Prototype Django UI for the Vault digital preservation service.
 - Should wsgi.py and asgi.py pick a different value for `os.environ.setdefault['DJANGO_SETTINGS_MODULE']`?
 
 ## Deploying Production Vault using Ansible
-ansible-playbook -i ansible/prod --vault-id @prompt ansible/setup-prod-vault.yml
+ansible-playbook -i ansible/prod --vault-id @prompt ansible/setup-prod-vault.yml -vvv
