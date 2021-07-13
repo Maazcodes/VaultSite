@@ -1,0 +1,4 @@
+{% if django_secret_key is defined %}
+SECRET_KEY: {{ django_secret_key }}
+{% endif %}
+SENTRY_DSN: {{ sentry_dsn }}

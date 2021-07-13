@@ -1,0 +1,5 @@
+---
+- name: Deploy Production Vault
+  hosts: vault
+  roles:
+    - prod_vault
