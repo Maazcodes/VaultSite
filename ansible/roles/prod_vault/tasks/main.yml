@@ -21,5 +21,8 @@
     repo: 'git@git.archive.org:dps/vault-site.git'
     dest: /opt/DPS/vault-site
     version: 'master'
-  notify:
-  - restart apache2
+
+- name: restart apache2
+  service: name=apache2 state=restarted
+  become: true
+  become_user: root
