@@ -1,4 +1,27 @@
 ---
+# We would need to install apache 
+# Then copy config files ..
+
 - name: install /etc/ait.yml
   become: true
   template: src=templates/vault.yml.j2 dest=/etc/vault.yml
+
+# Waiting for apache till all the connections are drained and then restarting it
+# - name: wait until apache2 connections are drained.
+#   wait_for:
+#    host: 0.0.0.0
+#    port: 80
+#    state: drained
+
+- name: Cloning the master branch of vault into /opt/DPS/vault-site
+  ansible.builtin.git:
+    repo: https://git.archive.org/dps/vault-site
+    dest: /opt/DPS/vault-site
+    single_branch: yes
+    version: master
+
+- name: Restart apache service.
+  systemd:
+    name: apache2
+    daemon_reload: yes
+    state: restarted
