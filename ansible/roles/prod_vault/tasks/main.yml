@@ -3,6 +3,7 @@
 # Then copy config files ..
 
 - name: install /etc/ait.yml
+  become_user: root
   become: true
   template: src=templates/vault.yml.j2 dest=/etc/vault.yml
 
@@ -13,15 +14,12 @@
 #    port: 80
 #    state: drained
 
-- name: Cloning the master branch of vault into /opt/DPS/vault-site
-  ansible.builtin.git:
-    repo: https://git.archive.org/dps/vault-site
+- name: Fetch Vault Site
+  become_user: root
+  become: yes
+  git:
+    repo: 'git@git.archive.org:dps/vault-site.git'
     dest: /opt/DPS/vault-site
-    single_branch: yes
-    version: master
-
-- name: Restart apache service.
-  systemd:
-    name: apache2
-    daemon_reload: yes
-    state: restarted
+    version: 'master'
+  notify:
+  - restart apache2
