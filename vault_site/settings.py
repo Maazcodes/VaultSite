@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
+import yaml
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -27,13 +28,15 @@ EMAIL_HOST = 'mail.archive.org'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
+conf = {}
+with open(os.environ.get('AIT_CONF', '/etc/vault.yml')) as f:
+    conf = yaml.load(f)
+
 # SECURITY WARNING: keep the secret key used in production secret!
-#SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
-with open('/etc/_django_secret_key_vault_') as f:
-    SECRET_KEY = f.read().strip()
+SECRET_KEY = conf.get('SECRET_KEY', 'devsecretkeyljkadfadfsjkl9ew0f02iefj20h8310hknsnlasd172yo1lnimposimfn')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = conf.get("DEBUG", True)
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'wbgrp-svc600.us.archive.org', '207.241.235.20', 'phil-dev.us.archive.org', '207.241.225.89', 'avdempsey-dev.us.archive.org']
 
@@ -168,6 +171,29 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'vault.User'
 
 LOGIN_URL = '/vault/accounts/login/'
+
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+sentry_sdk.init(
+    dsn=conf.get('SENTRY_DSN', ''),
+    integrations=[DjangoIntegration()],
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    # We recommend adjusting this value in production,
+    traces_sample_rate=1.0,
+
+    # If you wish to associate users to errors (assuming you are using
+    # django.contrib.auth) you may enable sending PII data.
+    send_default_pii=True,
+
+    # By default the SDK will try to use the SENTRY_RELEASE
+    # environment variable, or infer a git commit
+    # SHA as release, however you may want to set
+    # something more human-readable.
+    # release="myapp@1.0.0",
+)
+
 
 LOGGING = {
     'version': 1,
