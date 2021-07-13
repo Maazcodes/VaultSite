@@ -91,7 +91,6 @@ def db_file_update(fname, bakname):
         pass
     except models.File.MultipleObjectsReturned:
         err = f"db_file_update: multiple db rows matched {fname}"
-        capture_message(err)
         logger.error(err)
         raise DBFileUpdateError(err)
     except Exception as e:
