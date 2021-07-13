@@ -1,3 +1,4 @@
 ---
 django_secret_key: "{{ vault_secret_key }}"
 sentry_dsn: "{{ vault_sentry_dsn }}"
+debug: false
