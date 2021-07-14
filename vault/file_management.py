@@ -4,6 +4,7 @@ import logging
 import unicodedata
 import re
 from vault import models
+from sentry_sdk import capture_exception, capture_message
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,7 @@ def db_file_update(fname, bakname):
         logger.error(err)
         raise DBFileUpdateError(err)
     except Exception as e:
+        capture_exception(e)
         logger.error(f"While handling {bakname} : {e}")
 
 
