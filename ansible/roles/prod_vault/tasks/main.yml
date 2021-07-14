@@ -14,6 +14,8 @@
 #    port: 80
 #    state: drained
 
+# Note fetching will fail if there are local changes to /opt/DPS/vault-site
+# as force option is no by default in ansible.builtin.git
 - name: Fetch Vault Site
   become_user: root
   become: yes
@@ -21,6 +23,12 @@
     repo: 'git@git.archive.org:dps/vault-site.git'
     dest: /opt/DPS/vault-site
     version: 'master'
+
+- name: Creating venv and install requirements.txt
+  pip: 
+    requirements: /opt/DPS/vault-site/requirements.txt
+    virtualenv: /opt/DPS/vault-site-env
+    virtualenv_python: python3.8
 
 - name: restart apache2
   service: name=apache2 state=restarted
