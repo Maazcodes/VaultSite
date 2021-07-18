@@ -230,6 +230,7 @@
     };
 
     function createWorldmap(regions) {
+        $('#worldmap .chart-container').remove();
         chartalign.register("#worldmap .chart", function (width, height) {
             return $("<div style=\"position: relative; width: " + width + "px; height: " + height + "px;\"></div>");
         }, function ($el) {
