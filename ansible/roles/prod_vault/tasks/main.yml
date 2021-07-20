@@ -25,10 +25,12 @@
     version: 'master'
 
 - name: Creating venv and install requirements.txt
-  pip: 
+  become: true
+  become_user: root
+  pip:
     requirements: /opt/DPS/vault-site/requirements.txt
     virtualenv: /opt/DPS/vault-site-env
-    virtualenv_python: python3.8
+    virtualenv_command: /usr/bin/python3.8 -m venv
 
 - name: restart apache2
   service: name=apache2 state=restarted
