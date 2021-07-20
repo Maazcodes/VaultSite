@@ -35,20 +35,19 @@ window.onload = function () {
     const form = document.querySelector('form')
     form.addEventListener('submit', event => {
         event.preventDefault();
+        document.querySelector("#Submit").disabled = true;
 
         // Empty message box
         document.querySelector('#stats').innerHTML = '';
 
-        // It amazes me that the shasums are available!
-        
         // Checking if either the file/directory is selected for upload
         if (document.querySelector("#id_directories").value) {
-            
+
             //Showing progress bar
             document.getElementById('progress_bar').style.display = 'inline-block';
             // Changing the text of upload button
-            $('#deposit_submit_btn').val('Uploading...');
-            
+            $('#Submit').val('Uploading...');
+
             // Checking to see if all shasums have been calculated before posting to server.
             Promise.allSettled(promises).then(() => {
                 // Just a safety layer so that doSomeSums function's .then() gets executed before.
@@ -58,7 +57,7 @@ window.onload = function () {
         else { // Showing message to select a file/directory before clicking submit button
             document.querySelector('#stats').innerHTML = 'Please select files/directories to upload.';
         }
-    
+
     })
 
     function formatBytes(bytes, decimals = 2) {
@@ -130,15 +129,6 @@ window.onload = function () {
              console.log(msg);
              console.log(xhr.response);
 
-             //Hiding progress bar
-             document.getElementById('progress_bar').style.display = 'none';
-
-             $('#deposit_submit_btn').val('Upload Files');
-             
-             // Emptying hidden values for directories and sizes.
-             document.querySelector("#id_directories").value = "";
-             document.querySelector("#id_sizes").value = "";
-
              resetForm();
          };
 
@@ -148,9 +138,14 @@ window.onload = function () {
 
     function resetForm() {
         form.reset();
-        document.querySelector("#id_file_field").disabled = false;
-        document.querySelector("#id_dir_field").disabled = false;
-        document.querySelector('#progress_bar').value = 0;
+        document.getElementById('progress_bar').style.display = 'none';
+        document.querySelector("#Submit").value   = "Upload Files";
+        document.querySelector("#id_directories").value       = "";
+        document.querySelector("#id_sizes").value             = "";
+        document.querySelector("#Submit").disabled            = false;
+        document.querySelector("#id_file_field").disabled     = false;
+        document.querySelector("#id_dir_field").disabled      = false;
+        document.querySelector('#progress_bar').value         = 0;
     };
 
 
@@ -220,3 +215,4 @@ window.onload = function () {
     };
 
 };
+
