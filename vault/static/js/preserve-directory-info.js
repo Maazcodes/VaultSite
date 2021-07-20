@@ -30,7 +30,8 @@ window.onload = function () {
         doSomeSums(files);
     });
 
-
+    let promises = [];
+    let shasumsList = [];
     const form = document.querySelector('form')
     form.addEventListener('submit', event => {
         event.preventDefault();
@@ -38,13 +39,26 @@ window.onload = function () {
         // Empty message box
         document.querySelector('#stats').innerHTML = '';
 
-        //Showing progress bar
-        document.getElementById('progress_bar').style.display = 'inline-block';
-
-        $('#deposit_submit_btn').val('Uploading...');
-
         // It amazes me that the shasums are available!
-        XHRuploadFiles(form);
+        
+        // Checking if either the file/directory is selected for upload
+        if (document.querySelector("#id_directories").value || document.querySelector("#id_sizes").value) {
+            
+            //Showing progress bar
+            document.getElementById('progress_bar').style.display = 'inline-block';
+            // Changing the text of upload button
+            $('#deposit_submit_btn').val('Uploading...');
+            
+            // Checking to see if all shasums have been calculated before posting to server.
+            Promise.allSettled(promises).then(() => {
+                // Just a safety layer so that doSomeSums function's .then() gets executed before.
+                setTimeout(function() { XHRuploadFiles(form); }, 100);
+            });
+        }
+        else { // Showing message to select a file/directory before clicking submit button
+            document.querySelector('#stats').innerHTML = 'Please select files/directories to upload.';
+        }
+    
     })
 
     function formatBytes(bytes, decimals = 2) {
@@ -161,7 +175,7 @@ window.onload = function () {
 
     async function doSomeSums(files) {
         let tooBig = 1024*1024*1024;
-        let promises = [];
+        promises = [];
         let idx = 0;
         shasumsList = [];
         for (var file of files) {
