@@ -138,17 +138,19 @@ def report(request, report_id):
 def deposit(request):
     return redirect("deposit_web")
 
-
-def create_attribs_dict(request, collection):
+def create_attribs_dict(request):
     retval = dict()
     retval['comment']       = request.POST.get('comment', "")
     retval['client']        = request.POST.get('client', "")
-    retval['collection']    = collection.pk
+    retval['collection']    = request.POST.get('collection', None)
     retval['username']      = request.META.get('REMOTE_USER', "")
     retval['organization']  = request.user.organization.id
     retval['orgname']       = request.user.organization.name
-    retval['collname']      = collection.name
-
+    try:
+        pk_id = retval['collection']
+        retval['collname']  = models.Collection.objects.get(pk=pk_id).name
+    except:
+        retval['collname']  = ""
     return retval
 
 
@@ -208,7 +210,7 @@ def deposit_web(request):
     reply = []
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
-    attribs = create_attribs_dict(request, collection)
+    attribs = create_attribs_dict(request)
 
     directories = request.POST.get("directories", "")
     directories = directories.split(",")
@@ -235,8 +237,19 @@ def deposit_web(request):
             attribs['sha1sumV']   = hashes['sha1']
             attribs['sha256sumV'] = hashes['sha256']
             attribs['name']       = directories.pop(0)
-            attribs['sha256sum']  = shasums.pop(0)
-            attribs['size']       = sizes.pop(0)
+
+            try:
+                attribs['sha256sum']  = shasums.pop(0)
+            except IndexError:
+                attribs['sha256sum']  = "0" * 64
+                logger.error(f"sha256sum for {attribs['name']} not in shasums list")
+            try:
+                attribs['size']       = sizes.pop(0)
+            except IndexError:
+                attribs['size']       = 0
+                logger.error(f"size for {attribs['name']} not in sizes list")
+
+
 
             move_temp_file(request, attribs)
             logger.info(json.dumps(attribs))

@@ -99,6 +99,9 @@ def db_file_update(fname, bakname):
 
 
 def file_backup(fname):
+    class FileBackupError(Exception):
+        pass
+
     if os.path.isfile(fname):
         i = 1
         bakname = fname
@@ -108,6 +111,12 @@ def file_backup(fname):
         os.rename(fname, bakname)
         db_file_update(fname, bakname)
         logger.info(f"moved {fname} to {bakname}")
+    elif os.path.isfile(fname + '.~1~'):
+        err = f"File {fname} does NOT exist, BUT bakfile DOES!"
+        logger.error(err)
+        raise FileBackupError(err)
+    else:
+        pass
 
 
 def move_temp_file(request, attribs):
