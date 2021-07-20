@@ -30,7 +30,7 @@ EMAIL_HOST = 'mail.archive.org'
 
 conf = {}
 with open(os.environ.get('AIT_CONF', '/etc/vault.yml')) as f:
-    conf = yaml.load(f)
+    conf = yaml.safe_load(f)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = conf.get('SECRET_KEY', 'devsecretkeyljkadfadfsjkl9ew0f02iefj20h8310hknsnlasd172yo1lnimposimfn')
