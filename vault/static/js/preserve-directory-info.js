@@ -42,7 +42,7 @@ window.onload = function () {
         // It amazes me that the shasums are available!
         
         // Checking if either the file/directory is selected for upload
-        if (document.querySelector("#id_directories").value || document.querySelector("#id_sizes").value) {
+        if (document.querySelector("#id_directories").value) {
             
             //Showing progress bar
             document.getElementById('progress_bar').style.display = 'inline-block';
