@@ -134,6 +134,10 @@ window.onload = function () {
              document.getElementById('progress_bar').style.display = 'none';
 
              $('#deposit_submit_btn').val('Upload Files');
+             
+             // Emptying hidden values for directories and sizes.
+             document.querySelector("#id_directories").value = "";
+             document.querySelector("#id_sizes").value = "";
 
              resetForm();
          };
