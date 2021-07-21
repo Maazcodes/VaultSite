@@ -56,6 +56,7 @@ window.onload = function () {
         }
         else { // Showing message to select a file/directory before clicking submit button
             document.querySelector('#stats').innerHTML = 'Please select files/directories to upload.';
+            document.querySelector("#Submit").disabled = false;
         }
 
     })
@@ -139,7 +140,7 @@ window.onload = function () {
     function resetForm() {
         form.reset();
         document.getElementById('progress_bar').style.display = 'none';
-        document.querySelector("#Submit").value   = "Upload Files";
+        document.querySelector("#Submit").value               = "Upload Files";
         document.querySelector("#id_directories").value       = "";
         document.querySelector("#id_sizes").value             = "";
         document.querySelector("#Submit").disabled            = false;
@@ -196,6 +197,7 @@ window.onload = function () {
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     };
+
 
     // needs to be called a level up so that it can return the hash value
     function MD5HashFile (file) {
