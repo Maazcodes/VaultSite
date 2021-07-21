@@ -196,6 +196,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': '/opt/DPS/vault-site/django-debug.log',
+            'formatter': 'plain',
         },
     },
     'root': {
@@ -206,8 +207,7 @@ LOGGING = {
         'vault': {
             'handlers': ['file'],
             'level': 'INFO',
-            'formatter': 'plain',
-            'propagate': True,
+            'propagate': False,
         },
     },
 }
