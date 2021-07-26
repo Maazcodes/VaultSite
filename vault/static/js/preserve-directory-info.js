@@ -1,6 +1,49 @@
 window.onload = function () {
     if ( ! document.querySelector('#id_dir_field') ) { return }
 
+    function getTotalUsedData() {
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/collections_stats', false);
+        xhr.send();
+
+        if (xhr.status === 200) {
+            let res           = JSON.parse(xhr.responseText);
+            let consumedBytes = 0;
+            
+            for (let collection of res.collections) {
+                consumedBytes += (collection.totalSize || 0);
+            }
+            
+            return consumedBytes;
+        }
+        else {
+            // TODO: on error from API.
+            console.error('<b>Request Failed: Failed to fetch collection stats.</b>');
+        }
+    }
+
+    function enforceQuota(totalUploadSize, files) {
+        let quota        = parseInt(document.querySelector("#organization_quota").value);
+        let accountStats = getTotalUsedData();
+        
+        document.querySelector('#stats').innerHTML = '';
+
+        if(accountStats + totalUploadSize > quota) {
+            
+            document.querySelector("#id_directories").value       = "";
+            document.querySelector("#id_sizes").value             = "";
+            document.querySelector("#id_file_field").disabled     = false;
+            document.querySelector("#id_dir_field").disabled      = false;
+            document.querySelector("#id_file_field").value        = "";
+            document.querySelector("#id_dir_field").value         = "";
+            
+            alert("Your upload of size " + formatBytes(totalUploadSize, 3) + " will take you over your Quota of " + formatBytes(quota, 3) + ". Total used quota: " + formatBytes(accountStats, 3));
+        }
+        else {
+            doSomeSums(files);
+        }
+    }
+
     document.querySelector("#id_dir_field").addEventListener("change", function() {
         document.querySelector("#id_file_field").disabled = true;
         let directories = [];
@@ -12,7 +55,7 @@ window.onload = function () {
         }
         document.querySelector("#id_directories").value = directories.toString();
         document.querySelector("#id_sizes").value = sizes.toString();
-        doSomeSums(files);
+        enforceQuota(sizes.reduce((a, b) => a + b, 0), files);
     });
 
 
@@ -27,12 +70,12 @@ window.onload = function () {
         }
         document.querySelector("#id_directories").value = directories.toString();
         document.querySelector("#id_sizes").value = sizes.toString();
-        doSomeSums(files);
+        enforceQuota(sizes.reduce((a, b) => a + b, 0), files);
     });
 
     let promises = [];
     let shasumsList = [];
-    const form = document.querySelector('form')
+    const form = document.querySelector('form');
     form.addEventListener('submit', event => {
         event.preventDefault();
         document.querySelector("#Submit").disabled = true;
@@ -97,7 +140,7 @@ window.onload = function () {
          };
 
          let xhr = new XMLHttpRequest();
-         xhr.open('POST', '/vault/deposit/web', true);
+         xhr.open('POST', '/vault/deposit/web', true); // async option is set to true here
 
          xhr.onerror = function () {
              console.error('<b>Request Failed: Network Error.</b>');

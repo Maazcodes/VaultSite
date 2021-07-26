@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Max
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
 
 from . import models
 
@@ -35,7 +36,7 @@ def reports(request):
         ]
     })
 
-
+@csrf_exempt
 @login_required
 def collections_stats(request):
     org = request.user.organization

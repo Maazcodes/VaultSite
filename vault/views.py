@@ -180,6 +180,7 @@ def return_reload_deposit_web(request):
         "collections": collections,
         "filenames": "",
         "form": form,
+        "quota_bytes": request.user.organization.quota_bytes,
     })
 
 
