@@ -3,7 +3,7 @@ window.onload = function () {
 
     function getTotalUsedData() {
         let xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/collections_stats', false);
+        xhr.open('POST', '/vault/api/collections_stats', false);
         xhr.send();
 
         if (xhr.status === 200) {
