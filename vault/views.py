@@ -186,7 +186,7 @@ def format_filelist_json(request):
             }
     }
 
-   return json.dumps(request_list)
+    return json.dumps(request_list)
 
 
 def return_doaj_report(attribs):
