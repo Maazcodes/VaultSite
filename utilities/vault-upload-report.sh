@@ -48,12 +48,6 @@ do
     org=${path[4]}
     coll=${path[5]}
 
-    if [[ ! "$org" == "$ORG" ]]
-    then
-        ORG="$org"
-        echo "*** $org ***"
-    fi
-
     if [[ ! "$coll" == "$COLL" ]]
     then
         [[ ${#COLL} ]] && \
@@ -63,6 +57,15 @@ do
         COLL="$coll"
         #echo "    $coll"
     fi
+
+    if [[ ! "$org" == "$ORG" ]]
+    then
+        ORG="$org"
+        total=0
+        nfiles=0
+        echo "*** $org ***"
+    fi
+
 
     size=$(fsize "$upload")
     N_FILES=$(($N_FILES + 1))
@@ -74,6 +77,7 @@ do
     #echo "        $relative_path $(human $size)"
 done
 
+echo "$ORG/$COLL Total last $N_DAYS days: $(human $total) in $nfiles files"
 echo ''
 echo "Note that the web upload page includes directories in the uploaded file count"
 echo ''
