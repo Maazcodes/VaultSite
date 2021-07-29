@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Name: vault-upload-report.sh
+#
+# Cal with no arguments for a report on the uploads
+# "So far this week".
+#
+#
+# Blame: phil@archive.org
+#
+
 set -o noglob
 
 WEEKDAY=$(date +%u)
@@ -40,7 +49,7 @@ human() {
 
 total=0
 nfiles=0
-for upload in $(IFS=$'\n' find /opt/DPS/files -mtime -$N_DAYS)
+for upload in $(IFS=$'\n' find /opt/DPS/files -daystart -mtime -$N_DAYS)
 do
     [[ ! -f "$upload" ]] && continue
     IFS='/' read -r -a path <<< "$upload"
@@ -51,7 +60,7 @@ do
     if [[ ! "$coll" == "$COLL" ]]
     then
         [[ ${#COLL} ]] && \
-            echo "$ORG/$COLL Total last $N_DAYS days: $(human $total) in $nfiles files" && echo ''
+            echo "$ORG/$COLL Total last $N_DAYS days: $(human $total) ($total B) in $nfiles files" && echo ''
         total=0
         nfiles=0
         COLL="$coll"
@@ -66,7 +75,6 @@ do
         echo "*** $org ***"
     fi
 
-
     size=$(fsize "$upload")
     N_FILES=$(($N_FILES + 1))
 
@@ -77,10 +85,10 @@ do
     #echo "        $relative_path $(human $size)"
 done
 
-echo "$ORG/$COLL Total last $N_DAYS days: $(human $total) in $nfiles files"
+echo "$ORG/$COLL Total last $N_DAYS days: $(human $total) ($total B) in $nfiles files"
 echo ''
 echo "Note that the web upload page includes directories in the uploaded file count"
 echo ''
 echo "Total number of files uploaded in last $N_DAYS days: $N_FILES"
 echo ''
-echo "Total size of files uploaded in last $N_DAYS days: $(human $BYTES_TOTAL)"
+echo "Total size of files uploaded in last $N_DAYS days: $(human $BYTES_TOTAL) ($BYTES_TOTAL B)"
