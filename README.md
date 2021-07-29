@@ -30,3 +30,6 @@ Prototype Django UI for the Vault digital preservation service.
 
 ## Deploying Production Vault using Ansible
 ansible-playbook -i ansible/prod --vault-id @prompt ansible/setup-prod-vault.yml -vvv
+
+## Deploying QA Vault using Ansible
+ansible-playbook -i ansible/qa --vault-id vault-qa@prompt ansible/setup-qa-vault.yml -vvv
