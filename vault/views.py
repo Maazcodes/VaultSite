@@ -94,13 +94,12 @@ def collection(request, collection_id):
     org = request.user.organization
     if request.method == "POST":
         form = forms.EditCollectionSettingsForm(request.POST)
-        collection = models.Collection.objects.select_for_update().get(pk=collection_id)
+        collection = models.Collection.objects.get(pk=collection_id)
         if form.is_valid() and collection.organization == org:
-            with transaction.atomic():
-                collection.target_replication = form.cleaned_data["target_replication"]
-                collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
-                collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
-                collection.save()
+            collection.target_replication = form.cleaned_data["target_replication"]
+            collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
+            collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
+            collection.save()
             messages.success(request, 'Collection settings updated.')
 
     collection = models.Collection.objects.filter(organization=org, pk=collection_id).annotate(
