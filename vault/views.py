@@ -164,6 +164,31 @@ def format_doaj_json(attribs):
     return json.dumps(attr)
 
 
+# Format all the string data from the request as a JSON blob
+def format_filelist_json(request):
+    collpk = request.POST.get('collection', None)
+    try:
+        collname = models.Collection.objects.get(pk=collpk).name
+    except:
+        collname = ""
+    org     = request.user.organization.name
+    dirs    = request.POST.get("directories", "")
+    shasums = request.POST.get("shasums", "")
+    sizes   = request.POST.get("sizes", "")
+
+    request_list = {
+            'filelist': {
+                'org'         : org,
+                'collection'  : collname,
+                'directories' : dirs,
+                'sha256sums'  : shasums,
+                'sizes'       : sizes,
+            }
+    }
+
+    return json.dumps(request_list)
+
+
 def return_doaj_report(attribs):
         data = format_doaj_json(attribs)
         return HttpResponse(data, content_type='application/json')
@@ -208,6 +233,7 @@ def deposit_web(request):
     collection    = get_object_or_404(models.Collection, pk=collection_id)
 
     reply = []
+    logger.info(format_filelist_json(request))
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
     attribs = create_attribs_dict(request)
@@ -248,8 +274,6 @@ def deposit_web(request):
             except IndexError:
                 attribs['size']       = 0
                 logger.error(f"size for {attribs['name']} not in sizes list")
-
-
 
             move_temp_file(request, attribs)
             logger.info(json.dumps(attribs))
