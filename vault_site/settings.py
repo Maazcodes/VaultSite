@@ -38,7 +38,7 @@ SECRET_KEY = conf.get('SECRET_KEY', 'devsecretkeyljkadfadfsjkl9ew0f02iefj20h8310
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = conf.get("DEBUG", True)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'wbgrp-svc600.us.archive.org', '207.241.235.20', 'phil-dev.us.archive.org', '207.241.225.89', 'avdempsey-dev.us.archive.org']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'wbgrp-svc600.us.archive.org', '207.241.235.20', 'phil-dev.us.archive.org', '207.241.225.89', 'avdempsey-dev.us.archive.org', 'wbgrp-svc018.us.archive.org']
 
 FILE_UPLOAD_HANDLERS = [
     #'django.core.files.uploadhandler.MemoryFileUploadHandler',

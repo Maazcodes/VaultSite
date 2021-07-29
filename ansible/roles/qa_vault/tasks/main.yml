@@ -2,7 +2,7 @@
 # We would need to install apache 
 # Then copy config files ..
 
-- name: install apache
+- name: install dependencies
   become: true
   become_user: root
   apt:
@@ -11,7 +11,10 @@
     name:
     - apache2
     - libapache2-mod-wsgi-py3
-    - ssl-cert mtree-netbsd tree
+    - ssl-cert 
+    - mtree-netbsd
+    - tree
+    - python3.8-venv
 
 - name: Running a2enmod ssl
   become_user: "root"
@@ -28,10 +31,69 @@
   become: true
   become_user: root
 
+- name: Copy apache.input file from apache_configs if it does not exist 
+  become_user: "root"
+  become: true
+  copy:
+    src: /opt/DPS/vault-site/apache_configs/apache.input
+    dest: /etc/ferm/input/apache.input
+    owner: root
+    group: root
+
 - name: Restarting ferm
   become_user: "root"
   become: true
   command: /etc/init.d/ferm restart
+  when: not stat_result.stat.exists
+
+- name: Check if files exists
+  stat:
+    path: /opt/DPS/files/
+  register: stat_result
+
+- name: Create the file, if it doesnt exist already
+  become_user: "root"
+  become: true
+  file:
+    path: /opt/DPS/files/Archive
+    state: directory
+  when: not stat_result.stat.exists
+
+- name: Check if .htgroups exists
+  become_user: "root"
+  become: true
+  stat:
+    path: /opt/DPS/.htgroups
+  register: stat_result
+
+- name: Copy .htgroups from apache_configs if it does not exist 
+  become_user: "root"
+  become: true
+  copy:
+    src: /opt/DPS/vault-site/apache_configs/.htgroups
+    dest: /opt/DPS/.htgroups
+    owner: root
+    group: root
+  when: not stat_result.stat.exists
+
+- name: Check if .htpasswd exists
+  become_user: "root"
+  become: true
+  stat:
+    path: /opt/DPS/.htpasswd
+  register: stat_result
+
+- name: Setting up .htpasswd file if it does not exist
+  become_user: "root"
+  become: true
+  command: htpasswd -c /opt/DPS/.htpasswd tabish {{ default_password }}
+  when: not stat_result.stat.exists
+
+- name: Create symbolic link 
+  file:
+    src: "{{SOURCE_FOLDER}}"
+    dest: "/opt/application/i99/SYMLINK"
+    state: link
 
 - name: install /etc/ait.yml
   become_user: root
@@ -60,7 +122,7 @@
   become_user: root
   pip:
     requirements: /opt/DPS/vault-site/requirements.txt
-    virtualenv: /opt/DPS/vault-site-env
+    virtualenv: /opt/DPS/vault-site-venv
     virtualenv_command: /usr/bin/python3.8 -m venv
 
 - name: restart apache2

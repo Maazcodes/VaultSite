@@ -29,7 +29,7 @@
   become_user: root
   pip:
     requirements: /opt/DPS/vault-site/requirements.txt
-    virtualenv: /opt/DPS/vault-site-env
+    virtualenv: /opt/DPS/vault-site-venv
     virtualenv_command: /usr/bin/python3.8 -m venv
 
 - name: restart apache2

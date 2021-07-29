@@ -1,0 +1,4 @@
+saddr $CLUSTER proto tcp dport http ACCEPT;
+proto tcp dport http REJECT;
+saddr $CLUSTER proto tcp dport https ACCEPT;
+proto tcp dport https REJECT;
