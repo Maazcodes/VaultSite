@@ -120,11 +120,11 @@ DATABASES = {
     # }
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': '0.0.0.0',
-        'PORT': '5432',
+        'NAME': conf.get('VAULT_POSTGRES_NAME', 'vault'),
+        'USER': conf.get('VAULT_POSTGRES_USER', 'vault'),
+        'PASSWORD': conf.get('VAULT_POSTGRES_PASSWORD', 'vault'),
+        'HOST': conf.get('VAULT_POSTGRES_HOST', '127.0.0.1'),
+        'PORT': conf.get('VAULT_POSTGRES_PORT', '5432'),
     }
 }
 
