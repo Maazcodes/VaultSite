@@ -82,6 +82,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'vault.context_processors.sentry_dsn',
             ],
         },
     },
@@ -175,10 +176,12 @@ LOGIN_URL = '/vault/accounts/login/'
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
+SENTRY_DSN = conf.get('SENTRY_DSN', '')
+
 sentry_sdk.init(
-    dsn=conf.get('SENTRY_DSN', ''),
-    integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,
+    dsn                 = SENTRY_DSN,
+    integrations        = [DjangoIntegration()],
+    traces_sample_rate  = 1.0,
 )
 
 
