@@ -115,7 +115,7 @@
   git:
     repo: 'git@git.archive.org:dps/vault-site.git'
     dest: /opt/DPS/vault-site
-    version: 'master'
+    version: 'qa'
 
 - name: Creating venv and install requirements.txt
   become: true
