@@ -114,9 +114,17 @@ AUTHENTICATION_BACKENDS = [
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': conf.get('VAULT_POSTGRES_NAME', 'vault'),
+        'USER': conf.get('VAULT_POSTGRES_USER', 'vault'),
+        'PASSWORD': conf.get('VAULT_POSTGRES_PASSWORD', 'vault'),
+        'HOST': conf.get('VAULT_POSTGRES_HOST', '127.0.0.1'),
+        'PORT': conf.get('VAULT_POSTGRES_PORT', '5432'),
     }
 }
 
