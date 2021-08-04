@@ -309,6 +309,11 @@ def deposit_web(request):
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)
     elif reply:
+        # HOW TO FAKE A 408
+        #response = HttpResponse('Timeout!')
+        #response['status'] = 408
+        #return response
+
         return return_text_report(json.dumps(reply))
     else:
         return return_reload_deposit_web(request)

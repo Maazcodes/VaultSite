@@ -19,6 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 MEDIA_ROOT = Path('/opt/DPS/files/')
 
+SHADIR_ROOT = Path('/opt/DPS/SHA_DIR/')
+
 FILE_UPLOAD_TEMP_DIR = Path('/opt/DPS/tmp/')
 
 #LOGIN_REDIRECT_URL = '/dashboard'
@@ -199,6 +201,8 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': '/opt/DPS/vault-site/django-debug.log',
+            # 'maxBytes': 1024*1024*100,
+            # 'backupCount': 100,
             'formatter': 'plain',
         },
     },

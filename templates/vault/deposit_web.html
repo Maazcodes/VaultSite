@@ -29,6 +29,7 @@
                         <input id="Submit" type="submit" name="Submit" value="Upload Files" class="button small padding-top padding-bottom half left">
                         <progress id="progress_bar" value="0" max="100" disabled="true"> 0% </progress>
                     </form>
+                    <input type="button" name="cancel_button" id="cancel_button" value="Cancel Upload">
                     <input id="organization_quota" name="organization_quota" type="hidden" value="{{ request.user.organization.quota_bytes }}">
 		            <div id="stats" name="stats"></div>
                     {% else %}
