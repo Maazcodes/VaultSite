@@ -125,6 +125,7 @@ DATABASES = {
         'PASSWORD': conf.get('VAULT_POSTGRES_PASSWORD', 'vault'),
         'HOST': conf.get('VAULT_POSTGRES_HOST', '127.0.0.1'),
         'PORT': conf.get('VAULT_POSTGRES_PORT', '5432'),
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
 
