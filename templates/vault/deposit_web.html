@@ -8,7 +8,7 @@
                 <div class="small-12 columns">
                     <h3>Upload Files</h3>
                     {% if collections %}
-                    <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post">
+                    <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post" name="upload_form" id="upload_form">
                         {{ csrf_input }}
                         <div class="form-group">
                             <label>Collections: (<a href="javascript:void(0);" onclick="show_modal();">Create a new Collection</a>) </label>
