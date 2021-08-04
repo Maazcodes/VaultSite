@@ -1,12 +1,16 @@
 window.onload = function () {
     if ( ! document.querySelector('#id_dir_field') ) { return }
+
     globalStartTime = performance.now();
-    globalRetryDelay = 60000; //1 minute
-    globalRetryTimeout = globalRetryDelay / 1000 * 20; //20 minutes
+    retryDelay408 = 60000; //1 minute
+    retryTimeout408 = retryDelay408 / 1000 * 20; //20 minutes
+    retryTimeoutID408 = {};
     ABORT_REQUESTED = false;
+    RETRYING_ON_408 = false;
 
     document.querySelector("#cancel_button").value = "Reset Form";
     document.querySelector('#cancel_button').addEventListener("click", resetForm);
+
 
     function getTotalUsedData() {
         let xhr = new XMLHttpRequest();
@@ -22,12 +26,12 @@ window.onload = function () {
             }
             
             return consumedBytes;
-        }
-        else {
+        } else {
             // TODO: on error from API.
             console.error('<b>Request Failed: Failed to fetch collection stats.</b>');
         }
     }
+
 
     function enforceQuota(totalUploadSize, files) {
         let quota        = parseInt(document.querySelector("#organization_quota").value);
@@ -37,19 +41,22 @@ window.onload = function () {
 
         if(accountStats + totalUploadSize > quota) {
             
-            document.querySelector("#id_directories").value       = "";
-            document.querySelector("#id_sizes").value             = "";
-            document.querySelector("#id_file_field").disabled     = false;
-            document.querySelector("#id_dir_field").disabled      = false;
-            document.querySelector("#id_file_field").value        = "";
-            document.querySelector("#id_dir_field").value         = "";
+            document.querySelector("#id_directories").value   = "";
+            document.querySelector("#id_sizes").value         = "";
+            document.querySelector("#id_file_field").disabled = false;
+            document.querySelector("#id_dir_field").disabled  = false;
+            document.querySelector("#id_file_field").value    = "";
+            document.querySelector("#id_dir_field").value     = "";
             
-            alert("Your upload of size " + formatBytes(totalUploadSize, 3) + " will take you over your Quota of " + formatBytes(quota, 3) + ". Total used quota: " + formatBytes(accountStats, 3));
-        }
-        else {
+            let msg =  "Your upload of size " + formatBytes(totalUploadSize, 3);
+                msg += " will take you over your Quota of " + formatBytes(quota, 3);
+                msg += ". Total used quota: " + formatBytes(accountStats, 3);
+            alert(msg);
+        } else {
             doSomeSums(files);
         }
     }
+
 
     document.querySelector("#id_dir_field").addEventListener("change", function() {
         document.querySelector("#id_file_field").disabled = true;
@@ -57,12 +64,15 @@ window.onload = function () {
         let directories = [];
         let sizes       = [];
         let files = document.querySelector("#id_dir_field").files;
+
         for (var file of files) {
             directories.push(file.webkitRelativePath);
             sizes.push(file.size);
         }
+
         document.querySelector("#id_directories").value = directories.toString();
         document.querySelector("#id_sizes").value = sizes.toString();
+        
         enforceQuota(sizes.reduce((a, b) => a + b, 0), files);
     });
 
@@ -73,18 +83,23 @@ window.onload = function () {
         let directories = [];
         let sizes       = [];
         let files = document.querySelector("#id_file_field").files;
+
         for (var file of files) {
             directories.push(file.name);
             sizes.push(file.size);
         }
+        
         document.querySelector("#id_directories").value = directories.toString();
         document.querySelector("#id_sizes").value = sizes.toString();
+       
         enforceQuota(sizes.reduce((a, b) => a + b, 0), files);
     });
+
 
     let promises = [];
     let shasumsList = [];
     const form = document.querySelector('form');
+
     form.addEventListener('submit', event => {
         event.preventDefault();
         document.querySelector("#Submit").disabled = true;
@@ -105,13 +120,12 @@ window.onload = function () {
                 // Just a safety layer so that doSomeSums function's .then() gets executed before.
                 setTimeout(function() { XHRuploadFiles(form); }, 100);
             });
-        }
-        else { // Showing message to select a file/directory before clicking submit button
-            document.querySelector('#stats').innerHTML = 'Please select files/directories to upload.';
+        } else { // Showing message to select a file/directory before clicking submit button
+            document.querySelector('#stats').innerHTML = '<b>Please select files/directories to upload.</b>';
             document.querySelector("#Submit").disabled = false;
         }
+    });
 
-    })
 
     function formatBytes(bytes, decimals = 2) {
         if (bytes === 0) return '0 Bytes';
@@ -125,13 +139,15 @@ window.onload = function () {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     };
 
+
     async function XHRuploadFiles (form) {
         let total_size  = 0;
         let num_files   = 0;
-        ABORT_REQUESTED = false;
+        let files       = [];
+
+        if (RETRYING_ON_408 == false) { ABORT_REQUESTED = false; }
         start = performance.now();
 
-        let files = [];
         if (document.querySelector("#id_file_field").disabled == true) {
             files = document.querySelector("#id_dir_field").files;
         } else {
@@ -139,21 +155,31 @@ window.onload = function () {
         };
 
         let data = new FormData(form);
-        for (var f of files) {
 
+        for (var f of files) {
             total_size = total_size + f.size;
             num_files  = num_files + 1;
             data.append('file', f);
          };
 
          let xhr = new XMLHttpRequest();
-        
+
          function abortXHR() {
              if (xhr) {
-                 xhr.abort();
+                 document.querySelector("#cancel_button").disabled = true;
+                 document.querySelector("#cancel_button").value = 'Cancelling Job...';
+                 ABORT_REQUESTED = 1;
+                 if (RETRYING_ON_408) {
+                    RETRY_ON_408 = false;
+                    clearTimeout(retryTimeoutID408);
+                    XHRuploadFiles(form);
+                 } else {
+                    xhr.abort();
+                 }
              } else {
                  resetForm();
              }
+             
              return false;
          };
 
@@ -165,21 +191,18 @@ window.onload = function () {
 
          xhr.open('POST', '/vault/deposit/web', true);
 
-         //xhr.responseType = 'json';
-         //xhr.responseType = 'text';
-
          xhr.onerror = function () {
              let msg = 'Request FAILED - Network Error.';
              console.error(msg);
-             document.querySelector('#stats').innerHTML = '<p>' + msg + '</p>';
+             document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
          };
 
          xhr.onabort = function () {
              let msg = 'Request ABORTED!';
              console.info(msg);
-             document.querySelector('#stats').innerHTML = '<p>' + msg + '</p>';
+             document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
              setTimeout( function() { document.querySelector('#stats').innerHTML = "" }, 4000 );
-             ABORT_REQUESTED = 1
+             ABORT_REQUESTED = 1;
          };
 
          xhr.upload.onprogress = function(e) {
@@ -190,13 +213,14 @@ window.onload = function () {
          };
 
          xhr.onloadend = function() {
-             let msg      = "";
-             let res      = {};
-             let report_id= '';
-             let end      = performance.now();
-             let delay    = globalRetryDelay / 1000;
-             let runtime  = ((end - start) / 1000).toFixed(2);
-             let ttime    = ((end - globalStartTime) / 1000).toFixed(2);
+             let msg       = "";
+             let res       = {};
+             let report_id = '';
+             let end       = performance.now();
+             let delay     = retryDelay408 / 1000;
+             let runtime   = ((end - start) / 1000).toFixed(2);
+             let ttime     = ((end - globalStartTime) / 1000).toFixed(2);
+
              if (xhr.status == 200) {
                 start = end;
 
@@ -204,9 +228,14 @@ window.onload = function () {
                     res = JSON.parse(xhr.response);
                     report_id = res[res.length - 1]["report_id"];
                 }
+
                 catch(err) {
-                    console.error('JSON parse error: ' + err + 'Data: ' + xhr.response);
-                    res = xhr.response;
+                    if (xhr.response.length == 0) {
+                       res = 'No Data.';
+                    } else {
+                       res = xhr.response;
+                    }
+                    console.error('JSON parse error: ' + err + 'Data: ' + res);
                     report_id = 'undefined';
                 }
 
@@ -214,30 +243,41 @@ window.onload = function () {
                 msg += ' Size: ' + formatBytes(total_size);
                 msg += ' and Runtime: ' + runtime + 's';
                 msg += '<a href="/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
+                document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
              } else if (xhr.status < 400) {
                 start = end;
-                msg += 'Status: ' + xhr.status + ': ' + xhr.response;
-             } else if (xhr.status == 408) {
-                 if (ttime < globalRetryTimeout) {
+                if (xhr.response.length > 0) {
+                    msg += 'Status: ' + xhr.status + ': ' + xhr.response;
+                } else {
+                    msg += 'Status: ' + xhr.status;
+                }
+             } else if ((xhr.status == 408) && (ABORT_REQUESTED == false)) {
+                 if (ttime < retryTimeout408) {
+                    RETRYING_ON_408 = true;
                     msg += 'Upload Timed Out in ' + runtime;
                     msg += 's: Retrying in ' + delay + 's.';
                     msg += 'Total Elapsed Time: ' + ttime + 's';
+                    document.querySelector('#stats').innerHTML = '<b>'+ msg + '</b>';
                  } else {
                     msg += 'Maximum Timeout Retries Reached, Try Again Later!';
+                    document.querySelector('#stats').innerHTML += '<br><b>'+ msg + '</b>';
                  }
-             } else {
+             } else if (ABORT_REQUESTED == false) {
                 start = end;
                 msg += 'Status: ' + xhr.status + ': ' + xhr.response + ' After ' + runtime + 's';
+                document.querySelector('#stats').innerHTML += '<br><b>'+ msg + '</b>';
+             }
+                
+             if (msg.length > 0) {
+                console.log(msg);
              }
 
-             document.querySelector('#stats').innerHTML += '<p>' + msg + '</p>'
-             console.log(msg);
              if (xhr.response.length > 0) {
                 console.log(xhr.status + ': ' + xhr.response);
              }
 
-             if ((xhr.status == 408) && (ttime < globalRetryTimeout)) {
-                setTimeout( function() { XHRuploadFiles(form); }, globalRetryDelay );
+             if ((xhr.status == 408) && (ttime < retryTimeout408) && (ABORT_REQUESTED == false)) {
+                retryTimeoutID408 = setTimeout( function() { XHRuploadFiles(form); }, retryDelay408 );
              } else {
                 document.querySelector('#cancel_button').removeEventListener("click", abortXHR);
                 resetForm();
@@ -257,6 +297,7 @@ window.onload = function () {
         document.querySelector("#Submit").disabled            = false;
         document.querySelector("#id_file_field").disabled     = false;
         document.querySelector("#id_dir_field").disabled      = false;
+        document.querySelector("#cancel_button").disabled     = false;
         document.querySelector('#progress_bar').value         = 0;
         document.querySelector("#cancel_button").value        = "Reset Form";
         document.querySelector('#cancel_button').removeEventListener("click", resetForm);
@@ -295,8 +336,8 @@ window.onload = function () {
 
     async function doSomeSums(files) {
         let tooBig = 1024*1024*1024; // 1GB
-        promises = [];
-        let idx = 0;
+        promises   = []; //GLOBAL
+        let idx    = 0;
         shasumsList = [];
         for (var file of files) {
             if ( ABORT_REQUESTED ) {
@@ -326,7 +367,6 @@ window.onload = function () {
     };
 
 
-    // needs to be called a level up so that it can return the hash value
     async function MD5HashFile (file, idx) {
         return new Promise((resolve, reject) => {
             let spark  = new SparkMD5.ArrayBuffer();
@@ -346,5 +386,6 @@ window.onload = function () {
         });
     };
 
+// END of window.onload()
 };
 
