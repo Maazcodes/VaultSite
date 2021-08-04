@@ -14,7 +14,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from vault import forms
 from vault import models
-from vault.file_management import *
+from vault.file_management import generateHashes, move_temp_file
 from django.http import HttpResponse
 
 from django.views.decorators.csrf import csrf_exempt
@@ -137,6 +137,7 @@ def report(request, report_id):
 def deposit(request):
     return redirect("deposit_web")
 
+
 def create_attribs_dict(request):
     retval = dict()
     retval['comment']       = request.POST.get('comment', "")
@@ -189,8 +190,8 @@ def format_filelist_json(request):
 
 
 def return_doaj_report(attribs):
-        data = format_doaj_json(attribs)
-        return HttpResponse(data, content_type='application/json')
+    data = format_doaj_json(attribs)
+    return HttpResponse(data, content_type='application/json')
 
 
 def return_text_report(data):
@@ -308,7 +309,14 @@ def deposit_web(request):
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)
     elif reply:
-        return return_text_report(json.dumps(reply))
+        # HOW TO FAKE A 408? - Set this to True!
+        DEBUG_408 = False
+        if DEBUG_408:
+            response = HttpResponse('Timeout!')
+            response['status'] = 408
+            return response
+        else:
+            return return_text_report(json.dumps(reply))
     else:
         return return_reload_deposit_web(request)
 
