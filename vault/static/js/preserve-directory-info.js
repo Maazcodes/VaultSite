@@ -198,7 +198,7 @@ window.onload = function () {
          };
 
          xhr.onabort = function () {
-             let msg = 'Request ABORTED!';
+             let msg = 'Upload Cancelled!';
              console.info(msg);
              document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
              setTimeout( function() { document.querySelector('#stats').innerHTML = "" }, 4000 );
@@ -304,7 +304,7 @@ window.onload = function () {
         document.querySelector('#cancel_button').addEventListener("click", resetForm);
         console.log("Form reset!");
         if ( ABORT_REQUESTED ) {
-           document.querySelector('#stats').innerHTML = '<b>Uploading Aborted!</b>';
+           document.querySelector('#stats').innerHTML = '<b>Upload Cancelled!</b>';
            ABORT_REQUESTED = false;
         }
         return false;
