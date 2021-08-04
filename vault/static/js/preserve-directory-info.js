@@ -198,7 +198,7 @@ window.onload = function () {
          };
 
          xhr.onabort = function () {
-             let msg = 'Upload Cancelled!';
+             let msg = 'Upload Cancelled';
              console.info(msg);
              document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
              setTimeout( function() { document.querySelector('#stats').innerHTML = "" }, 4000 );

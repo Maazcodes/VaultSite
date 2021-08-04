@@ -11,12 +11,7 @@
 }
 
 #cancel_button {
-    background-color: #FF9999;
-    padding: 0.5ex;
-    border-radius: 6px;
-    position: relative;
-    left: 70%;
-    bottom: 0;
+    background-color: #e84b4b;
 }
 
 /* The Modal (background) */
