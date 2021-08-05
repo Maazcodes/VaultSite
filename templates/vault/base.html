@@ -8,7 +8,7 @@
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="/vault/static/css/html5-bp/css/normalize.css">
-    	<link rel="stylesheet" href="/vault/static/css/html5-bp/css/main.css">
+	<link rel="stylesheet" href="/vault/static/css/html5-bp/css/main.css">
 	<link rel="stylesheet" href="/vault/static/css/app.css">
 	<link rel="stylesheet" href="/vault/static/css/vault.css">
 	<link rel="apple-touch-icon" sizes="57x57" href="/vault/static/favicon/apple-touch-icon-57x57.png">
@@ -36,6 +36,26 @@
 	<meta class="foundation-mq-medium">
 	<meta class="foundation-mq-large">
 	<script src="/vault/static/js/jquery.min.js"></script>
+
+	<!-- Import SDK -->
+	<script>
+	console.error('The Sentry SDK needs to be loaded from a local cache, we dont do CORS.');
+	</script>
+	<!--
+	<script src="https://browser.sentry-cdn.com/5.15.5/bundle.min.js" crossorigin="anonymous"></script>
+	-->
+
+	<!-- Configure SDK -->
+	<script>
+		if (typeof Sentry == 'undefined') {	
+			console.error('Sentry.init undefined in template base.html');
+		} else {
+			Sentry.init({
+				dsn: '{{ SENTRY_DSN }}'
+			});
+		};
+	</script>
+
 	{# Upload specific JS not loaded by default #}
 	{% block head_deposit %}{% endblock head_deposit %}
 

@@ -1,0 +1,131 @@
+---
+# We would need to install apache 
+# Then copy config files ..
+
+- name: install dependencies
+  become: true
+  become_user: root
+  apt:
+    state: present
+    update_cache: yes
+    name:
+    - apache2
+    - libapache2-mod-wsgi-py3
+    - ssl-cert 
+    - mtree-netbsd
+    - tree
+    - python3.8-venv
+
+- name: Running a2enmod ssl
+  become_user: "root"
+  become: true
+  command: a2enmod ssl
+
+- name: Running a2ensite default-ssl
+  become_user: "root"
+  become: true
+  command: a2ensite default-ssl
+
+- name: restart apache2
+  service: name=apache2 state=restarted
+  become: true
+  become_user: root
+
+- name: Copy apache.input file from apache_configs if it does not exist 
+  become_user: "root"
+  become: true
+  copy:
+    src: /opt/DPS/vault-site/apache_configs/apache.input
+    dest: /etc/ferm/input/apache.input
+    owner: root
+    group: root
+
+- name: Restarting ferm
+  become_user: "root"
+  become: true
+  command: /etc/init.d/ferm restart
+  when: not stat_result.stat.exists
+
+- name: Check if files exists
+  stat:
+    path: /opt/DPS/files/
+  register: stat_result
+
+- name: Create the file, if it doesnt exist already
+  become_user: "root"
+  become: true
+  file:
+    path: /opt/DPS/files/Archive
+    state: directory
+  when: not stat_result.stat.exists
+
+- name: Check if .htgroups exists
+  become_user: "root"
+  become: true
+  stat:
+    path: /opt/DPS/.htgroups
+  register: stat_result
+
+- name: Copy .htgroups from apache_configs if it does not exist 
+  become_user: "root"
+  become: true
+  copy:
+    src: /opt/DPS/vault-site/apache_configs/.htgroups
+    dest: /opt/DPS/.htgroups
+    owner: root
+    group: root
+  when: not stat_result.stat.exists
+
+- name: Check if .htpasswd exists
+  become_user: "root"
+  become: true
+  stat:
+    path: /opt/DPS/.htpasswd
+  register: stat_result
+
+- name: Setting up .htpasswd file if it does not exist
+  become_user: "root"
+  become: true
+  command: htpasswd -c /opt/DPS/.htpasswd tabish {{ default_password }}
+  when: not stat_result.stat.exists
+
+- name: Create symbolic link 
+  file:
+    src: "{{SOURCE_FOLDER}}"
+    dest: "/opt/application/i99/SYMLINK"
+    state: link
+
+- name: install /etc/vault.yml
+  become_user: root
+  become: true
+  template: src=templates/vault.yml.j2 dest=/etc/vault.yml
+
+# Waiting for apache till all the connections are drained and then restarting it
+# - name: wait until apache2 connections are drained.
+#   wait_for:
+#    host: 0.0.0.0
+#    port: 80
+#    state: drained
+
+# Note fetching will fail if there are local changes to /opt/DPS/vault-site
+# as force option is no by default in ansible.builtin.git
+- name: Fetch Vault Site
+  become_user: root
+  become: yes
+  git:
+    repo: 'git@git.archive.org:dps/vault-site.git'
+    dest: /opt/DPS/vault-site
+    version: 'qa'
+
+- name: Creating venv and install requirements.txt
+  become: true
+  become_user: root
+  pip:
+    requirements: /opt/DPS/vault-site/requirements.txt
+    virtualenv: /opt/DPS/vault-site-venv
+    virtualenv_command: /usr/bin/python3.8 -m venv
+
+- name: restart apache2
+  service: name=apache2 state=restarted
+  become: true
+  become_user: root

@@ -1,0 +1,5 @@
+---
+- name: Deploy QA Vault
+  hosts: vault
+  roles:
+    - qa_vault

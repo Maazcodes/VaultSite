@@ -2,3 +2,4 @@
 db.sqlite3
 .python-version
 /django-debug.log
+*.pyc

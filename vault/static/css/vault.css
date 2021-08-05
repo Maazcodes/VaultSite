@@ -10,6 +10,10 @@
 	margin-left: 9em;
 }
 
+#cancel_button {
+    background-color: #e84b4b;
+}
+
 /* The Modal (background) */
 .modal {
 	display: none;

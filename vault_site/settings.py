@@ -19,6 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 MEDIA_ROOT = Path('/opt/DPS/files/')
 
+SHADIR_ROOT = Path('/opt/DPS/SHA_DIR/')
+
 FILE_UPLOAD_TEMP_DIR = Path('/opt/DPS/tmp/')
 
 #LOGIN_REDIRECT_URL = '/dashboard'
@@ -38,7 +40,7 @@ SECRET_KEY = conf.get('SECRET_KEY', 'devsecretkeyljkadfadfsjkl9ew0f02iefj20h8310
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = conf.get("DEBUG", True)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'wbgrp-svc600.us.archive.org', '207.241.235.20', 'phil-dev.us.archive.org', '207.241.225.89', 'avdempsey-dev.us.archive.org']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'wbgrp-svc600.us.archive.org', '207.241.235.20', 'phil-dev.us.archive.org', '207.241.225.89', 'avdempsey-dev.us.archive.org', 'wbgrp-svc018.us.archive.org']
 
 FILE_UPLOAD_HANDLERS = [
     #'django.core.files.uploadhandler.MemoryFileUploadHandler',
@@ -82,6 +84,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'vault.context_processors.sentry_dsn',
             ],
         },
     },
@@ -113,9 +116,18 @@ AUTHENTICATION_BACKENDS = [
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': conf.get('VAULT_POSTGRES_NAME', 'vault'),
+        'USER': conf.get('VAULT_POSTGRES_USER', 'vault'),
+        'PASSWORD': conf.get('VAULT_POSTGRES_PASSWORD', 'vault'),
+        'HOST': conf.get('VAULT_POSTGRES_HOST', '127.0.0.1'),
+        'PORT': conf.get('VAULT_POSTGRES_PORT', '5432'),
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
 
@@ -175,10 +187,13 @@ LOGIN_URL = '/vault/accounts/login/'
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
+SENTRY_DSN = conf.get('SENTRY_DSN', '')
+
 sentry_sdk.init(
-    dsn=conf.get('SENTRY_DSN', ''),
-    integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,
+    dsn                 = SENTRY_DSN,
+    integrations        = [DjangoIntegration()],
+    traces_sample_rate  = 1.0,
+    send_default_pii    = True,
 )
 
 
@@ -196,6 +211,8 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': '/opt/DPS/vault-site/django-debug.log',
+            # 'maxBytes': 1024*1024*100,
+            # 'backupCount': 100,
             'formatter': 'plain',
         },
     },
