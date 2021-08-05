@@ -348,9 +348,9 @@ window.onload = function () {
             } else {
                 shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
                 //document.querySelector('#stats').innerHTML = 'Calculating MD5sum of ' + formatBytes(file.size) + ' file ' + file.name;
-                await MD5HashFile(file, idx).then((data) => {
-                    shasumsList[idx] = data;
-                });
+                //await MD5HashFile(file, idx).then((data) => {
+                //          shasumsList[idx] = data;
+                //      });
                 //document.querySelector('#stats').innerHTML = 'Done calculating MD5sums!';
             };
             idx++;
