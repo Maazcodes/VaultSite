@@ -14,7 +14,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from vault import forms
 from vault import models
-from vault.file_management import *
+from vault.file_management import generateHashes, move_temp_file
 from django.http import HttpResponse
 
 from django.views.decorators.csrf import csrf_exempt
@@ -94,13 +94,12 @@ def collection(request, collection_id):
     org = request.user.organization
     if request.method == "POST":
         form = forms.EditCollectionSettingsForm(request.POST)
-        collection = models.Collection.objects.select_for_update().get(pk=collection_id)
+        collection = models.Collection.objects.get(pk=collection_id)
         if form.is_valid() and collection.organization == org:
-            with transaction.atomic():
-                collection.target_replication = form.cleaned_data["target_replication"]
-                collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
-                collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
-                collection.save()
+            collection.target_replication = form.cleaned_data["target_replication"]
+            collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
+            collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
+            collection.save()
             messages.success(request, 'Collection settings updated.')
 
     collection = models.Collection.objects.filter(organization=org, pk=collection_id).annotate(
@@ -137,6 +136,7 @@ def report(request, report_id):
 @login_required
 def deposit(request):
     return redirect("deposit_web")
+
 
 def create_attribs_dict(request):
     retval = dict()
@@ -190,8 +190,8 @@ def format_filelist_json(request):
 
 
 def return_doaj_report(attribs):
-        data = format_doaj_json(attribs)
-        return HttpResponse(data, content_type='application/json')
+    data = format_doaj_json(attribs)
+    return HttpResponse(data, content_type='application/json')
 
 
 def return_text_report(data):
@@ -309,7 +309,14 @@ def deposit_web(request):
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)
     elif reply:
-        return return_text_report(json.dumps(reply))
+        # HOW TO FAKE A 408? - Set this to True!
+        DEBUG_408 = False
+        if DEBUG_408:
+            response = HttpResponse('Timeout!')
+            response['status'] = 408
+            return response
+        else:
+            return return_text_report(json.dumps(reply))
     else:
         return return_reload_deposit_web(request)
 

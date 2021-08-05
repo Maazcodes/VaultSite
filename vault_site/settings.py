@@ -19,6 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 MEDIA_ROOT = Path('/opt/DPS/files/')
 
+SHADIR_ROOT = Path('/opt/DPS/SHA_DIR/')
+
 FILE_UPLOAD_TEMP_DIR = Path('/opt/DPS/tmp/')
 
 #LOGIN_REDIRECT_URL = '/dashboard'
@@ -114,9 +116,18 @@ AUTHENTICATION_BACKENDS = [
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': conf.get('VAULT_POSTGRES_NAME', 'vault'),
+        'USER': conf.get('VAULT_POSTGRES_USER', 'vault'),
+        'PASSWORD': conf.get('VAULT_POSTGRES_PASSWORD', 'vault'),
+        'HOST': conf.get('VAULT_POSTGRES_HOST', '127.0.0.1'),
+        'PORT': conf.get('VAULT_POSTGRES_PORT', '5432'),
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
 
@@ -182,6 +193,7 @@ sentry_sdk.init(
     dsn                 = SENTRY_DSN,
     integrations        = [DjangoIntegration()],
     traces_sample_rate  = 1.0,
+    send_default_pii    = True,
 )
 
 
@@ -199,6 +211,8 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': '/opt/DPS/vault-site/django-debug.log',
+            # 'maxBytes': 1024*1024*100,
+            # 'backupCount': 100,
             'formatter': 'plain',
         },
     },

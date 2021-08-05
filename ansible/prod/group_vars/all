@@ -2,3 +2,9 @@
 django_secret_key: "{{ vault_secret_key }}"
 sentry_dsn: "{{ vault_sentry_dsn }}"
 debug: false
+default_password: "{{ vault_default_password }}"
+vault_postgres_host: "db.archive-it.org"
+vault_postgres_port: "5432"
+vault_postgres_name: "vault"
+vault_postgres_user: "vault"
+vault_postgres_password: "vault"
