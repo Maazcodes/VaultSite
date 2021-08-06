@@ -355,7 +355,7 @@ window.onload = function () {
                 continue;
             }
             if (file.size < tooBig) {
-		shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
+		        shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
                 //promises.push(sha256HashFile(file, idx));
             } else {
                 shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
