@@ -96,6 +96,14 @@ window.onload = function () {
     });
 
 
+    // We're uploading, we don't want to lose our window/tab on an idle click!
+    function setAllTargets(T) {
+        document.querySelectorAll('a').forEach(function(node) {
+            node.setAttribute("target", T);
+        });
+    };
+
+
     let promises = [];
     let shasumsList = [];
     const form = document.querySelector('form');
@@ -144,6 +152,8 @@ window.onload = function () {
         let total_size  = 0;
         let num_files   = 0;
         let files       = [];
+
+	setAllTargets('_blank');
 
         if (RETRYING_ON_408 == false) { ABORT_REQUESTED = false; }
         start = performance.now();
@@ -289,6 +299,7 @@ window.onload = function () {
 
 
     function resetForm() {
+	setAllTargets('_top');
         document.querySelector("#upload_form").reset();
         document.querySelector("#progress_bar").style.display = 'none';
         document.querySelector("#Submit").value               = "Upload Files";
