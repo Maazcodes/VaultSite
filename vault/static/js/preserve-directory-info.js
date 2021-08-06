@@ -153,7 +153,7 @@ window.onload = function () {
         let num_files   = 0;
         let files       = [];
 
-	setAllTargets('_blank');
+	    setAllTargets('_blank');
 
         if (RETRYING_ON_408 == false) { ABORT_REQUESTED = false; }
         start = performance.now();
@@ -299,7 +299,7 @@ window.onload = function () {
 
 
     function resetForm() {
-	setAllTargets('_top');
+	    setAllTargets('_top');
         document.querySelector("#upload_form").reset();
         document.querySelector("#progress_bar").style.display = 'none';
         document.querySelector("#Submit").value               = "Upload Files";
