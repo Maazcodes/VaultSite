@@ -34,7 +34,7 @@ join_by() {
 fsize() {
     local size=0
     size=$(wc -c "$1")
-    echo ${size% *}
+    echo ${size%% *}
 }
 
 human() {
@@ -49,7 +49,8 @@ human() {
 
 total=0
 nfiles=0
-for upload in $(IFS=$'\n' find /opt/DPS/files -daystart -mtime -$N_DAYS)
+IFS=$'\n'
+for upload in $(find /opt/DPS/files -daystart -mtime -$N_DAYS)
 do
     [[ ! -f "$upload" ]] && continue
     IFS='/' read -r -a path <<< "$upload"
