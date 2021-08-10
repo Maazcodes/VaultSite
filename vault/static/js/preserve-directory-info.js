@@ -1,4 +1,31 @@
+const formatBytes = (bytes, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+};
+
+const createQuotaDonut = () => {
+    let data = [];
+    data.push((parseInt(document.querySelector("#total_used_quota").value)/1024**3).toFixed(5));
+    data.push( (
+      parseInt(
+        document.querySelector("#organization_quota").value -
+          document.querySelector("#total_used_quota").value
+      )/1024 ** 3 ).toFixed(5)
+    );
+    createCollectionsChart(["Used", "Available"], data);
+};
+
 window.onload = function () {
+
+    createQuotaDonut();
+
     if ( ! document.querySelector('#id_dir_field') ) { return }
 
     globalStartTime = performance.now();
@@ -11,49 +38,28 @@ window.onload = function () {
     document.querySelector("#cancel_button").value = "Reset Form";
     document.querySelector('#cancel_button').addEventListener("click", resetForm);
 
-
-    function getTotalUsedData() {
-        let xhr = new XMLHttpRequest();
-        xhr.open('POST', '/vault/api/collections_stats', false);
-        xhr.send();
-
-        if (xhr.status === 200) {
-            let res           = JSON.parse(xhr.responseText);
-            let consumedBytes = 0;
-            
-            for (let collection of res.collections) {
-                consumedBytes += (collection.totalSize || 0);
-            }
-            
-            return consumedBytes;
-        } else {
-            // TODO: on error from API.
-            console.error('<b>Request Failed: Failed to fetch collection stats.</b>');
-        }
-    }
-
-
     function enforceQuota(totalUploadSize, files) {
         let quota        = parseInt(document.querySelector("#organization_quota").value);
-        let accountStats = getTotalUsedData();
+        let usedQuota = parseInt(
+          document.querySelector("#total_used_quota").value
+        );
         
         document.querySelector('#stats').innerHTML = '';
 
-        if(accountStats + totalUploadSize > quota) {
-            
-            document.querySelector("#id_directories").value   = "";
-            document.querySelector("#id_sizes").value         = "";
-            document.querySelector("#id_file_field").disabled = false;
-            document.querySelector("#id_dir_field").disabled  = false;
-            document.querySelector("#id_file_field").value    = "";
-            document.querySelector("#id_dir_field").value     = "";
-            
-            let msg =  "Your upload of size " + formatBytes(totalUploadSize, 3);
-                msg += " will take you over your Quota of " + formatBytes(quota, 3);
-                msg += ". Total used quota: " + formatBytes(accountStats, 3);
-            alert(msg);
+        if (usedQuota + totalUploadSize > quota) {
+          document.querySelector("#id_directories").value = "";
+          document.querySelector("#id_sizes").value = "";
+          document.querySelector("#id_file_field").disabled = false;
+          document.querySelector("#id_dir_field").disabled = false;
+          document.querySelector("#id_file_field").value = "";
+          document.querySelector("#id_dir_field").value = "";
+
+          let msg = "Your upload of size " + formatBytes(totalUploadSize, 3);
+          msg += " will take you over your Quota of " + formatBytes(quota, 3);
+          msg += ". Total used quota: " + formatBytes(usedQuota, 3);
+          alert(msg);
         } else {
-            doSomeSums(files);
+          doSomeSums(files);
         }
     }
 
@@ -125,20 +131,6 @@ window.onload = function () {
             document.querySelector("#Submit").disabled = false;
         }
     });
-
-
-    function formatBytes(bytes, decimals = 2) {
-        if (bytes === 0) return '0 Bytes';
-
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    };
-
 
     async function XHRuploadFiles (form) {
         let total_size  = 0;
@@ -224,9 +216,9 @@ window.onload = function () {
              if (xhr.status == 200) {
                 start = end;
 
+                res = JSON.parse(xhr.response);
                 try {
-                    res = JSON.parse(xhr.response);
-                    report_id = res[res.length - 1]["report_id"];
+                    report_id = res[res.length - 2]["report_id"];
                 }
 
                 catch(err) {
@@ -239,11 +231,28 @@ window.onload = function () {
                     report_id = 'undefined';
                 }
 
+                try {
+                  total_used_quota = res[res.length - 1]["total_used_quota"];
+                  document.querySelector("#total_used_quota").value =
+                    total_used_quota;
+                } catch (err) {
+                  if (xhr.response.length == 0) {
+                    res = "No Data.";
+                  } else {
+                    res = xhr.response;
+                  }
+                  console.error("JSON parse error: " + err + "Data: " + res);
+                  total_used_quota = 0;
+                }
+
                 msg += ' Files transfered: ' + num_files + ',';
                 msg += ' Size: ' + formatBytes(total_size);
                 msg += ' and Runtime: ' + runtime + 's';
-                msg += '<a href="/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
+                msg += '<a href="/vault/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
                 document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
+
+                createQuotaDonut();
+
              } else if (xhr.status < 400) {
                 start = end;
                 if (xhr.response.length > 0) {
