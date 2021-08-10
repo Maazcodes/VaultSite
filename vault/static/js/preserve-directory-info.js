@@ -1,30 +1,4 @@
-const formatBytes = (bytes, decimals = 2) => {
-    if (bytes === 0) return '0 Bytes';
-
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-};
-
-const createQuotaDonut = () => {
-    let data = [];
-    data.push((parseInt(document.querySelector("#total_used_quota").value)/1024**3).toFixed(5));
-    data.push( (
-      parseInt(
-        document.querySelector("#organization_quota").value -
-          document.querySelector("#total_used_quota").value
-      )/1024 ** 3 ).toFixed(5)
-    );
-    createCollectionsChart(["Used", "Available"], data);
-};
-
 window.onload = function () {
-
-    createQuotaDonut();
 
     if ( ! document.querySelector('#id_dir_field') ) { return }
 
@@ -37,6 +11,36 @@ window.onload = function () {
 
     document.querySelector("#cancel_button").value = "Reset Form";
     document.querySelector('#cancel_button').addEventListener("click", resetForm);
+
+
+    const formatBytes = (bytes, decimals = 2) => {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
+
+
+    const createQuotaDonut = () => {
+        let data = [];
+        data.push((parseInt(document.querySelector("#total_used_quota").value)/1024**3).toFixed(5));
+        data.push( (
+            parseInt(
+                document.querySelector("#organization_quota").value -
+                document.querySelector("#total_used_quota").value
+            )/1024 ** 3 ).toFixed(5)
+        );
+        createCollectionsChart(["Used", "Available"], data);
+    };
+
+
+    createQuotaDonut();
+
 
     function enforceQuota(totalUploadSize, files) {
         let quota        = parseInt(document.querySelector("#organization_quota").value);
@@ -226,9 +230,9 @@ window.onload = function () {
              if (xhr.status == 200) {
                 start = end;
 
-                res = JSON.parse(xhr.response);
                 try {
-                    report_id = res[res.length - 2]["report_id"];
+		    res = JSON.parse(xhr.response);
+		    report_id = res[res.length - 2]["report_id"];
                 }
 
                 catch(err) {
@@ -364,7 +368,8 @@ window.onload = function () {
                 continue;
             }
             if (file.size < tooBig) {
-                promises.push(sha256HashFile(file, idx));
+		shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
+		//promises.push(sha256HashFile(file, idx));
             } else {
                 shasumsList[idx] = '0000000000000000000000000000000000000000000000000000000000000000';
                 //document.querySelector('#stats').innerHTML = 'Calculating MD5sum of ' + formatBytes(file.size) + ' file ' + file.name;
