@@ -36,24 +36,25 @@
 	<meta class="foundation-mq-medium">
 	<meta class="foundation-mq-large">
 	<script src="/vault/static/js/jquery.min.js"></script>
+	<script src="/vault/static/js/sentry/bundle.js"></script>
+	<script type="text/javascript">
+		if (typeof Sentry == "undefined") {
+			console.error("Sentry/ Sentry Integrations Undefined");
+			} else {
+				Sentry.init({
+				dsn: "{{ SENTRY_DSN }}",
 
-	<!-- Import SDK -->
-	<script>
-	console.error('The Sentry SDK needs to be loaded from a local cache, we dont do CORS.');
-	</script>
-	<!--
-	<script src="https://browser.sentry-cdn.com/5.15.5/bundle.min.js" crossorigin="anonymous"></script>
-	-->
+				// Alternatively, use `process.env.npm_package_version` for a dynamic release version
+				// if your build tool supports it.
+				release: "vault@1.0.0",
 
-	<!-- Configure SDK -->
-	<script>
-		if (typeof Sentry == 'undefined') {	
-			console.error('Sentry.init undefined in template base.html');
-		} else {
-			Sentry.init({
-				dsn: '{{ SENTRY_DSN }}'
-			});
-		};
+				// Set tracesSampleRate to 1.0 to capture 100%
+				// of transactions for performance monitoring.
+				// We recommend adjusting this value in production
+				tracesSampleRate: 1.0,
+				});
+			}
+		myUndefinedFunction();
 	</script>
 
 	{# Upload specific JS not loaded by default #}

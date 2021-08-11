@@ -3,6 +3,9 @@ import os
 import re
 import logging
 import json
+
+from functools import reduce
+
 # :FIXME: - Required to make Apache use Django auth
 #from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -197,14 +200,26 @@ def return_doaj_report(attribs):
 def return_text_report(data):
     return HttpResponse(data, content_type='application/json')
 
+def return_total_used_quota(collections = None, organization = None):
+    if not collections:
+        collections = models.Collection.objects.filter(organization=organization).annotate(
+            file_count = Count("file"),
+            total_size = Sum("file__size"),
+        )
+    return reduce(lambda x, y: x + y, list(map(lambda x: x.total_size if x.total_size is not None else 0, collections)))
 
 def return_reload_deposit_web(request):
-    collections = models.Collection.objects.filter(organization=request.user.organization)
+    collections = models.Collection.objects.filter(organization=request.user.organization).annotate(
+        file_count = Count("file"),
+        total_size = Sum("file__size"),
+    )
     form = forms.FileFieldForm(collections)
+    total_used_quota = return_total_used_quota(collections=collections)
     return TemplateResponse(request, "vault/deposit_web.html", {
         "collections": collections,
         "filenames": "",
         "form": form,
+        "total_used_quota": total_used_quota
     })
 
 
@@ -305,6 +320,9 @@ def deposit_web(request):
     report = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at").first()
     if report:
         reply.append({"report_id": report.id})
+
+    total_used_quota = return_total_used_quota(organization=request.user.organization)
+    reply.append({"total_used_quota": total_used_quota})
 
     if attribs.get('client', None) == 'DOAJ_CLI':
         return return_doaj_report(attribs)
