@@ -2,7 +2,7 @@
 # We would need to install apache 
 # Then copy config files ..
 
-- name: install /etc/ait.yml
+- name: install /etc/vault.yml
   become_user: root
   become: true
   template: src=templates/vault.yml.j2 dest=/etc/vault.yml

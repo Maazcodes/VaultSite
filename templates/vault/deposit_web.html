@@ -5,10 +5,10 @@
     <div class="row">
         <div class="small-12 columns">
             <div class="row">
-                <div class="small-12 columns">
+                <div class="small-8 columns">
                     <h3>Upload Files</h3>
                     {% if collections %}
-                    <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post">
+                    <form enctype="multipart/form-data" action="{{ url("deposit_web") }}" method="post" name="upload_form" id="upload_form">
                         {{ csrf_input }}
                         <div class="form-group">
                             <label>Collections: (<a href="javascript:void(0);" onclick="show_modal();">Create a new Collection</a>) </label>
@@ -28,12 +28,17 @@
                         {{form.comment}}
                         <input id="Submit" type="submit" name="Submit" value="Upload Files" class="button small padding-top padding-bottom half left">
                         <progress id="progress_bar" value="0" max="100" disabled="true"> 0% </progress>
+                        <input type="button" name="cancel_button" id="cancel_button" class="button small padding-top padding-bottom half right" value="Cancel Upload">
                     </form>
                     <input id="organization_quota" name="organization_quota" type="hidden" value="{{ request.user.organization.quota_bytes }}">
-		            <div id="stats" name="stats"></div>
+                    <input id="total_used_quota" name="total_used_quota" type="hidden" value="{{ total_used_quota }}">
+                    <div id="stats" name="stats"></div>
                     {% else %}
                         <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
                     {% endif %}
+                </div>
+                <div class="small-4 columns" id="collections-chart">
+                    <span class="spinner small"></span>
                 </div>
             </div>
         </div>
@@ -58,4 +63,40 @@
             </form>
         </div>
     </div>
+
+    <script src="{{ static("digipres/js/chartalign.js") }}"></script>
+    <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
+
+    <script type="text/javascript">
+        $("#collections-chart .spinner").hide();
+        function createCollectionsChart(collections, fileCounts) {
+            $("#collections-chart .chart-container").remove();
+            chartalign.register("#collections-chart", function () {
+                return $("<canvas></canvas>").attr("width", '50px').attr("height", '45px');
+            }, function ($el) {
+                return new Chart($el.get(0), {
+                    type: 'doughnut',
+                    data: {
+                        labels: collections,
+                        datasets: [
+                            {
+                                label: "Collections",
+                                backgroundColor: ["#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850"],
+                                data: fileCounts
+                            } 
+                        ]
+                    },
+                    options: {  
+                        legend: {display: false},
+                        title: {
+                            display: true,
+                            text: 'Quota (in GB)'
+                        }
+                    }
+                });
+            }, function (chart) {
+                chart.destroy();
+            });
+        }
+    </script>
 {% endblock content %}

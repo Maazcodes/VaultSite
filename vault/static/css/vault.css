@@ -6,8 +6,11 @@
 }
 
 #stats {
-	margin-top: 4px;
 	margin-left: 9em;
+}
+
+#cancel_button {
+    background-color: #e84b4b;
 }
 
 /* The Modal (background) */
