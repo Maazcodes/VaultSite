@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0007_auto_20210611_1811'),
+        ("vault", "0007_auto_20210611_1811"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='report',
-            name='avg_replication',
+            model_name="report",
+            name="avg_replication",
             field=models.PositiveSmallIntegerField(default=3),
             preserve_default=False,
         ),

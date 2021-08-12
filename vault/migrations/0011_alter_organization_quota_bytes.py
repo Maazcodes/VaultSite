@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0010_organization_quota_bytes'),
+        ("vault", "0010_organization_quota_bytes"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='organization',
-            name='quota_bytes',
+            model_name="organization",
+            name="quota_bytes",
             field=models.PositiveBigIntegerField(default=1099511627776),
         ),
     ]

@@ -7,7 +7,7 @@ import json
 from functools import reduce
 
 # :FIXME: - Required to make Apache use Django auth
-#from django.contrib.auth import login, logout
+# from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
@@ -39,25 +39,27 @@ def dashboard(request):
 def create_collection(request):
     response = {}
     if request.method == "POST":
-        org  = request.user.organization
-        name = request.POST.get('name')
+        org = request.user.organization
+        name = request.POST.get("name")
         if org:
             collection = models.Collection.objects.filter(organization=org, name=name)
             if collection:
                 response["code"] = 0
-                response["message"] = "Collection with name '" + name + "' already exists."
+                response["message"] = (
+                    "Collection with name '" + name + "' already exists."
+                )
                 return return_text_report(json.dumps(response))
 
             new_collection = models.Collection.objects.create(
-                organization       = org,
-                name               = name,
-                target_replication = org.plan.default_replication,
-                fixity_frequency   = org.plan.default_fixity_frequency,
+                organization=org,
+                name=name,
+                target_replication=org.plan.default_replication,
+                fixity_frequency=org.plan.default_fixity_frequency,
             )
             new_collection.target_geolocations.set(org.plan.default_geolocations.all())
             new_collection.save()
-            response["code"]          = 1
-            response["message"]       = "Collection created Successfully."
+            response["code"] = 1
+            response["message"] = "Collection created Successfully."
             response["collection_id"] = new_collection.pk
     return return_text_report(json.dumps(response))
 
@@ -82,14 +84,18 @@ def collections(request):
     else:
         form = forms.CreateCollectionForm()
         collections = models.Collection.objects.filter(organization=org).annotate(
-            total_size    = Sum("file__size"),
-            file_count    = Count("file"),
-            last_modified = Max("file__modified_date"),
+            total_size=Sum("file__size"),
+            file_count=Count("file"),
+            last_modified=Max("file__modified_date"),
         )
-        return TemplateResponse(request, "vault/collections.html", {
-            "collections": collections,
-            "form": form,
-        })
+        return TemplateResponse(
+            request,
+            "vault/collections.html",
+            {
+                "collections": collections,
+                "form": form,
+            },
+        )
 
 
 @login_required
@@ -103,24 +109,38 @@ def collection(request, collection_id):
             collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
             collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
             collection.save()
-            messages.success(request, 'Collection settings updated.')
+            messages.success(request, "Collection settings updated.")
 
-    collection = models.Collection.objects.filter(organization=org, pk=collection_id).annotate(
-        file_count    = Count("file"),
-        total_size    = Sum("file__size"),
-        last_modified = Max("file__modified_date"),
-    ).first()
-    form = forms.EditCollectionSettingsForm(initial=({
-        "target_replication":  collection.target_replication,
-        "fixity_frequency":    collection.fixity_frequency,
-        "target_geolocations": collection.target_geolocations.all(),
-    }))
-    reports = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at")
-    return TemplateResponse(request, "vault/collection.html", {
-        "collection": collection,
-        "form": form,
-        "reports": reports,
-    })
+    collection = (
+        models.Collection.objects.filter(organization=org, pk=collection_id)
+        .annotate(
+            file_count=Count("file"),
+            total_size=Sum("file__size"),
+            last_modified=Max("file__modified_date"),
+        )
+        .first()
+    )
+    form = forms.EditCollectionSettingsForm(
+        initial=(
+            {
+                "target_replication": collection.target_replication,
+                "fixity_frequency": collection.fixity_frequency,
+                "target_geolocations": collection.target_geolocations.all(),
+            }
+        )
+    )
+    reports = models.Report.objects.filter(collection=collection.pk).order_by(
+        "-ended_at"
+    )
+    return TemplateResponse(
+        request,
+        "vault/collection.html",
+        {
+            "collection": collection,
+            "form": form,
+            "reports": reports,
+        },
+    )
 
 
 @login_required
@@ -129,11 +149,15 @@ def report(request, report_id):
     report = get_object_or_404(models.Report, pk=report_id)
     if report.collection.organization != org:
         raise Http404
-    return TemplateResponse(request, "vault/report.html", {
-        "collection": report.collection,
-        "report": report,
-        "page_number": 1,
-    })
+    return TemplateResponse(
+        request,
+        "vault/report.html",
+        {
+            "collection": report.collection,
+            "report": report,
+            "page_number": 1,
+        },
+    )
 
 
 @login_required
@@ -143,50 +167,50 @@ def deposit(request):
 
 def create_attribs_dict(request):
     retval = dict()
-    retval['comment']       = request.POST.get('comment', "")
-    retval['client']        = request.POST.get('client', "")
-    retval['collection']    = request.POST.get('collection', None)
-    retval['username']      = request.META.get('REMOTE_USER', "")
-    retval['organization']  = request.user.organization.id
-    retval['orgname']       = request.user.organization.name
+    retval["comment"] = request.POST.get("comment", "")
+    retval["client"] = request.POST.get("client", "")
+    retval["collection"] = request.POST.get("collection", None)
+    retval["username"] = request.META.get("REMOTE_USER", "")
+    retval["organization"] = request.user.organization.id
+    retval["orgname"] = request.user.organization.name
     try:
-        pk_id = retval['collection']
-        retval['collname']  = models.Collection.objects.get(pk=pk_id).name
+        pk_id = retval["collection"]
+        retval["collname"] = models.Collection.objects.get(pk=pk_id).name
     except:
-        retval['collname']  = ""
+        retval["collname"] = ""
     return retval
 
 
 def format_doaj_json(attribs):
     attr = {
-            'files': {
-                'name'  : attribs['name'],
-                'sha256': attribs['sha256sumV'],
-                }
-            }
+        "files": {
+            "name": attribs["name"],
+            "sha256": attribs["sha256sumV"],
+        }
+    }
     return json.dumps(attr)
 
 
 # Format all the string data from the request as a JSON blob
 def format_filelist_json(request):
-    collpk = request.POST.get('collection', None)
+    collpk = request.POST.get("collection", None)
     try:
         collname = models.Collection.objects.get(pk=collpk).name
     except:
         collname = ""
-    org     = request.user.organization.name
-    dirs    = request.POST.get("directories", "")
+    org = request.user.organization.name
+    dirs = request.POST.get("directories", "")
     shasums = request.POST.get("shasums", "")
-    sizes   = request.POST.get("sizes", "")
+    sizes = request.POST.get("sizes", "")
 
     request_list = {
-            'filelist': {
-                'org'         : org,
-                'collection'  : collname,
-                'directories' : dirs,
-                'sha256sums'  : shasums,
-                'sizes'       : sizes,
-            }
+        "filelist": {
+            "org": org,
+            "collection": collname,
+            "directories": dirs,
+            "sha256sums": shasums,
+            "sizes": sizes,
+        }
     }
 
     return json.dumps(request_list)
@@ -194,33 +218,48 @@ def format_filelist_json(request):
 
 def return_doaj_report(attribs):
     data = format_doaj_json(attribs)
-    return HttpResponse(data, content_type='application/json')
+    return HttpResponse(data, content_type="application/json")
 
 
 def return_text_report(data):
-    return HttpResponse(data, content_type='application/json')
+    return HttpResponse(data, content_type="application/json")
 
-def return_total_used_quota(collections = None, organization = None):
+
+def return_total_used_quota(collections=None, organization=None):
     if not collections:
-        collections = models.Collection.objects.filter(organization=organization).annotate(
-            file_count = Count("file"),
-            total_size = Sum("file__size"),
+        collections = models.Collection.objects.filter(
+            organization=organization
+        ).annotate(
+            file_count=Count("file"),
+            total_size=Sum("file__size"),
         )
-    return reduce(lambda x, y: x + y, list(map(lambda x: x.total_size if x.total_size is not None else 0, collections)))
+    return reduce(
+        lambda x, y: x + y,
+        list(
+            map(lambda x: x.total_size if x.total_size is not None else 0, collections)
+        ),
+    )
+
 
 def return_reload_deposit_web(request):
-    collections = models.Collection.objects.filter(organization=request.user.organization).annotate(
-        file_count = Count("file"),
-        total_size = Sum("file__size"),
+    collections = models.Collection.objects.filter(
+        organization=request.user.organization
+    ).annotate(
+        file_count=Count("file"),
+        total_size=Sum("file__size"),
     )
     form = forms.FileFieldForm(collections)
     total_used_quota = return_total_used_quota(collections=collections)
-    return TemplateResponse(request, "vault/deposit_web.html", {
-        "collections": collections,
-        "filenames": "",
-        "form": form,
-        "total_used_quota": total_used_quota
-    })
+    return TemplateResponse(
+        request,
+        "vault/deposit_web.html",
+        {
+            "collections": collections,
+            "filenames": "",
+            "form": form,
+            "total_used_quota": total_used_quota,
+        },
+    )
 
 
 def validate_collection(request):
@@ -229,7 +268,7 @@ def validate_collection(request):
         return redirect("dashboard")
 
     collection_id = request.POST.get("collection", None)
-    collection    = get_object_or_404(models.Collection, pk=collection_id)
+    collection = get_object_or_404(models.Collection, pk=collection_id)
     if collection.organization != user_org:
         raise Http404
     return collection_id
@@ -245,7 +284,7 @@ def deposit_web(request):
         return return_reload_deposit_web(request)
 
     collection_id = validate_collection(request)
-    collection    = get_object_or_404(models.Collection, pk=collection_id)
+    collection = get_object_or_404(models.Collection, pk=collection_id)
 
     reply = []
     logger.info(format_filelist_json(request))
@@ -265,29 +304,29 @@ def deposit_web(request):
     validated_total_size = 0
     validated_file_count = 0
 
-    inputs = [ 'file_field', 'dir_field' ]
+    inputs = ["file_field", "dir_field"]
 
     for field in inputs:
         files = request.FILES.getlist(field)
         for f in files:
-            tempfile              = f.temporary_file_path()
-            attribs['sizeV']      = f.size
-            attribs['tempfile']   = tempfile
-            hashes                = generateHashes(tempfile)
-            attribs['md5sumV']    = hashes['md5']
-            attribs['sha1sumV']   = hashes['sha1']
-            attribs['sha256sumV'] = hashes['sha256']
-            attribs['name']       = directories.pop(0)
+            tempfile = f.temporary_file_path()
+            attribs["sizeV"] = f.size
+            attribs["tempfile"] = tempfile
+            hashes = generateHashes(tempfile)
+            attribs["md5sumV"] = hashes["md5"]
+            attribs["sha1sumV"] = hashes["sha1"]
+            attribs["sha256sumV"] = hashes["sha256"]
+            attribs["name"] = directories.pop(0)
 
             try:
-                attribs['sha256sum']  = shasums.pop(0)
+                attribs["sha256sum"] = shasums.pop(0)
             except IndexError:
-                attribs['sha256sum']  = "0" * 64
+                attribs["sha256sum"] = "0" * 64
                 logger.error(f"sha256sum for {attribs['name']} not in shasums list")
             try:
-                attribs['size']       = sizes.pop(0)
+                attribs["size"] = sizes.pop(0)
             except IndexError:
-                attribs['size']       = 0
+                attribs["size"] = 0
                 logger.error(f"size for {attribs['name']} not in sizes list")
 
             move_temp_file(request, attribs)
@@ -296,42 +335,50 @@ def deposit_web(request):
             validated_total_size += f.size
             validated_file_count += 1
 
-    collection     = models.Collection.objects.filter(pk=collection_id).annotate(
-        file_count = Count("file"),
-        total_size = Sum("file__size"),
-    ).first()
+    collection = (
+        models.Collection.objects.filter(pk=collection_id)
+        .annotate(
+            file_count=Count("file"),
+            total_size=Sum("file__size"),
+        )
+        .first()
+    )
 
     # TODO: get actual started_at value so we can keep track of upload duration
     models.Report.objects.create(
-        collection             = collection,
-        report_type            = models.Report.ReportType.DEPOSIT,
-        started_at             = datetime.datetime.now(datetime.timezone.utc),
-        ended_at               = datetime.datetime.now(datetime.timezone.utc),
-        total_size             = validated_total_size,
-        file_count             = validated_file_count,
-        collection_total_size  = collection.total_size,
-        collection_file_count  = collection.file_count,
-        error_count            = 0,
-        missing_location_count = 0,
-        mismatch_count         = 0,
-        avg_replication        = collection.target_replication,
+        collection=collection,
+        report_type=models.Report.ReportType.DEPOSIT,
+        started_at=datetime.datetime.now(datetime.timezone.utc),
+        ended_at=datetime.datetime.now(datetime.timezone.utc),
+        total_size=validated_total_size,
+        file_count=validated_file_count,
+        collection_total_size=collection.total_size,
+        collection_file_count=collection.file_count,
+        error_count=0,
+        missing_location_count=0,
+        mismatch_count=0,
+        avg_replication=collection.target_replication,
     )
 
-    report = models.Report.objects.filter(collection=collection.pk).order_by("-ended_at").first()
+    report = (
+        models.Report.objects.filter(collection=collection.pk)
+        .order_by("-ended_at")
+        .first()
+    )
     if report:
         reply.append({"report_id": report.id})
 
     total_used_quota = return_total_used_quota(organization=request.user.organization)
     reply.append({"total_used_quota": total_used_quota})
 
-    if attribs.get('client', None) == 'DOAJ_CLI':
+    if attribs.get("client", None) == "DOAJ_CLI":
         return return_doaj_report(attribs)
     elif reply:
         # HOW TO FAKE A 408? - Set this to True!
         DEBUG_408 = False
         if DEBUG_408:
-            response = HttpResponse('Timeout!')
-            response['status'] = 408
+            response = HttpResponse("Timeout!")
+            response["status"] = 408
             return response
         else:
             return return_text_report(json.dumps(reply))
@@ -369,10 +416,14 @@ def administration_plan(request):
     org = request.user.organization
     if org:
         plan = org.plan
-        return TemplateResponse(request, "vault/administration_plan.html", {
-            "organization": org,
-            "plan": plan,
-        })
+        return TemplateResponse(
+            request,
+            "vault/administration_plan.html",
+            {
+                "organization": org,
+                "plan": plan,
+            },
+        )
     else:
         return redirect("dashboard")
 
