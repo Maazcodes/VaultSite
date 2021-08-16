@@ -11,30 +11,37 @@ from . import models
 def collections(request):
     org = request.user.organization
     collections = models.Collection.objects.filter(organization=org)
-    return JsonResponse({
-        "collections": [
-            {"id": collection.pk, "name": collection.name}
-            for collection in collections
-        ]
-    })
+    return JsonResponse(
+        {
+            "collections": [
+                {"id": collection.pk, "name": collection.name}
+                for collection in collections
+            ]
+        }
+    )
 
 
 @login_required
 def reports(request):
     org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by("-ended_at")
-    return JsonResponse({
-        "reports": [
-            {
-                "id": report.pk,
-                "reportType": report.get_report_type_display(),
-                "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                "collection_name": report.collection.name,
-                "collection_id": report.collection.pk
-            }
-            for report in reports
-        ]
-    })
+    reports = models.Report.objects.filter(collection__organization=org).order_by(
+        "-ended_at"
+    )
+    return JsonResponse(
+        {
+            "reports": [
+                {
+                    "id": report.pk,
+                    "reportType": report.get_report_type_display(),
+                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_name": report.collection.name,
+                    "collection_id": report.collection.pk,
+                }
+                for report in reports
+            ]
+        }
+    )
+
 
 @csrf_exempt
 @login_required
@@ -43,73 +50,85 @@ def collections_stats(request):
     collections = models.Collection.objects.filter(organization=org).annotate(
         file_count=Count("file"),
         total_size=Sum("file__size"),
-        last_modified=Max('file__modified_date'),
+        last_modified=Max("file__modified_date"),
     )
-    reports = (
-        models.Report.objects
-            .filter(collection__organization=org, report_type=models.Report.ReportType.FIXITY)
-            .order_by("-ended_at")
+    reports = models.Report.objects.filter(
+        collection__organization=org, report_type=models.Report.ReportType.FIXITY
+    ).order_by("-ended_at")
+    latest_report = (
+        reports.values(
+            "pk", "file_count", "total_size", "error_count", "ended_at"
+        ).first()
+        if len(reports) > 0
+        else {}
     )
-    latest_report = reports.values("pk", "file_count", "total_size", "error_count", "ended_at").first() if len(
-        reports) > 0 else {}
 
-    return JsonResponse({
-        "collections": [
-            {
-                "id": collection.pk,
-                "time": collection.last_modified,
-                "fileCount": collection.file_count,
-                "totalSize": collection.total_size,
-                "latestReport": reports.filter(collection__pk=collection.pk).values("pk", "file_count", "total_size",
-                                                                                    "error_count", "ended_at").first(),
-            }
-            for collection in collections
-        ],
-        "latestReport": latest_report,
-    })
+    return JsonResponse(
+        {
+            "collections": [
+                {
+                    "id": collection.pk,
+                    "time": collection.last_modified,
+                    "fileCount": collection.file_count,
+                    "totalSize": collection.total_size,
+                    "latestReport": reports.filter(collection__pk=collection.pk)
+                    .values("pk", "file_count", "total_size", "error_count", "ended_at")
+                    .first(),
+                }
+                for collection in collections
+            ],
+            "latestReport": latest_report,
+        }
+    )
 
 
 @login_required
 def reports_files(request):
     org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by("ended_at")
-    return JsonResponse({
-        "reports": [
-            {
-                "id": report.pk,
-                "reportType": report.get_report_type_display(),
-                "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                "collection": report.collection.pk,
-                "fileCount": report.collection_file_count,
-            }
-            for report in reports
-        ]
-    })
+    reports = models.Report.objects.filter(collection__organization=org).order_by(
+        "ended_at"
+    )
+    return JsonResponse(
+        {
+            "reports": [
+                {
+                    "id": report.pk,
+                    "reportType": report.get_report_type_display(),
+                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": report.collection.pk,
+                    "fileCount": report.collection_file_count,
+                }
+                for report in reports
+            ]
+        }
+    )
 
 
 @login_required
 def collections_summary(request):
     org = request.user.organization
-    collections = (
-        models.Collection.objects
-            .filter(organization=org)
-            .annotate(file_count=Count("file"))
+    collections = models.Collection.objects.filter(organization=org).annotate(
+        file_count=Count("file")
     )
-    return JsonResponse({
-        "collections": [
-            {
-                "id": collection.pk,
-                "name": collection.name,
-                "fileCount": collection.file_count,
-                "regions": {
-                    region: collection.file_count
-                    for region in collection.target_geolocations.values_list("name", flat=True)
-                },
-                "avgReplication": collection.target_replication,
-            }
-            for collection in collections
-        ]
-    })
+    return JsonResponse(
+        {
+            "collections": [
+                {
+                    "id": collection.pk,
+                    "name": collection.name,
+                    "fileCount": collection.file_count,
+                    "regions": {
+                        region: collection.file_count
+                        for region in collection.target_geolocations.values_list(
+                            "name", flat=True
+                        )
+                    },
+                    "avgReplication": collection.target_replication,
+                }
+                for collection in collections
+            ]
+        }
+    )
 
 
 @login_required
@@ -119,18 +138,20 @@ def reports_files_by_collection(request, collection_id):
     if collection.organization != org:
         raise Http404
     reports = models.Report.objects.filter(collection=collection)
-    return JsonResponse({
-        "reports": [
-            {
-                "id": report.pk,
-                "reportType": report.get_report_type_display(),
-                "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                "collection": report.collection.pk,
-                "fileCount": report.collection_file_count,
-            }
-            for report in reports
-        ]
-    })
+    return JsonResponse(
+        {
+            "reports": [
+                {
+                    "id": report.pk,
+                    "reportType": report.get_report_type_display(),
+                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": report.collection.pk,
+                    "fileCount": report.collection_file_count,
+                }
+                for report in reports
+            ]
+        }
+    )
 
 
 @login_required
@@ -144,20 +165,24 @@ def report_summary(request, collection_id, report_id):
     if report.collection != collection:
         raise Http404
 
-    return JsonResponse({
-        "id": report.pk,
-        "reportType": report.get_report_type_display(),
-        "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-        "fileCount": report.collection_file_count,
-        "totalSize": report.collection_total_size,
-        "errorCount": report.error_count,
-        "regions": {
-            region: report.collection_file_count
-            for region in collection.target_geolocations.values_list("name", flat=True)
-        },
-        "fileTypes": {},
-        "avgReplication": collection.target_replication
-    })
+    return JsonResponse(
+        {
+            "id": report.pk,
+            "reportType": report.get_report_type_display(),
+            "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+            "fileCount": report.collection_file_count,
+            "totalSize": report.collection_total_size,
+            "errorCount": report.error_count,
+            "regions": {
+                region: report.collection_file_count
+                for region in collection.target_geolocations.values_list(
+                    "name", flat=True
+                )
+            },
+            "fileTypes": {},
+            "avgReplication": collection.target_replication,
+        }
+    )
 
 
 @login_required

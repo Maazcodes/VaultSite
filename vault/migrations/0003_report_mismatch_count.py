@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0002_report'),
+        ("vault", "0002_report"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='report',
-            name='mismatch_count',
+            model_name="report",
+            name="mismatch_count",
             field=models.PositiveBigIntegerField(default=0),
             preserve_default=False,
         ),

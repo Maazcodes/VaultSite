@@ -6,22 +6,30 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0006_file'),
+        ("vault", "0006_file"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='file',
-            name='creation_date',
+            model_name="file",
+            name="creation_date",
             field=models.DateTimeField(auto_now_add=True),
         ),
         migrations.AlterField(
-            model_name='file',
-            name='modified_date',
+            model_name="file",
+            name="modified_date",
             field=models.DateTimeField(auto_now=True),
         ),
         migrations.AddConstraint(
-            model_name='file',
-            constraint=models.UniqueConstraint(fields=('collection', 'client_filename', 'staging_filename', 'sha256_sum'), name='unique_file'),
+            model_name="file",
+            constraint=models.UniqueConstraint(
+                fields=(
+                    "collection",
+                    "client_filename",
+                    "staging_filename",
+                    "sha256_sum",
+                ),
+                name="unique_file",
+            ),
         ),
     ]
