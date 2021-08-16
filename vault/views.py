@@ -233,6 +233,8 @@ def return_total_used_quota(collections=None, organization=None):
             file_count=Count("file"),
             total_size=Sum("file__size"),
         )
+        if not collections:
+            return 0
     return reduce(
         lambda x, y: x + y,
         list(
