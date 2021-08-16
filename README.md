@@ -1,4 +1,5 @@
 # Vault Site
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Prototype Django UI for the Vault digital preservation service.
 

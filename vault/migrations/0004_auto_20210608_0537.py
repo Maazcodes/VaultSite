@@ -6,45 +6,73 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0003_report_mismatch_count'),
+        ("vault", "0003_report_mismatch_count"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Geolocations',
+            name="Geolocations",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255)),
             ],
         ),
         migrations.AddField(
-            model_name='collection',
-            name='fixity_frequency',
-            field=models.CharField(choices=[('TWICE_YEARLY', 'Twice Yearly'), ('QUARTERLY', 'Quarterly'), ('MONTHLY', 'Monthly')], default='TWICE_YEARLY', max_length=50),
+            model_name="collection",
+            name="fixity_frequency",
+            field=models.CharField(
+                choices=[
+                    ("TWICE_YEARLY", "Twice Yearly"),
+                    ("QUARTERLY", "Quarterly"),
+                    ("MONTHLY", "Monthly"),
+                ],
+                default="TWICE_YEARLY",
+                max_length=50,
+            ),
         ),
         migrations.AddField(
-            model_name='collection',
-            name='target_replication',
-            field=models.IntegerField(choices=[(2, '2x'), (3, '3x'), (4, '4x')], default=2),
+            model_name="collection",
+            name="target_replication",
+            field=models.IntegerField(
+                choices=[(2, "2x"), (3, "3x"), (4, "4x")], default=2
+            ),
         ),
         migrations.AddField(
-            model_name='plan',
-            name='default_fixity_frequency',
-            field=models.CharField(choices=[('TWICE_YEARLY', 'Twice Yearly'), ('QUARTERLY', 'Quarterly'), ('MONTHLY', 'Monthly')], default='TWICE_YEARLY', max_length=50),
+            model_name="plan",
+            name="default_fixity_frequency",
+            field=models.CharField(
+                choices=[
+                    ("TWICE_YEARLY", "Twice Yearly"),
+                    ("QUARTERLY", "Quarterly"),
+                    ("MONTHLY", "Monthly"),
+                ],
+                default="TWICE_YEARLY",
+                max_length=50,
+            ),
         ),
         migrations.AlterField(
-            model_name='plan',
-            name='default_replication',
-            field=models.IntegerField(choices=[(2, '2x'), (3, '3x'), (4, '4x')], default=2),
+            model_name="plan",
+            name="default_replication",
+            field=models.IntegerField(
+                choices=[(2, "2x"), (3, "3x"), (4, "4x")], default=2
+            ),
         ),
         migrations.AddField(
-            model_name='collection',
-            name='target_geolocations',
-            field=models.ManyToManyField(to='vault.Geolocations'),
+            model_name="collection",
+            name="target_geolocations",
+            field=models.ManyToManyField(to="vault.Geolocations"),
         ),
         migrations.AddField(
-            model_name='plan',
-            name='default_geolocations',
-            field=models.ManyToManyField(to='vault.Geolocations'),
+            model_name="plan",
+            name="default_geolocations",
+            field=models.ManyToManyField(to="vault.Geolocations"),
         ),
     ]

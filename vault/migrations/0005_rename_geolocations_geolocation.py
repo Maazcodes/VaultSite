@@ -6,12 +6,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0004_auto_20210608_0537'),
+        ("vault", "0004_auto_20210608_0537"),
     ]
 
     operations = [
         migrations.RenameModel(
-            old_name='Geolocations',
-            new_name='Geolocation',
+            old_name="Geolocations",
+            new_name="Geolocation",
         ),
     ]

@@ -6,25 +6,29 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0008_report_avg_replication'),
+        ("vault", "0008_report_avg_replication"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='report',
-            name='collection_file_count',
+            model_name="report",
+            name="collection_file_count",
             field=models.PositiveBigIntegerField(default=0),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='report',
-            name='collection_total_size',
+            model_name="report",
+            name="collection_total_size",
             field=models.PositiveBigIntegerField(default=0),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='report',
-            name='report_type',
-            field=models.CharField(choices=[('FIXITY', 'Fixity'), ('DEPOSIT', 'Deposit')], default='FIXITY', max_length=20),
+            model_name="report",
+            name="report_type",
+            field=models.CharField(
+                choices=[("FIXITY", "Fixity"), ("DEPOSIT", "Deposit")],
+                default="FIXITY",
+                max_length=20,
+            ),
         ),
     ]
