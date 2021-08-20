@@ -69,8 +69,12 @@ class CollectionAdmin(admin.ModelAdmin):
 
 @admin.register(models.Report)
 class ReportAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("get_organization", "collection", "report_type", "total_size", "file_count", "ended_at")
+    list_filter = ("report_type",)
 
+    @admin.display(description='Organization')
+    def get_organization(self, obj):
+        return obj.collection.organization
 
 @admin.register(models.Geolocation)
 class GeolocationAdmin(admin.ModelAdmin):
