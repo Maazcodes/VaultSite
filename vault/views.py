@@ -438,3 +438,8 @@ def administration_users(request):
 @login_required
 def administration_help(request):
     return TemplateResponse(request, "vault/administration_help.html", {})
+
+
+@login_required
+def deposit_flow(request):
+    return TemplateResponse(request, "vault/deposit_flow.html")

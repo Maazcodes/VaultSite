@@ -1,0 +1,40 @@
+{% extends "vault/base.html" %}
+
+{% block head_deposit %}
+    <script src="/vault/static/js/flow.min.js"></script>
+{% endblock head_deposit %}
+
+{% block header_title %}Deposit Flow{% endblock header_title %}
+{% block sticky_message %}{% endblock sticky_message %}
+{% block subnav %}
+{% endblock subnav %}
+
+{% block content %}
+<div class="row">
+    <div class="small-12 columns">
+        <h2>Deposit Flow</h2>
+        <button id="browseFilesButton">Browse Files</button>
+        <button id="browseDirectoriesButton">Browse Directories</button>
+        <div id="dropTarget" style="background-color:lightgreen; height: 10em; width: 10em; vertical-align: center" onMouseOver="this.style.backgroundColor='darkgreen'" onMouseOut="this.style.backgroundColor='lightgreen'"><p style="text-align: center; vertical-align: center">Drag and Drop</p></div>
+        <button id="flowPost" onclick="flow.upload()">Upload</button>
+    </div>
+</div>
+<script>
+var flow = new Flow({
+  target:'/api/flow_post',
+  query:{upload_token:'my_token'}
+});
+flow.assignBrowse(document.getElementById('browseFilesButton'));
+flow.assignBrowse(document.getElementById('browseDirectoriesButton'), true);
+flow.assignDrop(document.getElementById('dropTarget'));
+flow.on('fileAdded', function(file, event){
+    console.log(file, event);
+});
+flow.on('fileSuccess', function(file,message){
+    console.log(file,message);
+});
+flow.on('fileError', function(file, message){
+    console.log(file, message);
+});
+</script>
+{% endblock content %}

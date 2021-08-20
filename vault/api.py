@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Max
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
@@ -300,3 +300,12 @@ def report_files(request, collection_id, report_id):
     #         }
     #     ]
     # })
+
+
+@csrf_exempt
+@login_required
+def flow_post(request):
+    if request.method == "GET":
+        return HttpResponse(status=204)  # return 200, 201, 202 if we already have the chunk
+    if request.method == "POST":
+        return HttpResponse()  # actually handle data here
