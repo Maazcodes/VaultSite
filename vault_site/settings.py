@@ -48,10 +48,10 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "wbgrp-svc600.us.archive.org",
     "207.241.235.20",
-    "phil-dev.us.archive.org",
     "207.241.225.89",
     "avdempsey-dev.us.archive.org",
     "wbgrp-svc018.us.archive.org",
+    "wbgrp-vault-site-qa.us.archive.org",
 ]
 
 FILE_UPLOAD_HANDLERS = [
