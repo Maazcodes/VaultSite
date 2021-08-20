@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db.models import Count, Sum, Max
+from django.db.models.functions import Coalesce
 from django.template.defaultfilters import filesizeformat
 
 from vault import models
@@ -12,6 +13,9 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(models.Organization)
 class OrganizationAdmin(admin.ModelAdmin):
+    list_display = ("name", "plan", "get_quota")
+    list_filter = ("plan",)
+
     def get_readonly_fields(self, request, obj=None):
         # We need to be able to set an organization name at creation time
         # but disallow editing it in the admin later.
@@ -20,14 +24,13 @@ class OrganizationAdmin(admin.ModelAdmin):
         else:  # This is an addition
             return ()
 
+    @admin.display(description="Quota", ordering="quota_bytes")
+    def get_quota(self, organization):
+        return filesizeformat(organization.quota_bytes)
+
 
 @admin.register(models.Plan)
 class PlanAdmin(admin.ModelAdmin):
-    def geolocations(self, obj):
-        return ", ".join(
-            str(loc) for loc in obj.default_geolocations.values_list("name", flat=True)
-        )
-
     list_display = (
         "name",
         "price_per_terabyte",
@@ -36,9 +39,16 @@ class PlanAdmin(admin.ModelAdmin):
         "geolocations",
     )
 
+    def geolocations(self, plan):
+        return ", ".join(
+            str(loc) for loc in plan.default_geolocations.values_list("name", flat=True)
+        )
+
 
 @admin.register(models.Collection)
 class CollectionAdmin(admin.ModelAdmin):
+    list_display = ("name", "organization", "file_count", "total_size", "last_modified")
+
     def get_readonly_fields(self, request, obj=None):
         # We need to be able to set an collection name at creation time
         # but disallow editing it in the admin later.
@@ -50,21 +60,22 @@ class CollectionAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super(CollectionAdmin, self).get_queryset(request)
         return qs.annotate(
-            file_count=Count("file"),
-            total_size=Sum("file__size"),
+            file_count=Coalesce(Count("file"), 0),
+            total_size=Coalesce(Sum("file__size"), 0),
             last_modified=Max("file__modified_date"),
         )
 
-    def file_count(self, obj):
-        return obj.file_count
+    @admin.display(description="File Count", ordering="-file_count")
+    def file_count(self, collection):
+        return collection.file_count
 
-    def total_size(self, obj):
-        return filesizeformat(obj.total_size)
+    @admin.display(description="Total Size", ordering="-total_size")
+    def total_size(self, collection):
+        return filesizeformat(collection.total_size)
 
-    def last_modified(self, obj):
-        return obj.last_modified
-
-    list_display = ("name", "organization", "file_count", "total_size", "last_modified")
+    @admin.display(ordering="-last_modified")
+    def last_modified(self, collection):
+        return collection.last_modified
 
 
 @admin.register(models.Report)
@@ -73,15 +84,21 @@ class ReportAdmin(admin.ModelAdmin):
         "get_organization",
         "collection",
         "report_type",
-        "total_size",
+        "get_total_size",
         "file_count",
         "ended_at",
     )
     list_filter = ("report_type",)
 
-    @admin.display(description="Organization")
-    def get_organization(self, obj):
-        return obj.collection.organization
+    @admin.display(
+        description="Organization", ordering="collection__organization__name"
+    )
+    def get_organization(self, report):
+        return report.collection.organization
+
+    @admin.display(description="Total Size", ordering="-total_size")
+    def get_total_size(self, report):
+        return filesizeformat(report.total_size)
 
 
 @admin.register(models.Geolocation)
@@ -91,17 +108,22 @@ class GeolocationAdmin(admin.ModelAdmin):
 
 @admin.register(models.File)
 class FileAdmin(admin.ModelAdmin):
-    def organization(self, file):
-        return file.collection.organization
-
     list_display = (
-        "organization",
+        "get_organization",
         "collection",
         "client_filename",
-        "size",
+        "get_size",
         "file_type",
         "modified_date",
     )
+
+    @admin.display(description="Organization", ordering="collection__organization")
+    def get_organization(self, file):
+        return file.collection.organization
+
+    @admin.display(description="Size", ordering="-size")
+    def get_size(self, file):
+        return filesizeformat(file.size)
 
 
 admin.site.site_header = "Vault Administration"
