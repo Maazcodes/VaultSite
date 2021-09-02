@@ -1,10 +1,21 @@
+import logging
+import os
+
+import fs.errors
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Max
-from django.http import Http404, JsonResponse, HttpResponse
+from django.http import Http404, JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
-from . import models
+from fs.osfs import OSFS
+
+from vault import models
+from vault.forms import FlowChunkGet, FlowChunkPost, FlowChunkGetForm, FlowChunkPostForm
+
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -302,10 +313,69 @@ def report_files(request, collection_id, report_id):
     # })
 
 
+def _chunk_filename(file_identifier: str, chunk_number: int) -> str:
+    return f"{file_identifier}-{chunk_number}.tmp"
+
+
 @csrf_exempt
 @login_required
 def flow_post(request):
+    # TODO: check org and collection permission
+    # TODO: check if there is a deposit object or create it
+    # TODO: check if there is a target upload directory, and if so, that it exists
+    org_id = 1
+    org_tmp_path = str(org_id)
+    org_chunk_tmp_path = os.path.join(org_tmp_path, "chunks")
+
     if request.method == "GET":
-        return HttpResponse(status=204)  # return 200, 201, 202 if we already have the chunk
+        form = FlowChunkGetForm(request.GET)
+        if not form.is_valid():
+            return JsonResponse(status=400, data=form.errors)
+        chunk = form.flow_chunk_get()
+        # TODO: actually check to see if we have this chunk locally
+        return HttpResponse(
+            status=204
+        )  # return 200, 201, 202 if we already have the chunk
+
     if request.method == "POST":
-        return HttpResponse()  # actually handle data here
+        form = FlowChunkPostForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return JsonResponse(status=400, data=form.errors)
+        chunk = form.flow_chunk_post()
+
+        # Save the chunk to the org's tmp chunks dir
+        chunk_tmp_filename = _chunk_filename(chunk.file_identifier, chunk.number)
+        logger.info(f"saving chunk to tmp: {chunk_tmp_filename}")
+        with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
+            # TODO: do we really need the chunks sub-dir of the org tmp dir?
+            with tmp_fs.makedirs(org_chunk_tmp_path, recreate=True) as org_fs:
+                if org_fs.exists(chunk_tmp_filename):
+                    logger.warning(
+                        f"chunk already exists, skipping: {chunk_tmp_filename}"
+                    )
+                    return HttpResponse()
+                for chunk_bytes in chunk.file.chunks():
+                    org_fs.writebytes(chunk_tmp_filename, chunk_bytes)
+
+        # Check if we have all chunks for the file
+        with OSFS(
+            os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
+        ) as org_fs:
+            total_saved_size = 0
+            for i in reversed(range(1, chunk.file_total_chunks + 1)):
+                try:
+                    saved_size = org_fs.getsize(
+                        _chunk_filename(chunk.file_identifier, i)
+                    )
+                    total_saved_size += saved_size
+                except fs.errors.ResourceNotFound:
+                    return HttpResponse()
+            if not total_saved_size == chunk.file_total_size:
+                logger.warning(
+                    f"file has all chunks but wrong total size: {chunk.file_identifier}"
+                )
+                return HttpResponseBadRequest()
+        logger.info(f"all chunks saved for {chunk.file_identifier}")
+        models.DepositFile()
+
+        return HttpResponse()

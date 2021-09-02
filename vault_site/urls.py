@@ -64,7 +64,9 @@ urlpatterns = [
         name="api_report_files",
     ),
     path(
-        "api/flow_post", api.flow_post, name="flow_post",
+        "api/flow_post",
+        api.flow_post,
+        name="flow_post",
     ),
     path("admin/", admin.site.urls),
 ]

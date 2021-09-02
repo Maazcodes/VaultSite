@@ -163,3 +163,50 @@ class File(models.Model):
 
     def __str__(self):
         return self.client_filename
+
+
+class Deposit(models.Model):
+    class State(models.TextChoices):
+        REGISTERED = "REGISTERED", "Registered"
+        UPLOADED = "UPLOADED", "Uploaded"
+        HASHED = "HASHED", "Hashed"
+        REPLICATED = "REPLICATED", "Replicated"
+
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+
+    state = models.CharField(choices=State.choices, max_length=50)
+
+    registered_at = models.DateTimeField(auto_now_add=True)
+    uploaded_at = models.DateTimeField(default=None, blank=True)
+    hashed_at = models.DateTimeField(default=None, blank=True)
+    replicated_at = models.DateTimeField(default=None, blank=True)
+
+
+class DepositFile(models.Model):
+    class State(models.TextChoices):
+        REGISTERED = "REGISTERED", "Registered"
+        UPLOADED = "UPLOADED", "Uploaded"
+        HASHED = "HASHED", "Hashed"
+        REPLICATED = "REPLICATED", "Replicated"
+
+    collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+    deposit = models.ForeignKey(Deposit, on_delete=models.PROTECT, related_name="files")
+
+    flow_identifier = models.CharField(max_length=255)
+    target_directory = models.TextField(default=None)
+    name = models.TextField()
+    relative_path = models.TextField()
+    size = models.PositiveBigIntegerField()
+    state = models.CharField(choices=State.choices, max_length=50)
+
+    registered_at = models.DateTimeField(auto_now_add=True)
+    uploaded_at = models.DateTimeField(default=None, blank=True)
+    hashed_at = models.DateTimeField(default=None, blank=True)
+    replicated_at = models.DateTimeField(default=None, blank=True)
+
+    class Meta:
+        constraints = [UniqueConstraint(fields=["collection", "flow_identifier"])]
+        indexes = [
+            models.Index(fields=["collection", "flow_identifier"]),
+        ]
