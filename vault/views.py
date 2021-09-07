@@ -442,4 +442,15 @@ def administration_help(request):
 
 @login_required
 def deposit_flow(request):
-    return TemplateResponse(request, "vault/deposit_flow.html")
+    collections = models.Collection.objects.filter(
+        organization_id=request.user.organization_id
+    )
+    collection_form = forms.RegisterDepositForm(collections=collections)
+    return TemplateResponse(
+        request,
+        "vault/deposit_flow.html",
+        {
+            "collection_form": collection_form,
+            "collections": collections,
+        },
+    )

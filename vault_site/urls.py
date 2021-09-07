@@ -64,9 +64,10 @@ urlpatterns = [
         name="api_report_files",
     ),
     path(
-        "api/flow_post",
-        api.flow_post,
-        name="flow_post",
+        "api/flow_chunk",
+        api.flow_chunk,
+        name="api_flow_chunk",
     ),
+    path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
     path("admin/", admin.site.urls),
 ]

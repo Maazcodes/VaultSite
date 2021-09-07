@@ -13,22 +13,40 @@
 <div class="row">
     <div class="small-12 columns">
         <h2>Deposit Flow</h2>
+        {% if collections %}
+        <form>
+            {{ collection_form }}
+        </form>
+        {% endif %}
         <button id="browseFilesButton">Browse Files</button>
         <button id="browseDirectoriesButton">Browse Directories</button>
         <div id="dropTarget" style="background-color:lightgreen; height: 10em; width: 10em; vertical-align: center" onMouseOver="this.style.backgroundColor='darkgreen'" onMouseOut="this.style.backgroundColor='lightgreen'"><p style="text-align: center; vertical-align: center">Drag and Drop</p></div>
-        <button id="flowPost" onclick="flow.upload()">Upload</button>
+{#        <button id="flowPost" onclick="flow.upload()">Upload</button>#}
+        <button id="flowPost" onclick="start_deposit(flow, files)">Upload</button>
     </div>
 </div>
 <script>
 var flow = new Flow({
-  target:'/api/flow_post',
+  target:'/api/flow_chunk',
   query:{upload_token:'my_token'}
 });
 flow.assignBrowse(document.getElementById('browseFilesButton'));
 flow.assignBrowse(document.getElementById('browseDirectoriesButton'), true);
 flow.assignDrop(document.getElementById('dropTarget'));
+
+let files = [];
+
 flow.on('fileAdded', function(file, event){
     console.log(file, event);
+    let new_file = {
+        "flow_identifier": file.uniqueIdentifier,
+        "name": file.name,
+        "relative_path": file.relativePath,
+        "size": file.size,
+        "type": file.file.type,
+        "original_last_modified_at": new Date(file.file.lastModified).toISOString(),
+    };
+    files.push(new_file);
 });
 flow.on('fileSuccess', function(file,message){
     console.log(file,message);
@@ -36,5 +54,30 @@ flow.on('fileSuccess', function(file,message){
 flow.on('fileError', function(file, message){
     console.log(file, message);
 });
+function start_deposit(flow, files) {
+    let coll_input = document.getElementById("id_collection");
+    let collection_id = coll_input.options[coll_input.selectedIndex].value;
+
+    function start(response) {
+        console.log(response);
+        flow.upload();
+    }
+
+    let xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            start(xhr.response);
+        }
+    }
+
+    xhr.open("POST", "{{ url("api_register_deposit") }}", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    let payload = {
+        "collection_id": collection_id,
+        "files": files,
+    }
+    xhr.send(JSON.stringify(payload));
+}
+
 </script>
 {% endblock content %}

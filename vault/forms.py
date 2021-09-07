@@ -125,3 +125,26 @@ class FlowChunkPostForm(FlowChunkGetForm):
             file_total_chunks=self.cleaned_data["flowTotalChunks"],
             target_chunk_size=self.cleaned_data["flowChunkSize"],
         )
+
+
+class RegisterDepositForm(forms.Form):
+    collection = forms.ModelChoiceField(
+        queryset=None, empty_label="Select Collection for Deposit"
+    )
+
+    def __init__(self, *args, **kwargs):
+        collections = None
+        if "collections" in kwargs:
+            collections = kwargs.pop("collections")
+        super().__init__(*args, **kwargs)
+        if collections:
+            self.fields["collection"].queryset = collections
+
+
+class RegisterDepositFileForm(forms.Form):
+    flow_identifier = forms.CharField()
+    name = forms.CharField()
+    relative_path = forms.CharField()
+    size = forms.IntegerField()
+    type = forms.CharField(required=False)
+    original_last_modified_at = forms.DateTimeField(required=False)

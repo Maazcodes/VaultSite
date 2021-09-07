@@ -174,13 +174,17 @@ class Deposit(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+    # TODO: add ForeignKey to parent once we have the FileNode model
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
 
-    state = models.CharField(choices=State.choices, max_length=50)
+    state = models.CharField(
+        choices=State.choices, default=State.REGISTERED, max_length=50
+    )
 
     registered_at = models.DateTimeField(auto_now_add=True)
-    uploaded_at = models.DateTimeField(default=None, blank=True)
-    hashed_at = models.DateTimeField(default=None, blank=True)
-    replicated_at = models.DateTimeField(default=None, blank=True)
+    uploaded_at = models.DateTimeField(blank=True, null=True)
+    hashed_at = models.DateTimeField(blank=True, null=True)
+    replicated_at = models.DateTimeField(blank=True, null=True)
 
 
 class DepositFile(models.Model):
@@ -190,23 +194,20 @@ class DepositFile(models.Model):
         HASHED = "HASHED", "Hashed"
         REPLICATED = "REPLICATED", "Replicated"
 
-    collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
     deposit = models.ForeignKey(Deposit, on_delete=models.PROTECT, related_name="files")
 
     flow_identifier = models.CharField(max_length=255)
-    target_directory = models.TextField(default=None)
     name = models.TextField()
     relative_path = models.TextField()
     size = models.PositiveBigIntegerField()
-    state = models.CharField(choices=State.choices, max_length=50)
+    type = models.CharField(max_length=255, blank=True)
+    original_last_modified_at = models.DateTimeField(blank=True, null=True)
+
+    state = models.CharField(
+        choices=State.choices, default=State.REGISTERED, max_length=50
+    )
 
     registered_at = models.DateTimeField(auto_now_add=True)
-    uploaded_at = models.DateTimeField(default=None, blank=True)
-    hashed_at = models.DateTimeField(default=None, blank=True)
-    replicated_at = models.DateTimeField(default=None, blank=True)
-
-    class Meta:
-        constraints = [UniqueConstraint(fields=["collection", "flow_identifier"])]
-        indexes = [
-            models.Index(fields=["collection", "flow_identifier"]),
-        ]
+    uploaded_at = models.DateTimeField(blank=True, null=True)
+    hashed_at = models.DateTimeField(blank=True, null=True)
+    replicated_at = models.DateTimeField(blank=True, null=True)

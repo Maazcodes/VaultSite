@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -5,14 +6,27 @@ import fs.errors
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Max
-from django.http import Http404, JsonResponse, HttpResponse, HttpResponseBadRequest
+from django.http import (
+    Http404,
+    JsonResponse,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseNotAllowed,
+)
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
 from fs.osfs import OSFS
 
 from vault import models
-from vault.forms import FlowChunkGet, FlowChunkPost, FlowChunkGetForm, FlowChunkPostForm
+from vault.forms import (
+    FlowChunkGet,
+    FlowChunkPost,
+    FlowChunkGetForm,
+    FlowChunkPostForm,
+    RegisterDepositForm,
+    RegisterDepositFileForm,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -319,11 +333,56 @@ def _chunk_filename(file_identifier: str, chunk_number: int) -> str:
 
 @csrf_exempt
 @login_required
-def flow_post(request):
+def register_deposit(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(permitted_methods=["POST"])
+
+    try:
+        body = json.loads(request.body)
+    except (AttributeError, TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+
+    if "files" not in body:
+        return JsonResponse({"files": ["Missing file list"]}, status=400)
+
+    org_id = request.user.organization_id
+    collection_id = body.get("collection_id")
+    # Include organization_id in filter to ensure we have permission
+    collection = get_object_or_404(
+        models.Collection, pk=collection_id, organization_id=org_id
+    )
+
+    deposit = models.Deposit.objects.create(
+        organization_id=org_id,
+        collection=collection,
+        user=request.user,
+    )
+
+    deposit_files = []
+    for file in body.get("files", []):
+        deposit_file_form = RegisterDepositFileForm(file)
+        if not deposit_file_form.is_valid():
+            return JsonResponse(deposit_file_form.errors, status=400)
+        deposit_files.append(
+            models.DepositFile(
+                deposit=deposit,
+                **deposit_file_form.cleaned_data,
+            )
+        )
+    models.DepositFile.objects.bulk_create(deposit_files)
+    return HttpResponse()
+
+
+@csrf_exempt
+@login_required
+def flow_chunk(request):
+    if request.method not in ["GET", "POST"]:
+        return HttpResponseNotAllowed(permitted_methods=["GET", "POST"])
     # TODO: check org and collection permission
     # TODO: check if there is a deposit object or create it
     # TODO: check if there is a target upload directory, and if so, that it exists
-    org_id = 1
+
+    org_id = request.user.organization_id
     org_tmp_path = str(org_id)
     org_chunk_tmp_path = os.path.join(org_tmp_path, "chunks")
 
@@ -376,6 +435,5 @@ def flow_post(request):
                 )
                 return HttpResponseBadRequest()
         logger.info(f"all chunks saved for {chunk.file_identifier}")
-        models.DepositFile()
 
         return HttpResponse()
