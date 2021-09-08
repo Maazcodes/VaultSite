@@ -211,3 +211,65 @@ class DepositFile(models.Model):
     uploaded_at = models.DateTimeField(blank=True, null=True)
     hashed_at = models.DateTimeField(blank=True, null=True)
     replicated_at = models.DateTimeField(blank=True, null=True)
+
+
+from .ltree import LtreeField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+class TreeNode(models.Model):
+    class Type(models.TextChoices):
+        FILE = "FILE", "File"  # A file uploaded by the user
+        DIRECTORY = (
+            "DIRECTORY",
+            "Directory",
+        )  # directory node other than collection node
+        COLLECTION = "COLLECTION", "Collection"  # collection node
+        ORGANIZATION = (
+            "ORGANIZATION",
+            "Organization",
+        )  # organization node - which will be the top level node with not parent
+
+    node_type = models.CharField(choices=Type.choices, default=Type.FILE, max_length=50)
+    file_type = models.CharField(max_length=255, blank=True, null=True)
+
+    parent = models.ForeignKey(
+        "self", null=True, related_name="children", on_delete=models.CASCADE
+    )
+
+    name = models.TextField()  # Name would be the client filename
+    staging_filename = models.TextField(blank=True, null=True)
+
+    md5_sum = models.CharField(
+        max_length=32, validators=[md5_validator], blank=True, null=True
+    )
+    sha1_sum = models.CharField(
+        max_length=40, validators=[sha1_validator], blank=True, null=True
+    )
+    sha256_sum = models.CharField(
+        max_length=64, validators=[sha256_validator], default="000000"
+    )
+    size = models.PositiveBigIntegerField(default=0)
+    creation_date = models.DateTimeField(
+        auto_now_add=True
+    )  # Date on which the file was created on the users system
+    uploaded_date = models.DateTimeField(
+        auto_now_add=True
+    )  # Date on which the file was uploaded
+    modified_date = models.DateTimeField(auto_now=True)
+    deletion_date = models.DateTimeField(blank=True, null=True)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, blank=True, null=True
+    )
+    comment = models.TextField(blank=True, null=True)
+
+    path = LtreeField()
+
+
+@receiver(post_save, sender=Organization)
+def create_organization_handler(sender, **kwargs):
+    if kwargs["created"]:
+        organization_name = kwargs["instance"].name
+        if not TreeNode.objects.filter(name=organization_name):
+            TreeNode.objects.create(name=organization_name)
