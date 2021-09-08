@@ -195,7 +195,7 @@ window.onload = function () {
          document.querySelector('#cancel_button').removeEventListener("click", abortXHR);
          document.querySelector('#cancel_button').addEventListener("click", abortXHR);
 
-         xhr.open('POST', '/vault/deposit/web', true);
+         xhr.open('POST', '/deposit/web', true);
 
          xhr.onerror = function () {
              let msg = 'Request FAILED - Network Error.';
@@ -262,7 +262,7 @@ window.onload = function () {
                 msg += ' Files transfered: ' + num_files + ',';
                 msg += ' Size: ' + formatBytes(total_size);
                 msg += ' and Runtime: ' + runtime + 's';
-                msg += '<a href="/vault/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
+                msg += '<a href="/reports/'+ String(report_id) + '" target="_blank"> View Report </a>';
                 document.querySelector('#stats').innerHTML = '<b>' + msg + '</b>';
 
                 createQuotaDonut();
