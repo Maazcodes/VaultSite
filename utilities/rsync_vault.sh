@@ -6,7 +6,10 @@
 #
 #  A passphraseless ssh key on the TARGET(S) that begins thusly:
 #
-#    command="/usr/bin/rrsync /opt/vault-backups/something" ssh-rsa ...
+#    command="/usr/bin/rrsync /opt/vault-backups/" ssh-rsa {...} root@wbgrp-svcXXX.us.archive.org
+#
+#  This is installed under the root user's ~/.ssh/authorized_keys file. The specified path becomes the root.
+#  ex. A target of /my_backup actually end up in /opt/vault-backups/my_backup
 #
 # What the heck?:
 #
@@ -41,7 +44,8 @@ LOGFILE="${HOME}/RSYNC_LOGS/VAULT_RSYNC.log"
  fi
 
 SOURCE='/opt/DPS'
-TARGETS='phil-dev:/phil-dev/'
+#TARGETS='phil-dev:/phil-dev/'
+TARGETS=''
 TARGETS="$TARGETS ia601101:/ia601101_md3/"
 RSYNC_OPTS='-avz --delay-updates --one-file-system'
 
