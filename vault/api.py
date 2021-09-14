@@ -414,7 +414,7 @@ def flow_chunk(request):
                     )
                     return HttpResponse()
                 for chunk_bytes in chunk.file.chunks():
-                    org_fs.writebytes(chunk_tmp_filename, chunk_bytes)
+                    org_fs.appendbytes(chunk_tmp_filename, chunk_bytes)
 
         # Check if we have all chunks for the file
         with OSFS(
