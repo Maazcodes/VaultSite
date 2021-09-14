@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Union
 
 from django.core.files import File
 from django import forms
@@ -84,6 +83,7 @@ class FlowChunkGet:
 
 @dataclass
 class FlowChunkPost(FlowChunkGet):
+    deposit_id: int
     file: File
 
 
@@ -111,10 +111,12 @@ class FlowChunkGetForm(forms.Form):
 
 
 class FlowChunkPostForm(FlowChunkGetForm):
+    depositId = forms.IntegerField()
     file = forms.FileField(allow_empty_file=True)
 
     def flow_chunk_post(self) -> FlowChunkPost:
         return FlowChunkPost(
+            deposit_id=self.cleaned_data["depositId"],
             file=self.cleaned_data["file"],
             file_identifier=self.cleaned_data["flowIdentifier"],
             file_name=self.cleaned_data["flowFilename"],

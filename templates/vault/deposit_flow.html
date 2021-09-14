@@ -60,6 +60,8 @@ function start_deposit(flow, files) {
 
     function start(response) {
         console.log(response);
+        let res = JSON.parse(response);
+        flow.opts.query.depositId = res.deposit_id;
         flow.upload();
     }
 

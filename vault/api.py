@@ -370,7 +370,7 @@ def register_deposit(request):
             )
         )
     models.DepositFile.objects.bulk_create(deposit_files)
-    return HttpResponse()
+    return JsonResponse({"deposit_id": deposit.pk})
 
 
 @csrf_exempt
@@ -430,6 +430,7 @@ def flow_chunk(request):
                 except fs.errors.ResourceNotFound:
                     return HttpResponse()
             if not total_saved_size == chunk.file_total_size:
+                # TODO: getting some uploads that fail here, race condition on parallel uploads?
                 logger.warning(
                     f"file has all chunks but wrong total size: {chunk.file_identifier}"
                 )
