@@ -186,6 +186,9 @@ class Deposit(models.Model):
     hashed_at = models.DateTimeField(blank=True, null=True)
     replicated_at = models.DateTimeField(blank=True, null=True)
 
+    def __str__(self):
+        return f"Deposit-{self.organization_id}-{self.collection_id}-{self.registered_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
 
 class DepositFile(models.Model):
     class State(models.TextChoices):

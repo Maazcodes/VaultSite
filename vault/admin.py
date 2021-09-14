@@ -126,4 +126,33 @@ class FileAdmin(admin.ModelAdmin):
         return filesizeformat(file.size)
 
 
+@admin.register(models.Deposit)
+class DepositAdmin(admin.ModelAdmin):
+    list_display = (
+        "organization",
+        "collection",
+        "user",
+        "state",
+        "registered_at",
+        "uploaded_at",
+        "hashed_at",
+        "replicated_at",
+    )
+
+
+@admin.register(models.DepositFile)
+class DepositFileAdmin(admin.ModelAdmin):
+    list_display = (
+        "deposit",
+        "name",
+        "size",
+        "type",
+        "state",
+        "registered_at",
+        "uploaded_at",
+        "hashed_at",
+        "replicated_at",
+    )
+
+
 admin.site.site_header = "Vault Administration"
