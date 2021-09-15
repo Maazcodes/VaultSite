@@ -210,6 +210,14 @@ class DepositFile(models.Model):
         choices=State.choices, default=State.REGISTERED, max_length=50
     )
 
+    md5_sum = models.CharField(
+        max_length=32, validators=[md5_validator], blank=True, null=True, default=None
+    )
+    sha1_sum = models.CharField(
+        max_length=40, validators=[sha1_validator], blank=True, null=True, default=None
+    )
+    sha256_sum = models.CharField(max_length=64, validators=[sha256_validator], blank=True, null=True, default=None)
+
     registered_at = models.DateTimeField(auto_now_add=True)
     uploaded_at = models.DateTimeField(blank=True, null=True)
     hashed_at = models.DateTimeField(blank=True, null=True)
