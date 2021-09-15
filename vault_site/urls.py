@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from vault import api, views
 
 
@@ -32,6 +32,7 @@ urlpatterns = [
     path("deposit/flow", views.deposit_flow, name="deposit_flow"),
     # path('deposit/debug', views.deposit_debug, name='deposit_debug'),
     path("deposit/ait", views.deposit_ait, name="deposit_ait"),
+    re_path(r"^meta/files/(?P<path>.*)", views.render_file_view, name="files"),
     path("administration", views.administration, name="administration"),
     path("administration/plan", views.administration_plan, name="administration_plan"),
     path(

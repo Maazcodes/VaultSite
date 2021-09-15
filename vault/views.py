@@ -12,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Max, Sum, Count
+from django.db.models.fields import NullBooleanField
 from django.http import Http404
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
@@ -453,4 +454,37 @@ def deposit_flow(request):
             "collection_form": collection_form,
             "collections": collections,
         },
+    )
+
+
+import time
+
+
+@login_required
+def render_file_view(request, path):
+    start = time.perf_counter()
+    output_path = ""
+    if not path:
+        path = request.user.organization.name
+    else:
+        path = request.user.organization.name + "/" + path
+    parent = get_object_or_404(models.TreeNode, name=request.user.organization.name)
+    print(parent.name)
+    spilt_path = path.split("/")[1:]
+    child = NullBooleanField
+    print(spilt_path)
+    for node in spilt_path:
+        try:
+            child = get_object_or_404(models.TreeNode, name=node, parent=parent)
+            print(child)
+            output_path += "/" + child.name
+            parent = child
+        except:
+            return TemplateResponse(request, "vault/files_view.html", {"status": 404})
+    children = parent.get_descendants()
+    end = time.perf_counter()
+    return TemplateResponse(
+        request,
+        "vault/files_view.html",
+        {"items": children, "path": output_path},
     )
