@@ -23,12 +23,46 @@ class Command(BaseCommand):
         for d in range(options["depth"]):
             if current_depth == 1:
                 nodes = TreeNode.objects.bulk_create(
-                    TreeNode(parent=None, name=str(i)) for i in range(options["width"])
+                    TreeNode(
+                        parent=None,
+                        name="Archive" + str(i),
+                        node_type=TreeNode.Type.ORGANIZATION,
+                    )
+                    for i in range(options["width"])
                 )
                 current_depth += 1
                 continue
-
             new_nodes = []
+            if current_depth == 2:
+                for node in nodes:
+                    new_nodes.extend(
+                        TreeNode.objects.bulk_create(
+                            TreeNode(
+                                parent=node,
+                                name=f"depth{current_depth}node{i}",
+                                node_type=TreeNode.Type.COLLECTION,
+                            )
+                            for i in range(options["width"])
+                        )
+                    )
+                nodes = new_nodes
+                current_depth += 1
+                continue
+            if current_depth <= options["depth"] - 1:
+                for node in nodes:
+                    new_nodes.extend(
+                        TreeNode.objects.bulk_create(
+                            TreeNode(
+                                parent=node,
+                                name=f"depth{current_depth}node{i}",
+                                node_type=TreeNode.Type.DIRECTORY,
+                            )
+                            for i in range(options["width"])
+                        )
+                    )
+                nodes = new_nodes
+                current_depth += 1
+                continue
             for node in nodes:
                 new_nodes.extend(
                     TreeNode.objects.bulk_create(
