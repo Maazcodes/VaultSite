@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import UniqueConstraint, IntegerChoices
+from django.shortcuts import get_object_or_404
 
 
 TEBIBYTE = 2 ** 40
@@ -238,8 +239,7 @@ class TreeNode(models.Model):
         "self", null=True, related_name="children", on_delete=models.CASCADE
     )
 
-    name = models.TextField()  # Name would be the client filename
-    staging_filename = models.TextField(blank=True, null=True)
+    name = models.TextField()  # Name would be the client filename / directory name
 
     md5_sum = models.CharField(
         max_length=32, validators=[md5_validator], blank=True, null=True
@@ -248,17 +248,19 @@ class TreeNode(models.Model):
         max_length=40, validators=[sha1_validator], blank=True, null=True
     )
     sha256_sum = models.CharField(
-        max_length=64, validators=[sha256_validator], default="000000"
+        max_length=64, validators=[sha256_validator], blank=True, null=True
     )
     size = models.PositiveBigIntegerField(default=0)
-    creation_date = models.DateTimeField(
-        auto_now_add=True
-    )  # Date on which the file was created on the users system
-    uploaded_date = models.DateTimeField(
-        auto_now_add=True
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True, blank=True, null=True
     )  # Date on which the file was uploaded
-    modified_date = models.DateTimeField(auto_now=True)
-    deletion_date = models.DateTimeField(blank=True, null=True)
+    pre_deposit_modified_at = models.DateTimeField(
+        auto_now_add=True, blank=True, null=True
+    )  # Date on which the file was created on the users system
+    modified_at = models.DateTimeField(
+        auto_now=True, blank=True, null=True
+    )  # if the file was modified on the server.
+    deleted_at = models.DateTimeField(blank=True, null=True)
     uploaded_by = models.ForeignKey(
         User, on_delete=models.PROTECT, blank=True, null=True
     )
@@ -266,10 +268,29 @@ class TreeNode(models.Model):
 
     path = LtreeField()
 
+    def get_descendants(self):
+        return TreeNode.objects.filter(path__descendant=self.path, parent=self)
+
 
 @receiver(post_save, sender=Organization)
 def create_organization_handler(sender, **kwargs):
     if kwargs["created"]:
         organization_name = kwargs["instance"].name
         if not TreeNode.objects.filter(name=organization_name):
-            TreeNode.objects.create(name=organization_name)
+            TreeNode.objects.create(
+                node_type=TreeNode.Type.ORGANIZATION, name=organization_name
+            )
+
+
+@receiver(post_save, sender=Collection)
+def create_collection_handler(sender, **kwargs):
+    if kwargs["created"]:
+        collection_name = kwargs["instance"].name
+        parent_name = kwargs["instance"].organization.name
+        parent = get_object_or_404(TreeNode, name=parent_name)
+        if not TreeNode.objects.filter(name=collection_name, parent=parent).exists():
+            TreeNode.objects.create(
+                node_type=TreeNode.Type.COLLECTION,
+                name=collection_name,
+                parent=parent,
+            )
