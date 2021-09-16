@@ -4,8 +4,10 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import UniqueConstraint, IntegerChoices
-from django.shortcuts import get_object_or_404
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
+from vault.ltree import LtreeField
 
 TEBIBYTE = 2 ** 40
 
@@ -48,6 +50,9 @@ class Organization(models.Model):
     name = models.CharField(max_length=255)
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
     quota_bytes = models.PositiveBigIntegerField(default=TEBIBYTE)
+    tree_node = models.ForeignKey(
+        "TreeNode", blank=True, null=True, on_delete=models.PROTECT
+    )
 
     def filepath(self):
         return "/files/{org}/".format(org=re.sub("[^a-zA-Z0-9_\-\/\.]", "_", self.name))
@@ -72,6 +77,9 @@ class Collection(models.Model):
     target_geolocations = models.ManyToManyField(Geolocation)
     fixity_frequency = models.CharField(
         choices=FixityFrequency.choices, default=FixityFrequency.DEFAULT, max_length=50
+    )
+    tree_node = models.ForeignKey(
+        "TreeNode", blank=True, null=True, on_delete=models.PROTECT
     )
 
     def filepath(self):
@@ -214,11 +222,6 @@ class DepositFile(models.Model):
     replicated_at = models.DateTimeField(blank=True, null=True)
 
 
-from .ltree import LtreeField
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
-
 class TreeNode(models.Model):
     class Type(models.TextChoices):
         FILE = "FILE", "File"  # A file uploaded by the user
@@ -233,12 +236,10 @@ class TreeNode(models.Model):
         )  # organization node - which will be the top level node with not parent
 
     node_type = models.CharField(choices=Type.choices, default=Type.FILE, max_length=50)
-    file_type = models.CharField(max_length=255, blank=True, null=True)
-
     parent = models.ForeignKey(
         "self", null=True, related_name="children", on_delete=models.CASCADE
     )
-
+    path = LtreeField()
     name = models.TextField()  # Name would be the client filename / directory name
 
     md5_sum = models.CharField(
@@ -250,7 +251,10 @@ class TreeNode(models.Model):
     sha256_sum = models.CharField(
         max_length=64, validators=[sha256_validator], blank=True, null=True
     )
+
     size = models.PositiveBigIntegerField(default=0)
+    file_type = models.CharField(max_length=255, blank=True, null=True)
+
     uploaded_at = models.DateTimeField(
         auto_now_add=True, blank=True, null=True
     )  # Date on which the file was uploaded
@@ -261,36 +265,39 @@ class TreeNode(models.Model):
         auto_now=True, blank=True, null=True
     )  # if the file was modified on the server.
     deleted_at = models.DateTimeField(blank=True, null=True)
+
     uploaded_by = models.ForeignKey(
         User, on_delete=models.PROTECT, blank=True, null=True
     )
     comment = models.TextField(blank=True, null=True)
 
-    path = LtreeField()
-
-    def get_descendants(self):
-        return TreeNode.objects.filter(path__descendant=self.path, parent=self)
-
 
 @receiver(post_save, sender=Organization)
 def create_organization_handler(sender, **kwargs):
     if kwargs["created"]:
-        organization_name = kwargs["instance"].name
-        if not TreeNode.objects.filter(name=organization_name):
-            TreeNode.objects.create(
-                node_type=TreeNode.Type.ORGANIZATION, name=organization_name
+        org = kwargs["instance"]
+        if not org.tree_node:
+            org_node = TreeNode.objects.create(
+                node_type=TreeNode.Type.ORGANIZATION, name=org.name
             )
+            org.tree_node = org_node
+            org.save()
 
 
 @receiver(post_save, sender=Collection)
 def create_collection_handler(sender, **kwargs):
     if kwargs["created"]:
-        collection_name = kwargs["instance"].name
-        parent_name = kwargs["instance"].organization.name
-        parent = get_object_or_404(TreeNode, name=parent_name)
-        if not TreeNode.objects.filter(name=collection_name, parent=parent).exists():
-            TreeNode.objects.create(
-                node_type=TreeNode.Type.COLLECTION,
-                name=collection_name,
-                parent=parent,
+        coll = kwargs["instance"]
+        org = coll.organization
+        if not org.tree_node:
+            org_node = TreeNode.objects.create(
+                node_type=TreeNode.Type.ORGANIZATION, name=org.name
             )
+            org.tree_node = org_node
+            org.save()
+        if not coll.tree_node:
+            coll_node = TreeNode.objects.create(
+                node_type=TreeNode.Type.COLLECTION, name=coll.name, parent=org.tree_node
+            )
+            coll.tree_node = coll_node
+            coll.save()
