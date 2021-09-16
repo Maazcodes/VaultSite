@@ -216,7 +216,13 @@ class DepositFile(models.Model):
     sha1_sum = models.CharField(
         max_length=40, validators=[sha1_validator], blank=True, null=True, default=None
     )
-    sha256_sum = models.CharField(max_length=64, validators=[sha256_validator], blank=True, null=True, default=None)
+    sha256_sum = models.CharField(
+        max_length=64,
+        validators=[sha256_validator],
+        blank=True,
+        null=True,
+        default=None,
+    )
 
     registered_at = models.DateTimeField(auto_now_add=True)
     uploaded_at = models.DateTimeField(blank=True, null=True)

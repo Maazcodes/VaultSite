@@ -7,23 +7,54 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0012_deposit_depositfile'),
+        ("vault", "0012_deposit_depositfile"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='depositfile',
-            name='md5_sum',
-            field=models.CharField(blank=True, default=None, max_length=32, null=True, validators=[django.core.validators.RegexValidator('^[a-zA-Z0-9]{32}$', 'only hex-encoded md5 hashes are allowed')]),
+            model_name="depositfile",
+            name="md5_sum",
+            field=models.CharField(
+                blank=True,
+                default=None,
+                max_length=32,
+                null=True,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        "^[a-zA-Z0-9]{32}$", "only hex-encoded md5 hashes are allowed"
+                    )
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='depositfile',
-            name='sha1_sum',
-            field=models.CharField(blank=True, default=None, max_length=40, null=True, validators=[django.core.validators.RegexValidator('^[a-zA-Z0-9]{40}$', 'only hex-encoded sha1 hashes are allowed')]),
+            model_name="depositfile",
+            name="sha1_sum",
+            field=models.CharField(
+                blank=True,
+                default=None,
+                max_length=40,
+                null=True,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        "^[a-zA-Z0-9]{40}$", "only hex-encoded sha1 hashes are allowed"
+                    )
+                ],
+            ),
         ),
         migrations.AddField(
-            model_name='depositfile',
-            name='sha256_sum',
-            field=models.CharField(blank=True, default=None, max_length=64, null=True, validators=[django.core.validators.RegexValidator('^[a-zA-Z0-9]{64}$', 'only hex-encoded sha256 hashes are allowed')]),
+            model_name="depositfile",
+            name="sha256_sum",
+            field=models.CharField(
+                blank=True,
+                default=None,
+                max_length=64,
+                null=True,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        "^[a-zA-Z0-9]{64}$",
+                        "only hex-encoded sha256 hashes are allowed",
+                    )
+                ],
+            ),
         ),
     ]
