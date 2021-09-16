@@ -103,6 +103,27 @@ class Migration(migrations.Migration):
                 ("hashed_at", models.DateTimeField(blank=True, null=True)),
                 ("replicated_at", models.DateTimeField(blank=True, null=True)),
                 (
+                    "md5_sum",
+                    models.CharField(
+                        max_length=32, blank=True, null=True, default=None
+                    ),
+                ),
+                (
+                    "sha1_sum",
+                    models.CharField(
+                        max_length=40, blank=True, null=True, default=None
+                    ),
+                ),
+                (
+                    "sha256_sum",
+                    models.CharField(
+                        max_length=64,
+                        blank=True,
+                        null=True,
+                        default=None,
+                    ),
+                ),
+                (
                     "deposit",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
