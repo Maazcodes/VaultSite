@@ -327,6 +327,13 @@ def report_files(request, collection_id, report_id):
     # })
 
 
+def _chunk_out_filename(file_identifier: str, chunk_number: int) -> str:
+    """Return a different filename for the chunk while it is being written
+    so we don't erroneously assume all chunks are fully written to disk.
+    """
+    return f"{file_identifier}-{chunk_number}.out"
+
+
 def _chunk_filename(file_identifier: str, chunk_number: int) -> str:
     return f"{file_identifier}-{chunk_number}.tmp"
 
@@ -401,20 +408,32 @@ def flow_chunk(request):
         if not form.is_valid():
             return JsonResponse(status=400, data=form.errors)
         chunk = form.flow_chunk_post()
+        deposit = get_object_or_404(
+            models.Deposit, id=chunk.deposit_id, organization_id=org_id
+        )
+        deposit_file = get_object_or_404(
+            models.DepositFile, deposit=deposit, flow_identifier=chunk.file_identifier
+        )
+        if deposit_file.state != models.DepositFile.State.REGISTERED:
+            logger.warning("chunk posted for already uploaded file")
+            return HttpResponse()
 
         # Save the chunk to the org's tmp chunks dir
-        chunk_tmp_filename = _chunk_filename(chunk.file_identifier, chunk.number)
-        logger.info(f"saving chunk to tmp: {chunk_tmp_filename}")
+        chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
+        chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
+        logger.info(f"saving chunk to tmp: {chunk_filename}")
         with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
-            # TODO: do we really need the chunks sub-dir of the org tmp dir?
             with tmp_fs.makedirs(org_chunk_tmp_path, recreate=True) as org_fs:
-                if org_fs.exists(chunk_tmp_filename):
-                    logger.warning(
-                        f"chunk already exists, skipping: {chunk_tmp_filename}"
-                    )
+                if org_fs.exists(chunk_filename) or org_fs.exists(chunk_out_filename):
+                    logger.warning(f"chunk already exists, skipping: {chunk_filename}")
                     return HttpResponse()
+                chunk_out = org_fs.openbin(chunk_out_filename, "a")
                 for chunk_bytes in chunk.file.chunks():
-                    org_fs.appendbytes(chunk_tmp_filename, chunk_bytes)
+                    chunk_out.write(chunk_bytes)
+                chunk_out.flush()
+                os.fsync(chunk_out.fileno())
+                chunk_out.close()
+                org_fs.move(chunk_out_filename, chunk_filename, overwrite=True)
 
         # Check if we have all chunks for the file
         with OSFS(
@@ -430,11 +449,12 @@ def flow_chunk(request):
                 except fs.errors.ResourceNotFound:
                     return HttpResponse()
             if not total_saved_size == chunk.file_total_size:
-                # TODO: getting some uploads that fail here, race condition on parallel uploads?
                 logger.warning(
                     f"file has all chunks but wrong total size: {chunk.file_identifier}"
                 )
                 return HttpResponseBadRequest()
         logger.info(f"all chunks saved for {chunk.file_identifier}")
+        deposit_file.state = models.DepositFile.State.UPLOADED
+        deposit_file.save()
 
         return HttpResponse()
