@@ -116,38 +116,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "vault_site.wsgi.application"
 
-# I am skeptical of the security of the ModelBackend,
-# but will give it the benefit of the doubt until I
-# understand it better.
 AUTHENTICATION_BACKENDS = [
-    # "django.contrib.auth.backends.RemoteUserBackend",
-    "django.contrib.auth.backends.ModelBackend",
+    "django.contrib.auth.backends.RemoteUserBackend",
+    # "django.contrib.auth.backends.ModelBackend",
 ]
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    # "default": {
-    #     "ENGINE": "django.db.backends.sqlite3",
-    #     "NAME": BASE_DIR / "db.sqlite3",
-    # }
-    # "default": {
-    #     "ENGINE": "django.db.backends.postgresql_psycopg2",
-    #     "NAME": conf.get("VAULT_POSTGRES_NAME", "vault"),
-    #     "USER": conf.get("VAULT_POSTGRES_USER", "vault"),
-    #     "PASSWORD": conf.get("VAULT_POSTGRES_PASSWORD", "vault"),
-    #     "HOST": conf.get("VAULT_POSTGRES_HOST", "127.0.0.1"),
-    #     "PORT": conf.get("VAULT_POSTGRES_PORT", "5432"),
-    #     "DISABLE_SERVER_SIDE_CURSORS": True,
-    # }
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "vault",
-        "USER": "tabish",
-        "PASSWORD": "123",
-        "HOST": "localhost",
-        "PORT": "",
+        "NAME": conf.get("VAULT_POSTGRES_NAME", "vault"),
+        "USER": conf.get("VAULT_POSTGRES_USER", "vault"),
+        "PASSWORD": conf.get("VAULT_POSTGRES_PASSWORD", "vault"),
+        "HOST": conf.get("VAULT_POSTGRES_HOST", "127.0.0.1"),
+        "PORT": conf.get("VAULT_POSTGRES_PORT", "5432"),
+        "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
 
@@ -217,34 +202,34 @@ sentry_sdk.init(
 )
 
 
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "formatters": {
-#         "plain": {
-#             "format": "{levelname} {asctime} {module} {message}",
-#             "style": "{",
-#         },
-#     },
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             "filename": "/opt/DPS/vault-site/django-debug.log",
-#             # 'maxBytes': 1024*1024*100,
-#             # 'backupCount': 100,
-#             "formatter": "plain",
-#         },
-#     },
-#     "root": {
-#         "handlers": ["file"],
-#         "level": "INFO",
-#     },
-#     "loggers": {
-#         "vault": {
-#             "handlers": ["file"],
-#             "level": "INFO",
-#             "propagate": False,
-#         },
-#     },
-# }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": "/opt/DPS/vault-site/django-debug.log",
+            # 'maxBytes': 1024*1024*100,
+            # 'backupCount': 100,
+            "formatter": "plain",
+        },
+    },
+    "root": {
+        "handlers": ["file"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "vault": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

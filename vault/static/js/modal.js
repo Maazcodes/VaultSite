@@ -44,7 +44,7 @@ if (create_collection_form) {
       $('#create_collection_submit_btn').attr("disabled", true);
       
       let xhr = new XMLHttpRequest();
-      xhr.open('POST', '/create_collection');
+      xhr.open('POST', '/vault/create_collection');
 
       let name = $('#collection_name').val();
 
