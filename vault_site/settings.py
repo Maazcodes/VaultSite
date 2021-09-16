@@ -116,22 +116,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "vault_site.wsgi.application"
 
-# I am skeptical of the security of the ModelBackend,
-# but will give it the benefit of the doubt until I
-# understand it better.
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.RemoteUserBackend",
-    #'django.contrib.auth.backends.ModelBackend',
+    # "django.contrib.auth.backends.ModelBackend",
 ]
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
         "NAME": conf.get("VAULT_POSTGRES_NAME", "vault"),
