@@ -1,7 +1,8 @@
-import json
 import time
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
+from django.conf import settings
+
 from vault.models import TreeNode
 
 
@@ -13,6 +14,10 @@ class Command(BaseCommand):
         parser.add_argument("width", type=int)
 
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            print("Don't run gen_tree outside of a development environment")
+            quit()
+
         print(options["depth"], options["width"])
 
         TreeNode.objects.all().delete()
@@ -20,6 +25,7 @@ class Command(BaseCommand):
         start = time.perf_counter()
 
         current_depth = 1
+        nodes = []
         for d in range(options["depth"]):
             if current_depth == 1:
                 nodes = TreeNode.objects.bulk_create(
