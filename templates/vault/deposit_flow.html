@@ -28,7 +28,8 @@
 <script>
 var flow = new Flow({
   target:'/api/flow_chunk',
-  query:{upload_token:'my_token'}
+  query:{upload_token:'my_token'},
+  simultaneousUploads: 3,
 });
 flow.assignBrowse(document.getElementById('browseFilesButton'));
 flow.assignBrowse(document.getElementById('browseDirectoriesButton'), true);
