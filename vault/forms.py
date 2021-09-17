@@ -71,6 +71,7 @@ class FileFieldForm(forms.Form):
 class FlowChunkGet:
     """Represent a flow.js file chunk object"""
 
+    deposit_id: int
     file_identifier: str
     file_name: str
     file_relative_path: str
@@ -83,11 +84,11 @@ class FlowChunkGet:
 
 @dataclass
 class FlowChunkPost(FlowChunkGet):
-    deposit_id: int
     file: File
 
 
 class FlowChunkGetForm(forms.Form):
+    depositId = forms.IntegerField()
     flowIdentifier = forms.CharField()
     flowFilename = forms.CharField()
     flowRelativePath = forms.CharField()
@@ -99,6 +100,7 @@ class FlowChunkGetForm(forms.Form):
 
     def flow_chunk_get(self) -> FlowChunkGet:
         return FlowChunkGet(
+            deposit_id=self.cleaned_data["depositId"],
             file_identifier=self.cleaned_data["flowIdentifier"],
             file_name=self.cleaned_data["flowFilename"],
             file_relative_path=self.cleaned_data["flowRelativePath"],
@@ -111,7 +113,6 @@ class FlowChunkGetForm(forms.Form):
 
 
 class FlowChunkPostForm(FlowChunkGetForm):
-    depositId = forms.IntegerField()
     file = forms.FileField(allow_empty_file=True)
 
     def flow_chunk_post(self) -> FlowChunkPost:

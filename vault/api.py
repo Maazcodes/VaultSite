@@ -385,9 +385,6 @@ def register_deposit(request):
 def flow_chunk(request):
     if request.method not in ["GET", "POST"]:
         return HttpResponseNotAllowed(permitted_methods=["GET", "POST"])
-    # TODO: check org and collection permission
-    # TODO: check if there is a deposit object or create it
-    # TODO: check if there is a target upload directory, and if so, that it exists
 
     org_id = request.user.organization_id
     org_tmp_path = str(org_id)
@@ -398,10 +395,24 @@ def flow_chunk(request):
         if not form.is_valid():
             return JsonResponse(status=400, data=form.errors)
         chunk = form.flow_chunk_get()
-        # TODO: actually check to see if we have this chunk locally
-        return HttpResponse(
-            status=204
-        )  # return 200, 201, 202 if we already have the chunk
+
+        # check the org matches the deposit
+        get_object_or_404(models.Deposit, pk=chunk.deposit_id, organization_id=org_id)
+
+        chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
+        chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
+
+        # do we need this chunk?
+        with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
+            have_tmp = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_filename}")
+            have_out = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_out_filename}")
+        if have_tmp or have_out:
+            # TODO: we could check here if we have all chunks for the file
+            # TODO: if all chunks, set DepositFile.state = UPLOADED
+            # TODO: or maybe it doesn't matter, the DepositFile just stays REGISTERED?
+            return HttpResponse(status=200)  # we have the chunk don't send it again
+        else:
+            return HttpResponse(status=204)  # please send us this chunk
 
     if request.method == "POST":
         form = FlowChunkPostForm(request.POST, request.FILES)
