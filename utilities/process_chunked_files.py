@@ -10,6 +10,7 @@ import signal
 import sys
 import hashlib
 import threading
+from datetime import datetime
 from fs.osfs import OSFS
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "vault_site.settings"
@@ -18,7 +19,8 @@ import django
 sys.path.append(os.path.join("..", os.getcwd()))
 django.setup()
 from django.conf import settings
-from vault.models import DepositFile
+from django.utils import timezone
+from vault.models import DepositFile, Deposit
 
 SLEEP_TIME = 20
 logger = logging.getLogger(__name__)
@@ -89,8 +91,12 @@ def process_uploaded_deposit_files():
                         deposit_file.md5_sum = md5_hash.hexdigest()
                         deposit_file.sha1_sum = sha1_hash.hexdigest()
                         deposit_file.sha256_sum = sha256_hash.hexdigest()
+                        deposit_file.hashed_at = timezone.now()
                         deposit_file.state = DepositFile.State.HASHED
                         deposit_file.save()
+
+
+
                         logger.info(
                             f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
                         )
@@ -99,6 +105,14 @@ def process_uploaded_deposit_files():
                         logger.error(
                             f"Chunk marked as UPLOADED, but sizes don't match: {deposit_file.flow_identifier}"
                         )
+
+            # If the Deposit is in the early phase, and no deposit files in early phases
+            # todo is is problematic? Should I only check for UPLOADED? We don't want to clobber an upload process
+            deposit = deposit_file.deposit
+            if deposit.state in (Deposit.State.REGISTERED, Deposit.State.UPLOADED):
+                if 0 == len(DepositFile.objects.filter(deposit=deposit, state__in=(DepositFile.State.REGISTERED, DepositFile.State.UPLOADED))):
+                    deposit.state = Deposit.State.HASHED
+                    deposit.save()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
