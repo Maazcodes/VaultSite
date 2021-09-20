@@ -53,7 +53,7 @@ def process_hashed_deposit_files():
                 shafs_root = os.path.join(settings.SHADIR_ROOT, org_tmp_path)
                 try:
                     os.makedirs(shafs_root, exist_ok=True)
-                    shutil.move(hashed_file_path, os.path.join(shafs_root, deposit_file.sha1_sum))
+                    shutil.move(hashed_file_path, os.path.join(shafs_root, deposit_file.sha256_sum))
                     deposit_file.state = DepositFile.State.REPLICATED  # todo is this right?
                     deposit_file.save()
                 except OSError as err:
