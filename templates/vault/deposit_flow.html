@@ -45,7 +45,7 @@ flow.on('fileAdded', function(file, event){
         "relative_path": file.relativePath,
         "size": file.size,
         "type": file.file.type,
-        "original_last_modified_at": new Date(file.file.lastModified).toISOString(),
+        "pre_deposit_modified_at": new Date(file.file.lastModified).toISOString(),
     };
     files.push(new_file);
 });

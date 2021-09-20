@@ -150,4 +150,4 @@ class RegisterDepositFileForm(forms.Form):
     relative_path = forms.CharField()
     size = forms.IntegerField()
     type = forms.CharField(required=False)
-    original_last_modified_at = forms.DateTimeField(required=False)
+    pre_deposit_modified_at = forms.DateTimeField(required=False)

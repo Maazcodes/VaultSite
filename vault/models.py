@@ -213,7 +213,7 @@ class DepositFile(models.Model):
     relative_path = models.TextField()
     size = models.PositiveBigIntegerField()
     type = models.CharField(max_length=255, blank=True)
-    original_last_modified_at = models.DateTimeField(blank=True, null=True)
+    pre_deposit_modified_at = models.DateTimeField(blank=True, null=True)
 
     state = models.CharField(
         choices=State.choices, default=State.REGISTERED, max_length=50
