@@ -74,22 +74,24 @@ def process_hashed_deposit_files():
 
 
 def make_or_find_file_node(deposit_file, parent):
-    file_node = TreeNode.objects.get(name=deposit_file.name, parent=parent, sha256_sum=deposit_file.sha256_sum)
-    if not file_node:
-        file_node = TreeNode.objects.create(
-            node_type=TreeNode.Type.FILE,
-            parent=parent,
-            name=deposit_file.name,
+    file_node, created = TreeNode.objects.get_or_create(
+        parent=parent,
+        name=deposit_file.name,
+        defaults=dict(
+            node_type=TreeNode.Type.DIRECTORY,
             md5_sum=deposit_file.md5_sum,
             sha1_sum=deposit_file.sha1_sum,
             sha256_sum=deposit_file.sha256_sum,
             size=deposit_file.size,
             file_type=deposit_file.type,
             uploaded_at=deposit_file.uploaded_at,
-            modified_at=deposit_file.hashed_at
-        )
-    #todo pre_deposit_modified_at
-    #todo uploaded_by
+            modified_at=deposit_file.hashed_at,
+            pre_deposit_modified_at=deposit_file.pre_deposit_modified_at,
+            uploaded_by=deposit_file.deposit.user,
+        ),
+    )
+    msg = "created" if created else "already exists"
+    logger.info(f"TreeNode FILE {deposit_file.sha256_sum} {deposit_file.name} {msg}")
 
     return file_node
 
@@ -116,12 +118,9 @@ def make_or_find_parent_node(deposit_file):
     # filter and ignore empty path segments. Strip file name segment
     parent_segment = collection.tree_node
     for segment in filter(None,deposit_file.relative_path.split("/")[:-1]):
-        tree_path_segment = TreeNode.objects.get(parent=parent_segment, name=segment)
-        if not tree_path_segment:
-            tree_path_segment = TreeNode.objects.create(
-                node_type=TreeNode.Type.DIRECTORY, parent=parent_segment, name=segment,
-            )
-        parent_segment = tree_path_segment
+        parent_segment, created = TreeNode.objects.get_or_create(parent=parent_segment, name=segment, defaults={"node_type": TreeNode.Type.DIRECTORY})
+        msg = "created" if created else "already exists"
+        logger.info(f"TreeNode DIRECTORY {segment} for {deposit_file.sha256_sum} {msg}")
 
     return parent_segment
 
