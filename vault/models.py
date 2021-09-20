@@ -276,7 +276,7 @@ class TreeNode(models.Model):
         auto_now_add=True, blank=True, null=True
     )  # Date on which the file was uploaded
     pre_deposit_modified_at = models.DateTimeField(
-        auto_now_add=True, blank=True, null=True
+        blank=True, null=True
     )  # Date on which the file was created on the users system
     modified_at = models.DateTimeField(
         auto_now=True, blank=True, null=True
