@@ -264,7 +264,7 @@ class TreeNode(models.Model):
         max_length=64, validators=[sha256_validator], blank=True, null=True, db_index=True
     )
 
-    size = models.PositiveBigIntegerField(default=0)
+    size = models.PositiveBigIntegerField(blank=True, null=True)
     file_type = models.CharField(max_length=255, blank=True, null=True)
 
     uploaded_at = models.DateTimeField(
