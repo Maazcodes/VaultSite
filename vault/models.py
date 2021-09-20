@@ -47,7 +47,7 @@ class Plan(models.Model):
 
 
 class Organization(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
     quota_bytes = models.PositiveBigIntegerField(default=TEBIBYTE)
     tree_node = models.ForeignKey(
@@ -70,7 +70,7 @@ class User(AbstractUser):
 
 class Collection(models.Model):
     name = models.CharField(max_length=255)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, db_index=False)
     target_replication = models.IntegerField(
         choices=ReplicationFactor.choices, default=ReplicationFactor.DEFAULT
     )
@@ -99,6 +99,11 @@ class Collection(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(fields=["organization", "name"], name="vault_collection_org_and_name")
+        ]
 
 
 class Report(models.Model):
