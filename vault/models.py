@@ -249,9 +249,9 @@ class TreeNode(models.Model):
 
     node_type = models.CharField(choices=Type.choices, default=Type.FILE, max_length=50)
     parent = models.ForeignKey(
-        "self", null=True, related_name="children", on_delete=models.CASCADE
-    )
-    path = LtreeField()
+        "self", null=True, related_name="children", on_delete=models.CASCADE, db_index=False
+    )  # index (parent, name) created separately
+    path = LtreeField()  # index created separately
     name = models.TextField()  # Name would be the client filename / directory name
 
     md5_sum = models.CharField(
@@ -261,7 +261,7 @@ class TreeNode(models.Model):
         max_length=40, validators=[sha1_validator], blank=True, null=True
     )
     sha256_sum = models.CharField(
-        max_length=64, validators=[sha256_validator], blank=True, null=True
+        max_length=64, validators=[sha256_validator], blank=True, null=True, db_index=True
     )
 
     size = models.PositiveBigIntegerField(default=0)
@@ -282,6 +282,11 @@ class TreeNode(models.Model):
         User, on_delete=models.PROTECT, blank=True, null=True
     )
     comment = models.TextField(blank=True, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("parent", "name"), name="vault_treenode_parent_and_name"),
+        ]
 
 
 @receiver(post_save, sender=Organization)
