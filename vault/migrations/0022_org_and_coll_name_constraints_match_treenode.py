@@ -7,22 +7,28 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0021_rename_depositfile_pre_deposit_modified_at'),
+        ("vault", "0021_rename_depositfile_pre_deposit_modified_at"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='collection',
-            name='organization',
-            field=models.ForeignKey(db_index=False, on_delete=django.db.models.deletion.PROTECT, to='vault.organization'),
+            model_name="collection",
+            name="organization",
+            field=models.ForeignKey(
+                db_index=False,
+                on_delete=django.db.models.deletion.PROTECT,
+                to="vault.organization",
+            ),
         ),
         migrations.AlterField(
-            model_name='organization',
-            name='name',
+            model_name="organization",
+            name="name",
             field=models.CharField(max_length=255, unique=True),
         ),
         migrations.AddConstraint(
-            model_name='collection',
-            constraint=models.UniqueConstraint(fields=('organization', 'name'), name='vault_collection_org_and_name'),
+            model_name="collection",
+            constraint=models.UniqueConstraint(
+                fields=("organization", "name"), name="vault_collection_org_and_name"
+            ),
         ),
     ]

@@ -95,8 +95,6 @@ def process_uploaded_deposit_files():
                         deposit_file.state = DepositFile.State.HASHED
                         deposit_file.save()
 
-
-
                         logger.info(
                             f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
                         )
@@ -110,7 +108,15 @@ def process_uploaded_deposit_files():
             # todo is is problematic? Should I only check for UPLOADED? We don't want to clobber an upload process
             deposit = deposit_file.deposit
             if deposit.state in (Deposit.State.REGISTERED, Deposit.State.UPLOADED):
-                if 0 == len(DepositFile.objects.filter(deposit=deposit, state__in=(DepositFile.State.REGISTERED, DepositFile.State.UPLOADED))):
+                if 0 == len(
+                    DepositFile.objects.filter(
+                        deposit=deposit,
+                        state__in=(
+                            DepositFile.State.REGISTERED,
+                            DepositFile.State.UPLOADED,
+                        ),
+                    )
+                ):
                     deposit.state = Deposit.State.HASHED
                     deposit.save()
 

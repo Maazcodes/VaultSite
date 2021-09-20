@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0020_nullable_treenode_size'),
+        ("vault", "0020_nullable_treenode_size"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='depositfile',
-            old_name='original_last_modified_at',
-            new_name='pre_deposit_modified_at',
+            model_name="depositfile",
+            old_name="original_last_modified_at",
+            new_name="pre_deposit_modified_at",
         ),
     ]

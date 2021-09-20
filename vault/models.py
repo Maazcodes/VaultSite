@@ -70,7 +70,9 @@ class User(AbstractUser):
 
 class Collection(models.Model):
     name = models.CharField(max_length=255)
-    organization = models.ForeignKey(Organization, on_delete=models.PROTECT, db_index=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.PROTECT, db_index=False
+    )
     target_replication = models.IntegerField(
         choices=ReplicationFactor.choices, default=ReplicationFactor.DEFAULT
     )
@@ -102,7 +104,9 @@ class Collection(models.Model):
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=["organization", "name"], name="vault_collection_org_and_name")
+            UniqueConstraint(
+                fields=["organization", "name"], name="vault_collection_org_and_name"
+            )
         ]
 
 
@@ -254,7 +258,11 @@ class TreeNode(models.Model):
 
     node_type = models.CharField(choices=Type.choices, default=Type.FILE, max_length=50)
     parent = models.ForeignKey(
-        "self", null=True, related_name="children", on_delete=models.CASCADE, db_index=False
+        "self",
+        null=True,
+        related_name="children",
+        on_delete=models.CASCADE,
+        db_index=False,
     )  # index (parent, name) created separately
     path = LtreeField()  # index created separately
     name = models.TextField()  # Name would be the client filename / directory name
@@ -266,7 +274,11 @@ class TreeNode(models.Model):
         max_length=40, validators=[sha1_validator], blank=True, null=True
     )
     sha256_sum = models.CharField(
-        max_length=64, validators=[sha256_validator], blank=True, null=True, db_index=True
+        max_length=64,
+        validators=[sha256_validator],
+        blank=True,
+        null=True,
+        db_index=True,
     )
 
     size = models.PositiveBigIntegerField(blank=True, null=True)
@@ -290,7 +302,9 @@ class TreeNode(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=("parent", "name"), name="vault_treenode_parent_and_name"),
+            models.UniqueConstraint(
+                fields=("parent", "name"), name="vault_treenode_parent_and_name"
+            ),
         ]
 
 

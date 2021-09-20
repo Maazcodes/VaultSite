@@ -10,6 +10,7 @@ import sys
 import hashlib
 import threading
 from fs.osfs import OSFS
+
 os.environ["DJANGO_SETTINGS_MODULE"] = "vault_site.settings"
 import django
 
@@ -38,34 +39,50 @@ def process_hashed_deposit_files():
     # move file into tree
 
     while True:
-        for deposit_file in DepositFile.objects.filter(
-            state=DepositFile.State.HASHED
-        ):
+        for deposit_file in DepositFile.objects.filter(state=DepositFile.State.HASHED):
             org_id = deposit_file.deposit.organization_id
             org_tmp_path = str(org_id)
 
             # Check if we have the hashed file. It may be on another node.
-            hashed_file_path = os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_tmp_path, "merged",
-                                            deposit_file.flow_identifier + ".merged")
+            hashed_file_path = os.path.join(
+                settings.FILE_UPLOAD_TEMP_DIR,
+                org_tmp_path,
+                "merged",
+                deposit_file.flow_identifier + ".merged",
+            )
             if os.path.isfile(path=hashed_file_path):
                 parent_node = make_or_find_parent_node(deposit_file)
                 file_node = make_or_find_file_node(deposit_file, parent_node)
                 shafs_root = os.path.join(settings.SHADIR_ROOT, org_tmp_path)
                 try:
                     os.makedirs(shafs_root, exist_ok=True)
-                    shutil.move(hashed_file_path, os.path.join(shafs_root, deposit_file.sha256_sum))
-                    deposit_file.state = DepositFile.State.REPLICATED  # todo is this right?
+                    shutil.move(
+                        hashed_file_path,
+                        os.path.join(shafs_root, deposit_file.sha256_sum),
+                    )
+                    deposit_file.state = (
+                        DepositFile.State.REPLICATED
+                    )  # todo is this right?
                     deposit_file.save()
                 except OSError as err:
                     logger.error(f"Error writing to destination {shafs_root} - {err}")
-                #todo do we archive depositfile now or when deposit is done?
+                # todo do we archive depositfile now or when deposit is done?
             # todo Rollback to hashed won't work, but rollback to uploaded will
 
             # If Deposit is state UPLOADED, but all DepositFiles are REPLICATED, mark Deposit REPLICATED
             deposit = deposit_file.deposit
             if deposit.state == Deposit.State.HASHED:
-                if 0 == len(DepositFile.objects.filter(deposit=deposit, state__in=(Deposit.State.REGISTERED, Deposit.State.UPLOADED, Deposit.State.HASHED))):
-                    deposit.state=Deposit.State.REPLICATED
+                if 0 == len(
+                    DepositFile.objects.filter(
+                        deposit=deposit,
+                        state__in=(
+                            Deposit.State.REGISTERED,
+                            Deposit.State.UPLOADED,
+                            Deposit.State.HASHED,
+                        ),
+                    )
+                ):
+                    deposit.state = Deposit.State.REPLICATED
                     deposit.save()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
@@ -104,21 +121,27 @@ def make_or_find_parent_node(deposit_file):
     # Make collection and org tree nodes if non existent
     if organization.tree_node is None:
         org_tree_node = TreeNode.objects.create(
-                node_type=TreeNode.Type.ORGANIZATION, name=organization.name
-            )
+            node_type=TreeNode.Type.ORGANIZATION, name=organization.name
+        )
         organization.tree_node = org_tree_node
         organization.save()
     if collection.tree_node is None:
         collection_tree_node = TreeNode.objects.create(
-                node_type=TreeNode.Type.COLLECTION, name=collection.name, parent=organization.tree_node
-            )
+            node_type=TreeNode.Type.COLLECTION,
+            name=collection.name,
+            parent=organization.tree_node,
+        )
         collection.tree_node = collection_tree_node
         collection.save()
 
     # filter and ignore empty path segments. Strip file name segment
     parent_segment = collection.tree_node
-    for segment in filter(None,deposit_file.relative_path.split("/")[:-1]):
-        parent_segment, created = TreeNode.objects.get_or_create(parent=parent_segment, name=segment, defaults={"node_type": TreeNode.Type.DIRECTORY})
+    for segment in filter(None, deposit_file.relative_path.split("/")[:-1]):
+        parent_segment, created = TreeNode.objects.get_or_create(
+            parent=parent_segment,
+            name=segment,
+            defaults={"node_type": TreeNode.Type.DIRECTORY},
+        )
         msg = "created" if created else "already exists"
         logger.info(f"TreeNode DIRECTORY {segment} for {deposit_file.sha256_sum} {msg}")
 
