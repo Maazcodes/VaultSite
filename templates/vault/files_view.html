@@ -54,15 +54,37 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
     color: #fff;
     background: #3879d9;
   }
+  table {
+    margin-top: 6rem;
+    margin-bottom: 0rem;
+  }
+  table thead tr th,
+  table thead tr td {
+    padding: 0 0.7rem 0rem 0.7rem;
+  }
 </style>
 <div class="row">
   <div class="small-12 columns">
     <table>
       <thead>
         <th>Name</th>
+        <th>Size</th>
+        <th>Type</th>
+        <th>Pre-deposit Modified at</th>
       </thead>
       <tbody>
-        {% for item in items %}
+        {% if path != "" %}
+        <td>
+          <a
+            class="notepad"
+            href="/meta/files/{{'/'.join(path[:-1].split('/')[:-1])[1:]}}"
+            >Back</a
+          >
+        </td>
+        <td></td>
+        <td></td>
+        <td></td>
+        {% endif %} {% for item in items %}
         <tr>
           {% if item.node_type == "COLLECTION" or item.node_type == "DIRECTORY"
           %}
@@ -75,8 +97,11 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
             </a>
           </td>
           {% else %}
-          <td>{{item.name.split("/")[-1]}}</td>
+          <td>{{item.name.split("/")[-1] }}</td>
           {% endif %}
+          <td>{{item.size }}</td>
+          <td>{{ item.node_type[0]}}{{item.node_type[1:] | lower }}</td>
+          <td>{{item.pre_deposit_modified_at.strftime('%Y-%m-%d')}}</td>
         </tr>
         {% endfor %}
       </tbody>
