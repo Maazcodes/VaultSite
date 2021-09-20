@@ -99,7 +99,7 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
           {% else %}
           <td>{{item.name.split("/")[-1] }}</td>
           {% endif %}
-          <td>{% if item.pre_deposit_modified_at is none %}{{ item.modified_at.strftime('%Y-%m-%d') }}{% else %}{{item.pre_deposit_modified_at.strftime('%Y-%m-%d')}}{% endif %}</td>
+          <td>{% if item.pre_deposit_modified_at is none %}{% if item.modified_at is none %}-{% else %}{{ item.modified_at.strftime('%Y-%m-%d') }}{% endif %}{% else %}{{item.pre_deposit_modified_at.strftime('%Y-%m-%d')}}{% endif %}</td>
           <td>{% if item.size is none %}-{% else %}{{item.size|filesizeformat }}{% endif %}</td>
           <td>{{ item.node_type[0]}}{{item.node_type[1:] | lower }}</td>
         </tr>
