@@ -290,9 +290,13 @@ def create_collection_handler(sender, **kwargs):
         coll = kwargs["instance"]
         org = coll.organization
         if not org.tree_node:
-            org_node = TreeNode.objects.create(
+            org_node = TreeNode.objects.filter(
                 node_type=TreeNode.Type.ORGANIZATION, name=org.name
-            )
+            ).first()
+            if not org_node:
+                org_node = TreeNode.objects.create(
+                    node_type=TreeNode.Type.ORGANIZATION, name=org.name
+                )
             org.tree_node = org_node
             org.save()
         if not coll.tree_node:
