@@ -68,9 +68,9 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
     <table>
       <thead>
         <th>Name</th>
+        <th>Date Modified</th>
         <th>Size</th>
         <th>Type</th>
-        <th>Pre-deposit Modified at</th>
       </thead>
       <tbody>
         {% if path != "" %}
@@ -99,9 +99,9 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
           {% else %}
           <td>{{item.name.split("/")[-1] }}</td>
           {% endif %}
-          <td>{{item.size }}</td>
+          <td>{% if item.pre_deposit_modified_at is none %}{{ item.modified_at.strftime('%Y-%m-%d') }}{% else %}{{item.pre_deposit_modified_at.strftime('%Y-%m-%d')}}{% endif %}</td>
+          <td>{% if item.size is none %}-{% else %}{{item.size|filesizeformat }}{% endif %}</td>
           <td>{{ item.node_type[0]}}{{item.node_type[1:] | lower }}</td>
-          <td>{{item.pre_deposit_modified_at.strftime('%Y-%m-%d')}}</td>
         </tr>
         {% endfor %}
       </tbody>
