@@ -95,7 +95,7 @@ def make_or_find_file_node(deposit_file, parent):
         parent=parent,
         name=deposit_file.name,
         defaults=dict(
-            node_type=TreeNode.Type.DIRECTORY,
+            node_type=TreeNode.Type.FILE,
             md5_sum=deposit_file.md5_sum,
             sha1_sum=deposit_file.sha1_sum,
             sha256_sum=deposit_file.sha256_sum,
