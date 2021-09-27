@@ -98,11 +98,8 @@ def process_uploaded_deposit_files():
                         deposit_file.sha1_sum = sha1_hash.hexdigest()
                         deposit_file.sha256_sum = sha256_hash.hexdigest()
                         deposit_file.hashed_at = timezone.now()
-                        org_fs.move(
-                            "/chunks/" + merged_filename,
-                            "/merged/" + deposit_file.sha256_sum,
-                            overwrite=True,
-                        )
+                        move_into_shafs(deposit_file, org_fs.getospath("/chunks/" + merged_filename))
+
                         parent_node = make_or_find_parent_node(deposit_file)
                         file_node = make_or_find_file_node(deposit_file, parent_node)
                         deposit_file.tree_node = file_node
@@ -137,6 +134,27 @@ def process_uploaded_deposit_files():
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
             return
+
+
+def move_into_shafs(deposit_file, current_file_path):
+    shafs_root = get_shafs_folder(deposit_file)
+    try:
+        os.makedirs(shafs_root, exist_ok=True)
+        shutil.move(
+            current_file_path,
+            os.path.join(shafs_root, deposit_file.sha256_sum),
+        )
+    except OSError as err:
+        logger.error(
+            f"Error moving merged file to destination {shafs_root} - {err}"
+        )
+
+
+# TODO expand this in the future for shafs folder structure
+def get_shafs_folder(deposit_file):
+    org_id = deposit_file.deposit.organization_id
+    org_tmp_path = str(org_id)
+    return os.path.join(settings.SHADIR_ROOT, org_tmp_path)
 
 
 def make_or_find_file_node(deposit_file, parent):
