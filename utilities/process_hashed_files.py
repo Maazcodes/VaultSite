@@ -10,6 +10,7 @@ import sys
 import hashlib
 import threading
 from fs.osfs import OSFS
+from internetarchive import Item, get_session
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "vault_site.settings"
 import django
@@ -17,142 +18,148 @@ import django
 sys.path.append(os.path.join("..", os.getcwd()))
 django.setup()
 from django.conf import settings
+from django.utils import timezone, dateformat
 from vault.models import DepositFile, Deposit, TreeNode, Collection, Organization
 
 SLEEP_TIME = 20
+MAX_PBOX_ITEM_FILES=10000
+MAX_PBOX_ITEM_BYTES=100*1024*1024*1024 #100GiB
+
 logger = logging.getLogger(__name__)
 
 shutdown = threading.Event()
 
+# For each hashed file
+# check TreeNode for petabox path
+# if none; upload to pbox
+# if pbox path update status of DepositFile and Deposit
+
 
 def process_hashed_deposit_files():
-
-    # Look for hashed files ready for processing.
-    # Mark Deposit done if all deposit files are done
-    # TODO trigger on depositfile delete to archive the row
-    # create tree node
-    # for now parent is collection
-    # todo parent will be specified dir in collection maybe
-    # create chain directory tree nodes saving along the way
-    # create file tree node, save
-    # make sure collection has a tree node
-    # move file into tree
 
     while True:
         for deposit_file in DepositFile.objects.filter(state=DepositFile.State.HASHED):
             org_id = deposit_file.deposit.organization_id
             org_tmp_path = str(org_id)
-
             # Check if we have the hashed file. It may be on another node.
             hashed_file_path = os.path.join(
                 settings.FILE_UPLOAD_TEMP_DIR,
                 org_tmp_path,
                 "merged",
-                deposit_file.flow_identifier + ".merged",
+                deposit_file.sha256_sum,
             )
             if os.path.isfile(path=hashed_file_path):
-                parent_node = make_or_find_parent_node(deposit_file)
-                file_node = make_or_find_file_node(deposit_file, parent_node)
-                shafs_root = os.path.join(settings.SHADIR_ROOT, org_tmp_path)
-                try:
-                    os.makedirs(shafs_root, exist_ok=True)
-                    shutil.move(
-                        hashed_file_path,
-                        os.path.join(shafs_root, deposit_file.sha256_sum),
-                    )
-                    deposit_file.state = (
-                        DepositFile.State.REPLICATED
-                    )  # todo is this right?
-                    deposit_file.save()
-                except OSError as err:
-                    logger.error(f"Error writing to destination {shafs_root} - {err}")
-                # todo do we archive depositfile now or when deposit is done?
-            # todo Rollback to hashed won't work, but rollback to uploaded will
+                if deposit_file.tree_node and not deposit_file.tree_node.pbox_item:
+                    status_code, item_name = try_upload_to_pbox(deposit_file, hashed_file_path)
+                    if status_code == 200:
+                        deposit_file.tree_node.pbox_item = item_name
+                        deposit_file.tree_node.save()
+                    else:
+                        logger.error(f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}")
 
-            # If Deposit is state UPLOADED, but all DepositFiles are REPLICATED, mark Deposit REPLICATED
-            deposit = deposit_file.deposit
-            if deposit.state == Deposit.State.HASHED:
-                if 0 == len(
-                    DepositFile.objects.filter(
-                        deposit=deposit,
+                if deposit_file.tree_node and deposit_file.tree_node.pbox_item:
+                    move_into_shafs(deposit_file, hashed_file_path)
+
+                    # if all deposit_files in this deposit are REPLICATED, then set Deposit.state=REPLICATED
+                    # todo should this just be a trigger on deposit_file.state?
+                    if 0 == len(DepositFile.objects.filter(
+                        deposit=deposit_file.deposit,
                         state__in=(
-                            Deposit.State.REGISTERED,
-                            Deposit.State.UPLOADED,
-                            Deposit.State.HASHED,
+                            DepositFile.State.REGISTERED,
+                            DepositFile.State.UPLOADED,
+                            DepositFile.State.HASHED,
                         ),
-                    )
-                ):
-                    deposit.state = Deposit.State.REPLICATED
-                    deposit.save()
+                    )):
+                        deposit_file.deposit.state = Deposit.State.REPLICATED
+                        deposit_file.deposit.save()
+
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
             return
 
 
-def make_or_find_file_node(deposit_file, parent):
-    file_node, created = TreeNode.objects.get_or_create(
-        parent=parent,
-        name=deposit_file.name,
-        defaults=dict(
-            node_type=TreeNode.Type.FILE,
-            md5_sum=deposit_file.md5_sum,
-            sha1_sum=deposit_file.sha1_sum,
-            sha256_sum=deposit_file.sha256_sum,
-            size=deposit_file.size,
-            file_type=deposit_file.type,
-            uploaded_at=deposit_file.uploaded_at,
-            modified_at=deposit_file.hashed_at,
-            pre_deposit_modified_at=deposit_file.pre_deposit_modified_at,
-            uploaded_by=deposit_file.deposit.user,
-        ),
-    )
-    msg = "created" if created else "already exists"
-    logger.info(f"TreeNode FILE {deposit_file.sha256_sum} {deposit_file.name} {msg}")
-
-    return file_node
-
-
-def make_or_find_parent_node(deposit_file):
-
-    organization = Organization.objects.get(id=deposit_file.deposit.organization_id)
-    collection = Collection.objects.get(id=deposit_file.deposit.collection_id)
-
-    # Make collection and org tree nodes if non existent
-    if organization.tree_node is None:
-        org_tree_node = TreeNode.objects.create(
-            node_type=TreeNode.Type.ORGANIZATION, name=organization.name
+def move_into_shafs(deposit_file, hashed_file_path):
+    shafs_root = get_shafs_folder(deposit_file)
+    try:
+        os.makedirs(shafs_root, exist_ok=True)
+        shutil.move(
+            hashed_file_path,
+            os.path.join(shafs_root, deposit_file.sha256_sum),
         )
-        organization.tree_node = org_tree_node
-        organization.save()
-    if collection.tree_node is None:
-        collection_tree_node = TreeNode.objects.create(
-            node_type=TreeNode.Type.COLLECTION,
-            name=collection.name,
-            parent=organization.tree_node,
+        deposit_file.state = (
+            DepositFile.State.REPLICATED
         )
-        collection.tree_node = collection_tree_node
-        collection.save()
-
-    # filter and ignore empty path segments. Strip file name segment
-    parent_segment = collection.tree_node
-    for segment in filter(None, deposit_file.relative_path.split("/")[:-1]):
-        parent_segment, created = TreeNode.objects.get_or_create(
-            parent=parent_segment,
-            name=segment,
-            defaults={"node_type": TreeNode.Type.DIRECTORY},
+        deposit_file.save()
+    except OSError as err:
+        logger.error(
+            f"Error writing to destination {shafs_root} - {err}"
         )
-        msg = "created" if created else "already exists"
-        logger.info(f"TreeNode DIRECTORY {segment} for {deposit_file.sha256_sum} {msg}")
 
-    return parent_segment
+
+# TODO expand this in the future for shafs folder structure
+def get_shafs_folder(deposit_file):
+    org_id = deposit_file.deposit.organization_id
+    org_tmp_path = str(org_id)
+    return os.path.join(settings.SHADIR_ROOT, org_tmp_path)
+
+
+def try_upload_to_pbox(deposit_file, hashed_file_path):
+    org_id = deposit_file.deposit.organization_id
+    col_id = deposit_file.deposit.collection_id
+
+    item_name = get_pbox_item_name(deposit_file)
+    if item_name is not None:
+        if not os.path.isfile(settings.IA_CONFIG_PATH):
+            logger.error(f"IA config path not found: {settings.IA_CONFIG_PATH}")
+            return 0, None
+        ia_session = get_session(config_file=settings.IA_CONFIG_PATH)
+        item = ia_session.get_item(item_name)
+
+        metadata = dict(collection=deposit_file.deposit.organization.pbox_collection, mediatype='data', creator='Vault', description=f"Data files for Vault digital preservation service - {org_id}")
+        try:
+            responses = item.upload(hashed_file_path, queue_derive=False, verify=True, metadata=metadata)
+        except Exception as e:
+            logger.error(f"Error uploading to petabox: {e}")
+        if responses and len(responses) == 1:
+            return responses[0].status_code, item_name
+        else:
+            return 0, item_name
+    else:
+        return 0, None
+
+
+# Return the first pbox item that has room whether it exists or not.
+def get_pbox_item_name(deposit_file):
+    if deposit_file.deposit.organization.pbox_collection is None:
+        logger.error(f"Deposit organization has no petabox collection set: organization.id={deposit_file.deposit.organization.id}")
+        return None
+    org_id = deposit_file.deposit.organization_id
+    datestamp = dateformat.format(timezone.now(), 'Ymd')
+    environment = "-"+settings.DEPLOYMENT_ENVIRONMENT if settings.DEPLOYMENT_ENVIRONMENT != "PROD" else ""
+    prefix = f"DPS-VAULT{environment}-{org_id}-{datestamp}"
+    count=1
+
+    ia_session = get_session(config_file=settings.IA_CONFIG_PATH)
+
+    while True:
+        item_name = prefix + f"{count:05d}"
+        item = ia_session.get_item(item_name)
+        if not item.exists:
+            return item_name
+        else:
+            if item.item_size > MAX_PBOX_ITEM_FILES or item.files_count > MAX_PBOX_ITEM_FILES:
+                count += 1
+                continue
+            else:
+                return item_name
 
 
 def main(argv=None):
     argv = argv or sys.argv
     arg_parser = argparse.ArgumentParser(
         prog=os.path.basename(argv[0]),
-        description="%s - Vault - Process Chunked Files" % (os.path.basename(argv[0])),
+        description="%s - Vault - Process Hashed Files" % (os.path.basename(argv[0])),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     arg_parser.add_argument(

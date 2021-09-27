@@ -43,6 +43,10 @@ SECRET_KEY = conf.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = conf.get("DEBUG", True)
 
+DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
+
+IA_CONFIG_PATH = conf.get("IA_CONFIG_PATH")
+
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
@@ -50,6 +54,7 @@ ALLOWED_HOSTS = [
     "207.241.235.20",
     "207.241.225.89",
     "avdempsey-dev.us.archive.org",
+    "adam-dev.us.archive.org"
     "wbgrp-svc018.us.archive.org",
     "wbgrp-vault-site-qa.us.archive.org",
 ]

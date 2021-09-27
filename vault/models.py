@@ -53,6 +53,7 @@ class Organization(models.Model):
     tree_node = models.ForeignKey(
         "TreeNode", blank=True, null=True, on_delete=models.PROTECT
     )
+    pbox_collection = models.CharField(max_length=255, blank=True, null=True)
 
     def filepath(self):
         return "/files/{org}/".format(org=re.sub("[^a-zA-Z0-9_\-\/\.]", "_", self.name))
@@ -237,6 +238,10 @@ class DepositFile(models.Model):
         default=None,
     )
 
+    tree_node = models.ForeignKey(
+        "TreeNode", blank=True, null=True, on_delete=models.PROTECT
+    )
+
     registered_at = models.DateTimeField(auto_now_add=True)
     uploaded_at = models.DateTimeField(blank=True, null=True)
     hashed_at = models.DateTimeField(blank=True, null=True)
@@ -283,6 +288,7 @@ class TreeNode(models.Model):
 
     size = models.PositiveBigIntegerField(blank=True, null=True)
     file_type = models.CharField(max_length=255, blank=True, null=True)
+    pbox_item = models.CharField(max_length=255, blank=True, null=True)
 
     uploaded_at = models.DateTimeField(
         auto_now_add=True, blank=True, null=True

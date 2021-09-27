@@ -6,6 +6,7 @@
 import argparse
 import logging
 import os
+import shutil
 import signal
 import sys
 import hashlib
@@ -20,13 +21,23 @@ sys.path.append(os.path.join("..", os.getcwd()))
 django.setup()
 from django.conf import settings
 from django.utils import timezone
-from vault.models import DepositFile, Deposit
+from vault.models import DepositFile, Deposit, TreeNode, Collection, Organization
 
 SLEEP_TIME = 20
 logger = logging.getLogger(__name__)
 
 shutdown = threading.Event()
 
+    # Look for hashed files ready for processing.
+    # Mark Deposit done if all deposit files are done
+    # TODO trigger on depositfile delete to archive the row
+    # create tree node
+    # for now parent is collection
+    # todo parent will be specified dir in collection maybe
+    # create chain directory tree nodes saving along the way
+    # create file tree node, save
+    # make sure collection has a tree node
+    # move file into tree
 
 def process_uploaded_deposit_files():
 
@@ -67,7 +78,7 @@ def process_uploaded_deposit_files():
                         md5_hash = hashlib.md5()
                         sha1_hash = hashlib.sha1()
                         sha256_hash = hashlib.sha256()
-                        # TODO read full chunk, or should we read bytes instead?
+
                         for i in range(1, chunk_count + 1):
                             chunk_bytes = org_fs.readbytes(
                                 "/chunks/"
@@ -83,15 +94,18 @@ def process_uploaded_deposit_files():
                             sha1_hash.update(chunk_bytes)
                             sha256_hash.update(chunk_bytes)
 
-                        org_fs.move(
-                            "/chunks/" + merged_filename,
-                            "/merged/" + deposit_file.flow_identifier + ".merged",
-                            overwrite=True,
-                        )
                         deposit_file.md5_sum = md5_hash.hexdigest()
                         deposit_file.sha1_sum = sha1_hash.hexdigest()
                         deposit_file.sha256_sum = sha256_hash.hexdigest()
                         deposit_file.hashed_at = timezone.now()
+                        org_fs.move(
+                            "/chunks/" + merged_filename,
+                            "/merged/" + deposit_file.sha256_sum,
+                            overwrite=True,
+                        )
+                        parent_node = make_or_find_parent_node(deposit_file)
+                        file_node = make_or_find_file_node(deposit_file, parent_node)
+                        deposit_file.tree_node = file_node
                         deposit_file.state = DepositFile.State.HASHED
                         deposit_file.save()
 
@@ -123,6 +137,64 @@ def process_uploaded_deposit_files():
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
             return
+
+
+def make_or_find_file_node(deposit_file, parent):
+    file_node, created = TreeNode.objects.get_or_create(
+        parent=parent,
+        name=deposit_file.name,
+        defaults=dict(
+            node_type=TreeNode.Type.FILE,
+            md5_sum=deposit_file.md5_sum,
+            sha1_sum=deposit_file.sha1_sum,
+            sha256_sum=deposit_file.sha256_sum,
+            size=deposit_file.size,
+            file_type=deposit_file.type,
+            uploaded_at=deposit_file.uploaded_at,
+            modified_at=deposit_file.hashed_at,
+            pre_deposit_modified_at=deposit_file.pre_deposit_modified_at,
+            uploaded_by=deposit_file.deposit.user,
+        ),
+    )
+    msg = "created" if created else "already exists"
+    logger.info(f"TreeNode FILE {deposit_file.sha256_sum} {deposit_file.name} {msg}")
+
+    return file_node
+
+
+def make_or_find_parent_node(deposit_file):
+
+    organization = Organization.objects.get(id=deposit_file.deposit.organization_id)
+    collection = Collection.objects.get(id=deposit_file.deposit.collection_id)
+
+    # Make collection and org tree nodes if non existent
+    if organization.tree_node is None:
+        org_tree_node = TreeNode.objects.create(
+            node_type=TreeNode.Type.ORGANIZATION, name=organization.name
+        )
+        organization.tree_node = org_tree_node
+        organization.save()
+    if collection.tree_node is None:
+        collection_tree_node = TreeNode.objects.create(
+            node_type=TreeNode.Type.COLLECTION,
+            name=collection.name,
+            parent=organization.tree_node,
+        )
+        collection.tree_node = collection_tree_node
+        collection.save()
+
+    # filter and ignore empty path segments. Strip file name segment
+    parent_segment = collection.tree_node
+    for segment in filter(None, deposit_file.relative_path.split("/")[:-1]):
+        parent_segment, created = TreeNode.objects.get_or_create(
+            parent=parent_segment,
+            name=segment,
+            defaults={"node_type": TreeNode.Type.DIRECTORY},
+        )
+        msg = "created" if created else "already exists"
+        logger.info(f"TreeNode DIRECTORY {segment} for {deposit_file.sha256_sum} {msg}")
+
+    return parent_segment
 
 
 def main(argv=None):

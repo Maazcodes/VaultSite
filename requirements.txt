@@ -11,3 +11,4 @@ PyYAML==5.4.1
 psycopg2-binary==2.9.1
 black
 fs==2.4.13
+internetarchive==2.1.0
