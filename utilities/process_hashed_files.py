@@ -49,37 +49,37 @@ def process_hashed_deposit_files():
 
             if not os.path.isfile(path=sha_file_path):
                 continue
-            else:
-                if deposit_file.tree_node and not deposit_file.tree_node.pbox_item:
-                    status_code, item_name = try_upload_to_pbox(
-                        deposit_file, sha_file_path
+
+            if deposit_file.tree_node and not deposit_file.tree_node.pbox_item:
+                status_code, item_name = try_upload_to_pbox(
+                    deposit_file, sha_file_path
+                )
+                if status_code == 200:
+                    deposit_file.tree_node.pbox_item = item_name
+                    deposit_file.tree_node.save()
+                else:
+                    logger.error(
+                        f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}"
                     )
-                    if status_code == 200:
-                        deposit_file.tree_node.pbox_item = item_name
-                        deposit_file.tree_node.save()
-                    else:
-                        logger.error(
-                            f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}"
-                        )
 
-                if deposit_file.tree_node and deposit_file.tree_node.pbox_item:
-                    deposit_file.state = DepositFile.State.REPLICATED
-                    deposit_file.save()
+            if deposit_file.tree_node and deposit_file.tree_node.pbox_item:
+                deposit_file.state = DepositFile.State.REPLICATED
+                deposit_file.save()
 
-                    # if all deposit_files in this deposit are REPLICATED, then set Deposit.state=REPLICATED
-                    # todo should this just be a trigger on deposit_file.state?
-                    if 0 == len(
-                        DepositFile.objects.filter(
-                            deposit=deposit_file.deposit,
-                            state__in=(
-                                DepositFile.State.REGISTERED,
-                                DepositFile.State.UPLOADED,
-                                DepositFile.State.HASHED,
-                            ),
-                        )
-                    ):
-                        deposit_file.deposit.state = Deposit.State.REPLICATED
-                        deposit_file.deposit.save()
+                # if all deposit_files in this deposit are REPLICATED, then set Deposit.state=REPLICATED
+                # todo should this just be a trigger on deposit_file.state?
+                if 0 == len(
+                    DepositFile.objects.filter(
+                        deposit=deposit_file.deposit,
+                        state__in=(
+                            DepositFile.State.REGISTERED,
+                            DepositFile.State.UPLOADED,
+                            DepositFile.State.HASHED,
+                        ),
+                    )
+                ):
+                    deposit_file.deposit.state = Deposit.State.REPLICATED
+                    deposit_file.deposit.save()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):

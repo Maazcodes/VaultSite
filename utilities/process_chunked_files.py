@@ -66,58 +66,59 @@ def process_uploaded_deposit_files():
                 chunk_count = len(chunk_list)
 
                 # If the chunks for this DepositFile are on this machine
-                if not chunk_count or chunk_count == 0:
+                if chunk_count == 0:
                     continue
-                else:
-                    combined_chunk_size = sum(
-                        org_fs.getsize("/chunks/" + c.name) for c in chunk_list
+
+                combined_chunk_size = sum(
+                    org_fs.getsize("/chunks/" + c.name) for c in chunk_list
+                )
+                logger.info(
+                    f"Processing UPLOADED DepositFile {deposit_file.flow_identifier}"
+                )
+
+                if combined_chunk_size != deposit_file.size:
+                    logger.error(
+                        f"Chunk marked as UPLOADED, but sizes don't match: {deposit_file.flow_identifier}"
                     )
-                    logger.info(
-                        f"Processing UPLOADED DepositFile {deposit_file.flow_identifier}"
+                    continue
+
+                merged_filename = deposit_file.flow_identifier + ".merged.tmp"
+                md5_hash = hashlib.md5()
+                sha1_hash = hashlib.sha1()
+                sha256_hash = hashlib.sha256()
+
+                for i in range(1, chunk_count + 1):
+                    chunk_bytes = org_fs.readbytes(
+                        "/chunks/"
+                        + deposit_file.flow_identifier
+                        + "-"
+                        + str(i)
+                        + ".tmp"
                     )
+                    org_fs.appendbytes(
+                        "/chunks/" + merged_filename, chunk_bytes
+                    )
+                    md5_hash.update(chunk_bytes)
+                    sha1_hash.update(chunk_bytes)
+                    sha256_hash.update(chunk_bytes)
 
-                    if combined_chunk_size != deposit_file.size:
-                        logger.error(
-                            f"Chunk marked as UPLOADED, but sizes don't match: {deposit_file.flow_identifier}"
-                        )
-                    else:
-                        merged_filename = deposit_file.flow_identifier + ".merged.tmp"
-                        md5_hash = hashlib.md5()
-                        sha1_hash = hashlib.sha1()
-                        sha256_hash = hashlib.sha256()
+                deposit_file.md5_sum = md5_hash.hexdigest()
+                deposit_file.sha1_sum = sha1_hash.hexdigest()
+                deposit_file.sha256_sum = sha256_hash.hexdigest()
+                deposit_file.hashed_at = timezone.now()
+                move_into_shafs(
+                    deposit_file, org_fs.getospath("/chunks/" + merged_filename)
+                )
 
-                        for i in range(1, chunk_count + 1):
-                            chunk_bytes = org_fs.readbytes(
-                                "/chunks/"
-                                + deposit_file.flow_identifier
-                                + "-"
-                                + str(i)
-                                + ".tmp"
-                            )
-                            org_fs.appendbytes(
-                                "/chunks/" + merged_filename, chunk_bytes
-                            )
-                            md5_hash.update(chunk_bytes)
-                            sha1_hash.update(chunk_bytes)
-                            sha256_hash.update(chunk_bytes)
+                parent_node = make_or_find_parent_node(deposit_file)
+                file_node = make_or_find_file_node(deposit_file, parent_node)
+                deposit_file.tree_node = file_node
+                deposit_file.state = DepositFile.State.HASHED
+                deposit_file.save()
 
-                        deposit_file.md5_sum = md5_hash.hexdigest()
-                        deposit_file.sha1_sum = sha1_hash.hexdigest()
-                        deposit_file.sha256_sum = sha256_hash.hexdigest()
-                        deposit_file.hashed_at = timezone.now()
-                        move_into_shafs(
-                            deposit_file, org_fs.getospath("/chunks/" + merged_filename)
-                        )
-
-                        parent_node = make_or_find_parent_node(deposit_file)
-                        file_node = make_or_find_file_node(deposit_file, parent_node)
-                        deposit_file.tree_node = file_node
-                        deposit_file.state = DepositFile.State.HASHED
-                        deposit_file.save()
-
-                        logger.info(
-                            f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
-                        )
+                logger.info(
+                    f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
+                )
 
             # If the Deposit is in the early phase, and no deposit files in early phases
             # todo is is problematic? Should I only check for UPLOADED? We don't want to clobber an upload process
