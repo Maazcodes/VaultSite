@@ -22,8 +22,8 @@ from django.utils import timezone, dateformat
 from vault.models import DepositFile, Deposit, TreeNode, Collection, Organization
 
 SLEEP_TIME = 20
-MAX_PBOX_ITEM_FILES=10000
-MAX_PBOX_ITEM_BYTES=100*1024*1024*1024 #100GiB
+MAX_PBOX_ITEM_FILES = 10000
+MAX_PBOX_ITEM_BYTES = 100 * 1024 * 1024 * 1024  # 100GiB
 
 logger = logging.getLogger(__name__)
 
@@ -43,36 +43,43 @@ def process_hashed_deposit_files():
             org_tmp_path = str(org_id)
 
             # Check if we have the hashed file. It may be on another node.
-            sha_file_path = os.path.join(get_shafs_folder(deposit_file),deposit_file.sha256_sum)
+            sha_file_path = os.path.join(
+                get_shafs_folder(deposit_file), deposit_file.sha256_sum
+            )
 
-            if os.path.isfile(path=sha_file_path):
+            if not os.path.isfile(path=sha_file_path):
+                continue
+            else:
                 if deposit_file.tree_node and not deposit_file.tree_node.pbox_item:
-                    status_code, item_name = try_upload_to_pbox(deposit_file, sha_file_path)
+                    status_code, item_name = try_upload_to_pbox(
+                        deposit_file, sha_file_path
+                    )
                     if status_code == 200:
                         deposit_file.tree_node.pbox_item = item_name
                         deposit_file.tree_node.save()
                     else:
-                        logger.error(f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}")
+                        logger.error(
+                            f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}"
+                        )
 
                 if deposit_file.tree_node and deposit_file.tree_node.pbox_item:
-                    deposit_file.state = (
-                        DepositFile.State.REPLICATED
-                    )
+                    deposit_file.state = DepositFile.State.REPLICATED
                     deposit_file.save()
 
                     # if all deposit_files in this deposit are REPLICATED, then set Deposit.state=REPLICATED
                     # todo should this just be a trigger on deposit_file.state?
-                    if 0 == len(DepositFile.objects.filter(
-                        deposit=deposit_file.deposit,
-                        state__in=(
-                            DepositFile.State.REGISTERED,
-                            DepositFile.State.UPLOADED,
-                            DepositFile.State.HASHED,
-                        ),
-                    )):
+                    if 0 == len(
+                        DepositFile.objects.filter(
+                            deposit=deposit_file.deposit,
+                            state__in=(
+                                DepositFile.State.REGISTERED,
+                                DepositFile.State.UPLOADED,
+                                DepositFile.State.HASHED,
+                            ),
+                        )
+                    ):
                         deposit_file.deposit.state = Deposit.State.REPLICATED
                         deposit_file.deposit.save()
-
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
@@ -98,9 +105,16 @@ def try_upload_to_pbox(deposit_file, file_path):
         ia_session = get_session(config_file=settings.IA_CONFIG_PATH)
         item = ia_session.get_item(item_name)
 
-        metadata = dict(collection=deposit_file.deposit.organization.pbox_collection, mediatype='data', creator='Vault', description=f"Data files for Vault digital preservation service - {org_id}")
+        metadata = dict(
+            collection=deposit_file.deposit.organization.pbox_collection,
+            mediatype="data",
+            creator="Vault",
+            description=f"Data files for Vault digital preservation service - {org_id}",
+        )
         try:
-            responses = item.upload(file_path, queue_derive=False, verify=True, metadata=metadata)
+            responses = item.upload(
+                file_path, queue_derive=False, verify=True, metadata=metadata
+            )
         except Exception as e:
             logger.error(f"Error uploading to petabox: {e}")
         if responses and len(responses) == 1:
@@ -114,13 +128,19 @@ def try_upload_to_pbox(deposit_file, file_path):
 # Return the first pbox item that has room whether it exists or not.
 def get_pbox_item_name(deposit_file):
     if deposit_file.deposit.organization.pbox_collection is None:
-        logger.error(f"Deposit organization has no petabox collection set: organization.id={deposit_file.deposit.organization.id}")
+        logger.error(
+            f"Deposit organization has no petabox collection set: organization.id={deposit_file.deposit.organization.id}"
+        )
         return None
     org_id = deposit_file.deposit.organization_id
-    datestamp = dateformat.format(timezone.now(), 'Ymd')
-    environment = "-"+settings.DEPLOYMENT_ENVIRONMENT if settings.DEPLOYMENT_ENVIRONMENT != "PROD" else ""
+    datestamp = dateformat.format(timezone.now(), "Ymd")
+    environment = (
+        "-" + settings.DEPLOYMENT_ENVIRONMENT
+        if settings.DEPLOYMENT_ENVIRONMENT != "PROD"
+        else ""
+    )
     prefix = f"DPS-VAULT{environment}-{org_id}-{datestamp}"
-    count=1
+    count = 1
 
     ia_session = get_session(config_file=settings.IA_CONFIG_PATH)
 
@@ -130,7 +150,10 @@ def get_pbox_item_name(deposit_file):
         if not item.exists:
             return item_name
         else:
-            if item.item_size > MAX_PBOX_ITEM_BYTES or item.files_count > MAX_PBOX_ITEM_FILES:
+            if (
+                item.item_size > MAX_PBOX_ITEM_BYTES
+                or item.files_count > MAX_PBOX_ITEM_FILES
+            ):
                 count += 1
                 continue
             else:
