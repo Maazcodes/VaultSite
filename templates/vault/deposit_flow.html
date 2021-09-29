@@ -27,7 +27,7 @@
 </div>
 <script>
 var flow = new Flow({
-  target:'/api/flow_chunk',
+  target:'{{ url("api_flow_chunk") }}',
   query:{upload_token:'my_token'},
   simultaneousUploads: 3,
 });
