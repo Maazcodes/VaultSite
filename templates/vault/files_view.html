@@ -77,7 +77,7 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
         <td>
           <a
             class="notepad"
-            href="/meta/files/{{'/'.join(path[:-1].split('/')[:-1])[1:]}}"
+            href="{{ url("files", args=['/'.join(path[:-1].split('/')[:-1])[1:]]) }}"
             >Back</a
           >
         </td>
@@ -91,7 +91,7 @@ sticky_message %}{% endblock sticky_message %} {% block content %}
           <td>
             <a
               class="notepad"
-              href="/meta/files/{{path[1:] + '/' + item.name if path else item.name }}"
+              href="{{ url("files", args=[path[1:] + '/' + item.name if path else item.name]) }}"
             >
               {{item.name}}
             </a>
