@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0023_auto_20210923_2221'),
+        ("vault", "0023_auto_20210923_2221"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='organization',
-            name='pbox_collection',
+            model_name="organization",
+            name="pbox_collection",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
     ]

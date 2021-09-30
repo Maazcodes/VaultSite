@@ -51,9 +51,7 @@ def process_hashed_deposit_files():
                 continue
 
             if deposit_file.tree_node and not deposit_file.tree_node.pbox_item:
-                status_code, item_name = try_upload_to_pbox(
-                    deposit_file, sha_file_path
-                )
+                status_code, item_name = try_upload_to_pbox(deposit_file, sha_file_path)
                 if status_code == 200:
                     deposit_file.tree_node.pbox_item = item_name
                     deposit_file.tree_node.save()

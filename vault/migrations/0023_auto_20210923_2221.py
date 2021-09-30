@@ -7,18 +7,23 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0022_org_and_coll_name_constraints_match_treenode'),
+        ("vault", "0022_org_and_coll_name_constraints_match_treenode"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='depositfile',
-            name='tree_node',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to='vault.treenode'),
+            model_name="depositfile",
+            name="tree_node",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                to="vault.treenode",
+            ),
         ),
         migrations.AddField(
-            model_name='treenode',
-            name='pbox_item',
+            model_name="treenode",
+            name="pbox_item",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
     ]

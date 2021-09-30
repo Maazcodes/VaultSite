@@ -95,9 +95,7 @@ def process_uploaded_deposit_files():
                         + str(i)
                         + ".tmp"
                     )
-                    org_fs.appendbytes(
-                        "/chunks/" + merged_filename, chunk_bytes
-                    )
+                    org_fs.appendbytes("/chunks/" + merged_filename, chunk_bytes)
                     md5_hash.update(chunk_bytes)
                     sha1_hash.update(chunk_bytes)
                     sha256_hash.update(chunk_bytes)
