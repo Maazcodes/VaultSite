@@ -54,7 +54,7 @@ ALLOWED_HOSTS = [
     "207.241.235.20",
     "207.241.225.89",
     "avdempsey-dev.us.archive.org",
-    "adam-dev.us.archive.org"
+    "adam-dev.us.archive.org",
     "wbgrp-svc018.us.archive.org",
     "wbgrp-vault-site-qa.us.archive.org",
 ]
