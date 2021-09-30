@@ -439,7 +439,11 @@ def administration_help(request):
 def deposit_flow(request):
     collections = models.Collection.objects.filter(
         organization_id=request.user.organization_id
-    )
+    ).annotate(
+            file_count=Count("file"),
+            total_size=Sum("file__size"),
+        )
+    total_used_quota = return_total_used_quota(collections=collections)
     collection_form = forms.RegisterDepositForm(collections=collections)
     return TemplateResponse(
         request,
@@ -447,6 +451,7 @@ def deposit_flow(request):
         {
             "collection_form": collection_form,
             "collections": collections,
+            "total_used_quota": total_used_quota
         },
     )
 
@@ -481,4 +486,13 @@ def render_file_view(request, path):
         request,
         "vault/files_view.html",
         {"items": children, "path": output_path},
+    )
+
+
+@login_required
+def render_tree_file_view(request):
+    return TemplateResponse(
+        request,
+        "vault/tree_files_view.html",
+        {},
     )
