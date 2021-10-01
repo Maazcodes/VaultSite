@@ -1,0 +1,18 @@
+[Unit]
+Description=Gunicorn daemon for vault-site
+After=network.target
+
+[Service]
+PIDFile=/run/gunicorn/pid
+Type=simple
+User={{ vault_user }}
+Group=www-data
+RuntimeDirectory=gunicorn
+WorkingDirectory={{ python_path }}
+ExecStart={{ vault_project_root }}/venv/bin/gunicorn --pid /run/gunicorn/pid --log-file=/var/log/gunicorn.log --workers {{ ansible_processor_count | int }} --bind 127.0.0.1:8000 vault_site.wsgi:application --env DJANGO_SETTINGS_MODULE={{ vault_django_settings }} --max-requests 1000
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

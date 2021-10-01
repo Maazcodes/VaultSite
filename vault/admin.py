@@ -20,9 +20,9 @@ class OrganizationAdmin(admin.ModelAdmin):
         # We need to be able to set an organization name at creation time
         # but disallow editing it in the admin later.
         if obj:  # obj is not None, so this is an edit
-            return ("name",)
+            return ("name", "tree_node")
         else:  # This is an addition
-            return ()
+            return ("tree_node",)
 
     @admin.display(description="Quota", ordering="quota_bytes")
     def get_quota(self, organization):
@@ -53,9 +53,9 @@ class CollectionAdmin(admin.ModelAdmin):
         # We need to be able to set an collection name at creation time
         # but disallow editing it in the admin later.
         if obj:  # obj is not None, so this is an edit
-            return ("name",)
+            return ("name", "tree_node")
         else:  # This is an addition
-            return ()
+            return ("tree_node",)
 
     def get_queryset(self, request):
         qs = super(CollectionAdmin, self).get_queryset(request)
@@ -124,6 +124,35 @@ class FileAdmin(admin.ModelAdmin):
     @admin.display(description="Size", ordering="-size")
     def get_size(self, file):
         return filesizeformat(file.size)
+
+
+@admin.register(models.Deposit)
+class DepositAdmin(admin.ModelAdmin):
+    list_display = (
+        "organization",
+        "collection",
+        "user",
+        "state",
+        "registered_at",
+        "uploaded_at",
+        "hashed_at",
+        "replicated_at",
+    )
+
+
+@admin.register(models.DepositFile)
+class DepositFileAdmin(admin.ModelAdmin):
+    list_display = (
+        "deposit",
+        "name",
+        "size",
+        "type",
+        "state",
+        "registered_at",
+        "uploaded_at",
+        "hashed_at",
+        "replicated_at",
+    )
 
 
 admin.site.site_header = "Vault Administration"

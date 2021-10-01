@@ -1,26 +1,21 @@
 import datetime
-import os
-import re
-import logging
 import json
-
+import logging
 from functools import reduce
 
-# :FIXME: - Required to make Apache use Django auth
-# from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Max, Sum, Count
 from django.http import Http404
+from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
+from django.views.decorators.csrf import csrf_exempt
+
 from vault import forms
 from vault import models
 from vault.file_management import generateHashes, move_temp_file
-from django.http import HttpResponse
-
-from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -438,3 +433,57 @@ def administration_users(request):
 @login_required
 def administration_help(request):
     return TemplateResponse(request, "vault/administration_help.html", {})
+
+
+@login_required
+def deposit_flow(request):
+    collections = models.Collection.objects.filter(
+        organization_id=request.user.organization_id
+    ).annotate(
+        file_count=Count("file"),
+        total_size=Sum("file__size"),
+    )
+    total_used_quota = return_total_used_quota(collections=collections)
+    collection_form = forms.RegisterDepositForm(collections=collections)
+    return TemplateResponse(
+        request,
+        "vault/deposit_flow.html",
+        {
+            "collection_form": collection_form,
+            "collections": collections,
+            "total_used_quota": total_used_quota,
+        },
+    )
+
+
+@login_required
+def render_file_view(request, path):
+    org = request.user.organization
+    output_path = ""
+    if not path:
+        path = org.name
+    else:
+        path = f"{org.name}/{path}"
+    parent = org.tree_node
+    split_path = path.split("/")[1:]
+    for node in split_path:
+        try:
+            # this lookup assumes there is only one child node with a given name
+            child = get_object_or_404(models.TreeNode, name=node, parent=parent)
+            output_path = f"{output_path}/{child.name}"
+            parent = child
+        except Http404:
+            return TemplateResponse(
+                request, "vault/files_view.html", {"status": 404}, status=404
+            )
+        except MultipleObjectsReturned:
+            logger.error(f"multiple TreeNodes returned for {path}")
+            return TemplateResponse(
+                request, "vault/files_view.html", {"status": 404}, status=404
+            )
+    children = parent.children.all()
+    return TemplateResponse(
+        request,
+        "vault/files_view.html",
+        {"items": children, "path": output_path},
+    )

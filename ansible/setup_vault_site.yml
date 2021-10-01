@@ -1,0 +1,5 @@
+---
+- name: Deploy Vault
+  hosts: vault
+  roles:
+    - vault_site
