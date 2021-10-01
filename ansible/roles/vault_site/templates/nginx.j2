@@ -1,0 +1,76 @@
+client_max_body_size 20M;  # max upload size
+
+
+### Gunicorn servers ###
+
+upstream gunicorn {
+    server 127.0.0.1:8000 fail_timeout=0;
+    keepalive 16;
+}
+
+### Catch-all ###
+
+server {
+    listen 80 default_server;
+    listen 443 ssl default_server;
+    server_name _;
+    include /etc/nginx/snippets/snakeoil.conf;
+    return 444;
+}
+
+### Main websites ###
+
+server {
+    listen 80;
+    server_name {{ vault_domain_name }};
+    charset utf-8;
+
+    rewrite "/static/\d+/(.*)" /static/$1 last;
+
+    location /static/ {
+        alias {{ vault_static_root }}/;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    location / {
+        proxy_pass http://gunicorn;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_redirect off;
+        proxy_buffering off;
+    }
+
+    keepalive_disable msie6;
+    keepalive_requests 100000;
+    keepalive_timeout 60;
+    tcp_nodelay on;
+
+    gzip on;               # enable gzip
+    gzip_http_version 1.1; # turn on gzip for http 1.1 and higher
+    gzip_disable "msie6";  # IE 6 had issues with gzip
+    gzip_comp_level 5;     # inc compresion level, and CPU usage
+    gzip_min_length 100;   # minimal weight to gzip file
+    gzip_proxied any;      # enable gzip for proxied requests (e.g. CDN)
+    gzip_buffers 16 8k;    # compression buffers (if we exceed this value, disk will be used instead of RAM)
+    gzip_vary on;          # add header Vary Accept-Encoding (more on that in Caching section)
+
+    # define files which should be compressed
+    gzip_types text/plain;
+    gzip_types text/css;
+    gzip_types application/javascript;
+    gzip_types application/json;
+    gzip_types application/vnd.ms-fontobject;
+    gzip_types application/x-font-ttf;
+    gzip_types font/opentype;
+    gzip_types image/svg+xml;
+    gzip_types image/x-icon;
+
+    client_body_timeout   30;
+    client_header_timeout 30;
+    send_timeout          30;
+}

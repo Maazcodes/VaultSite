@@ -1,0 +1,86 @@
+---
+
+- name: Update and upgrade apt packages
+  become: true
+  apt:
+    upgrade: yes
+    update_cache: yes
+    cache_valid_time: 86400 #One day
+
+- name: Install system packages
+  become: true
+  apt: pkg={{ item }} update-cache=yes
+  with_items:
+    - nginx
+    - python3-dev
+    - python3-pip
+    - python3-venv
+
+- name: Create main directory for the project
+  become: true
+  file:
+    path: "{{ vault_project_root }}"
+    state: directory
+    mode: 0775
+
+- name: install /etc/vault.yml
+  become: true
+  template: src=templates/vault.yml.j2 dest=/etc/vault.yml
+
+- name: Create inner directories for the project
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vault_user }}"
+    group: "{{ vault_user }}"
+    mode: 0775
+  with_items:
+    - "{{ vault_project_root }}/.ssh"
+    - "{{ vault_project_root }}/vault-site"
+    - "{{ vault_project_root }}/static"
+    - "{{ vault_project_root }}/tmp"
+    - "{{ vault_project_root }}/SHA_DIR"
+
+- name: Set directory permissions
+  become: true
+  file:
+    dest: "{{ vault_project_root }}"
+    owner: "{{ vault_user }}"
+    group: "{{ vault_user }}"
+    recurse: yes
+
+- name: Create virtual environment
+  become: yes
+  become_user: "{{ vault_user }}"
+  command: python3 -m venv {{ vault_project_root }}/venv/
+  args:
+    creates: "{{ vault_project_root }}/venv/bin/python"
+
+- name: pip self-update
+  pip:
+    name: pip
+    state: latest
+
+- name: Fetch Vault Site
+  become_user: "{{ vault_user }}"
+  become: yes
+  git:
+    repo: 'git@git.archive.org:dps/vault-site.git'
+    dest: /opt/DPS/vault-site
+    version: 'master'
+
+- name: Install Python Deps
+  become_user: "{{ vault_user }}"
+  become: yes
+  pip:
+    requirements: "{{ vault_project_root }}/vault-site/requirements.txt"
+    virtualenv: "{{ vault_project_root }}/venv"
+
+#- name: Creating venv and install requirements.txt
+#  become: true
+#  become_user: root
+#  pip:
+#    requirements: /opt/DPS/vault-site/requirements.txt
+#    virtualenv: /opt/DPS/vault-site-venv
+#    virtualenv_command: /usr/bin/python3.8 -m venv
