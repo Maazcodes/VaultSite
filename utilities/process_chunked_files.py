@@ -54,15 +54,20 @@ def process_uploaded_deposit_files():
                 os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_tmp_path)
             ) as org_fs:
                 org_fs.makedir("/merged", recreate=True)
-                chunk_list = [
-                    c
-                    for c in org_fs.filterdir(
-                        "/chunks",
-                        files=[deposit_file.flow_identifier + "-*.tmp"],
-                        namespaces=["details"],
-                    )
-                    if not c.is_dir
-                ]
+                chunk_list = []
+                try:
+                    chunk_list = [
+                        c
+                        for c in org_fs.filterdir(
+                            "/chunks",
+                            files=[deposit_file.flow_identifier + "-*.tmp"],
+                            namespaces=["details"],
+                        )
+                        if not c.is_dir
+                    ]
+                except OSFS.errors.ResourceNotFound as e:
+                    logging.warning(f"Error listing files in `/chunks {e}")
+
                 chunk_count = len(chunk_list)
 
                 # If the chunks for this DepositFile are on this machine
