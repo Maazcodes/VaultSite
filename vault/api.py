@@ -469,3 +469,21 @@ def flow_chunk(request):
         deposit_file.save()
 
         return HttpResponse()
+
+@csrf_exempt
+@login_required
+def hashed_status(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(permitted_methods=["GET"])
+    try:
+        body = json.loads(request.body)
+    except (AttributeError, TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+    deposit = get_object_or_404(models.Deposit, pk = body['deposit_id'])
+    deposit_files = models.DepositFile.objects.filter(deposit = deposit)
+    return JsonResponse(
+        {
+            "hashed_files": deposit_files.filter(state = models.DepositFile.State.HASHED).count(),
+            "total_files": deposit_files.count()
+        }
+    )
