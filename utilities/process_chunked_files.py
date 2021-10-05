@@ -24,6 +24,7 @@ from django.utils import timezone
 from vault.models import DepositFile, Deposit, TreeNode, Collection, Organization
 
 SLEEP_TIME = 20
+READ_BUFFER_SIZE = 2048
 logger = logging.getLogger(__name__)
 
 shutdown = threading.Event()
@@ -50,9 +51,8 @@ def process_uploaded_deposit_files():
             org_tmp_path = str(org_id)
 
             # Check if we have all chunks for the file. They may be on another node.
-            with OSFS(
-                os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_tmp_path)
-            ) as org_fs:
+            osfs_root = os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_tmp_path)
+            with OSFS(osfs_root) as org_fs:
                 org_fs.makedir("/merged", recreate=True)
                 chunk_list = []
                 try:
@@ -93,35 +93,42 @@ def process_uploaded_deposit_files():
                 sha256_hash = hashlib.sha256()
 
                 for i in range(1, chunk_count + 1):
-                    chunk_bytes = org_fs.readbytes(
-                        "/chunks/"
-                        + deposit_file.flow_identifier
-                        + "-"
-                        + str(i)
-                        + ".tmp"
+                    chunk_filename = "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
+                    chunk_path = os.path.join(osfs_root, chunk_filename)
+                    try:
+                        #for chunk_bytes in read_file_bytes(chunk_path):
+                        with open(chunk_path, "rb") as f:
+                            while True:
+                                bytes = f.read(READ_BUFFER_SIZE)
+                                if bytes:
+                                    org_fs.appendbytes("/chunks/" + merged_filename, bytes)
+                                    md5_hash.update(bytes)
+                                    sha1_hash.update(bytes)
+                                    sha256_hash.update(bytes)
+                                else:
+                                    break
+
+                    except Exception as e:
+                        logger.error(f"Error trying to read chunk file {chunk_filename}")
+                        break
+                else: #if chunk loop did not break
+                    deposit_file.md5_sum = md5_hash.hexdigest()
+                    deposit_file.sha1_sum = sha1_hash.hexdigest()
+                    deposit_file.sha256_sum = sha256_hash.hexdigest()
+                    deposit_file.hashed_at = timezone.now()
+                    move_into_shafs(
+                        deposit_file, org_fs.getospath("/chunks/" + merged_filename)
                     )
-                    org_fs.appendbytes("/chunks/" + merged_filename, chunk_bytes)
-                    md5_hash.update(chunk_bytes)
-                    sha1_hash.update(chunk_bytes)
-                    sha256_hash.update(chunk_bytes)
 
-                deposit_file.md5_sum = md5_hash.hexdigest()
-                deposit_file.sha1_sum = sha1_hash.hexdigest()
-                deposit_file.sha256_sum = sha256_hash.hexdigest()
-                deposit_file.hashed_at = timezone.now()
-                move_into_shafs(
-                    deposit_file, org_fs.getospath("/chunks/" + merged_filename)
-                )
+                    parent_node = make_or_find_parent_node(deposit_file)
+                    file_node = make_or_find_file_node(deposit_file, parent_node)
+                    deposit_file.tree_node = file_node
+                    deposit_file.state = DepositFile.State.HASHED
+                    deposit_file.save()
 
-                parent_node = make_or_find_parent_node(deposit_file)
-                file_node = make_or_find_file_node(deposit_file, parent_node)
-                deposit_file.tree_node = file_node
-                deposit_file.state = DepositFile.State.HASHED
-                deposit_file.save()
-
-                logger.info(
-                    f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
-                )
+                    logger.info(
+                        f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
+                    )
 
             # If the Deposit is in the early phase, and no deposit files in early phases
             # todo is is problematic? Should I only check for UPLOADED? We don't want to clobber an upload process
