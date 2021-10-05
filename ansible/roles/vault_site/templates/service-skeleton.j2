@@ -1,0 +1,5 @@
+#!/bin/bash
+log=/var/log/{{name}}.log
+source {{venv_activate}}
+command='{{command}}'
+exec nice setuidgid {{user}} $command >>$log 2>&1
