@@ -160,7 +160,7 @@ function hash_status() {
     xhr.onloadend = function() {
         if (xhr.status == 200) {
 		    res = JSON.parse(xhr.response);
-            let message = "Hashing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
+            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
             if (res["hashed_files"] < res["total_files"]) {
                 setTimeout(function(){  console.log("Calling hash_status again");
