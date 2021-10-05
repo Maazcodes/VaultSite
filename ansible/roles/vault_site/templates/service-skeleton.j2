@@ -2,4 +2,7 @@
 log=/var/log/{{name}}.log
 source {{venv_activate}}
 command='{{command}}'
+cd {{vault_python_path}}
+export REMOTE_USER=admin
+export DJANGO_SETTINGS_MODULE=vault_site.settings
 exec nice setuidgid {{user}} $command >>$log 2>&1

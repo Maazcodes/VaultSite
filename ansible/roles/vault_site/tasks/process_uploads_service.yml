@@ -1,6 +1,5 @@
 ---
 
-#todo deploy user
 - name: install apt packages
   become: true
   apt:
@@ -10,6 +9,18 @@
   with_items:
   - daemontools
   - daemontools-run
+
+- name: Ensure process_chunked_files.py is executable
+  become: true
+  file:
+    path: "{{vault_python_path}}/utilities/process_chunked_files.py"
+    mode: 0755
+
+- name: Ensure process_hashed_files.py is executable
+  become: true
+  file:
+    path: "{{vault_python_path}}/utilities/process_hashed_files.py"
+    mode: 0755
 
 - name: Ensure daemontools service directories are in place
   become: true
@@ -25,29 +36,23 @@
   become: true
   vars:
     user: root
-    venv_activate: "{{ vault_venv_location }}/activate"
-    command: "{vault_python_path}/utilities/process_chunked_files.py"
+    venv_activate: "{{ vault_project_root }}/venv/bin/activate"
+    command: "python3 {{vault_python_path}}/utilities/process_chunked_files.py"
     name: process_chunked_files
   template:
-    src: service-skeleton.j2
+    src: templates/service-skeleton.j2
     dest: "/etc/service/process_chunked_files/run"
     owner: root
     mode: 0755
   notify:
     - restart process_chunked_files
 
-- name: install /etc/logrotate.d/process_chunked_files
-  become: true
-  template:
-    src: templates/process_chunked_files-logrotate.j2
-    dest: /etc/logrotate.d/process_chunked_files
-
 - name: Deploy process_hashed_files service supervised by daemontools in /etc/service/process_hashed_files
   become: true
   vars:
-    user: "{{ vault_backend_service_user }}"
-    venv_activate: "{{ vault_venv_location }}/activate"
-    command: "{vault_python_path}/utilities/process_hashed_files.py"
+    user: root
+    venv_activate: "{{ vault_project_root }}/venv/bin/activate"
+    command: "python3 {{vault_python_path}}/utilities/process_hashed_files.py"
     name: process_hashed_files
   template:
     src: service-skeleton.j2
@@ -57,8 +62,11 @@
   notify:
     - restart process_hashed_files
 
-- name: install /etc/logrotate.d/process_hashed_files
+- name: install logrotate.d config
   become: true
   template:
-    src: templates/process_hashed_files-logrotate.j2
-    dest: /etc/logrotate.d/process_hashed_files
+    src: templates/log-rotator.j2
+    dest: "/etc/logrotate.d/{{item}}"
+  with_items:
+    - process_chunked_files
+    - process_hashed_files
