@@ -62,7 +62,7 @@
             {{ collection_form }}
         </form>
         <button class="button small padding-top padding-bottom half left" id="browseFilesButton">Browse Files</button>
-        <button class="button small padding-top padding-bottom half left margin-left half" id="browseDirectoriesButton">Browse Directories</button>
+        <button class="button small padding-top padding-bottom half left margin-left half" id="browseDirectoriesButton">Browse Folders</button>
         <div class="area">
             <div id="dropTarget"><p style="text-align: center; vertical-align: center">Drop Files here</p></div>
         </div>
@@ -146,25 +146,22 @@ flow.on('fileError', function(file, message){
     document.querySelector('#flow-stats').innerHTML = "Error Uploading";
 });
 
-function hash_status() {
+function deposit_status() {
     if (currentDepositId == undefined) {
         console.error("Deposit Id not defined");
     }
     let xhr = new XMLHttpRequest();
-    xhr.open("POST", "{{ url("api_hash_status") }}");
+    xhr.open("GET", "{{ url("api_deposit_status") }}?deposit_id="+currentDepositId);
     xhr.setRequestHeader("Content-Type", "application/json");
-    let payload = {
-        "deposit_id": currentDepositId
-    }
-    xhr.send(JSON.stringify(payload));
+    xhr.send();
     xhr.onloadend = function() {
         if (xhr.status == 200) {
 		    res = JSON.parse(xhr.response);
             let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
             if (res["hashed_files"] < res["total_files"]) {
-                setTimeout(function(){  console.log("Calling hash_status again");
-                hash_status() }, 1000);
+                setTimeout(function(){  console.log("Calling deposit_status again");
+                deposit_status() }, 1000);
             }
         }
     }
@@ -178,7 +175,7 @@ flow.on('complete', function(){
     files = [];
     upload_size = 0;
     document.querySelector("#progress_bar_flow").style.display = 'none';
-    hash_status();
+    deposit_status();
 });
 flow.on('progress', function() {
     document.querySelector('#flow-stats').innerHTML = "Uploading Files (Time Remaining: " + flow.timeRemaining() + "s )";

@@ -470,20 +470,26 @@ def flow_chunk(request):
 
         return HttpResponse()
 
+
 @csrf_exempt
 @login_required
 def hashed_status(request):
-    if request.method != "POST":
+    if request.method != "GET":
         return HttpResponseNotAllowed(permitted_methods=["GET"])
-    try:
-        body = json.loads(request.body)
-    except (AttributeError, TypeError, json.JSONDecodeError):
+    deposit_id = request.GET.get('deposit_id')
+    if not deposit_id:
         return HttpResponseBadRequest()
-    deposit = get_object_or_404(models.Deposit, pk = body['deposit_id'])
-    deposit_files = models.DepositFile.objects.filter(deposit = deposit)
+    deposit = get_object_or_404(
+        models.Deposit,
+        pk=deposit_id,
+        organization=get_object_or_404(models.Organization, pk=request.user.organization_id)
+    )
+    from functools import reduce
+    deposit_files = models.DepositFile.objects.filter(deposit = deposit).values("state").annotate(files=Count("state")).order_by("state")
+    total_files = reduce(lambda t, t1: t1['files'] +  t['files'], deposit_files) if len(deposit_files) > 1 else deposit_files[0]['files']
     return JsonResponse(
         {
-            "hashed_files": deposit_files.filter(state = models.DepositFile.State.HASHED).count(),
-            "total_files": deposit_files.count()
+            "hashed_files": deposit_files[2]['files'] if deposit_files and len(deposit_files) >= 3 else 0,
+            "total_files": total_files,
         }
     )
