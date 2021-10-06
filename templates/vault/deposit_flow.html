@@ -146,6 +146,14 @@ flow.on('fileError', function(file, message){
     document.querySelector('#flow-stats').innerHTML = "Error Uploading";
 });
 
+function changeStats() {
+    if($('#id_collection').find(":selected").val() != ""){
+        document.querySelector('#flow-stats').innerHTML = files.length + ' files selected. Total Upload Size: ' + formatBytes(upload_size);
+    }
+}
+
+document.getElementById('id_collection').addEventListener("change", changeStats);
+
 function deposit_status() {
     if (currentDepositId == undefined) {
         console.error("Deposit Id not defined");
@@ -163,6 +171,8 @@ function deposit_status() {
                 setTimeout(function(){  console.log("Calling deposit_status again");
                 deposit_status() }, 1000);
             }
+            // time out
+            // error state
         }
     }
 }
@@ -183,6 +193,11 @@ flow.on('progress', function() {
     document.querySelector('#progress_bar_flow').value = flow.progress()*100;
 });
 function start_deposit(flow, files) {
+
+    if ($('#id_collection').find(":selected").val() == "") {
+        document.querySelector('#flow-stats').innerHTML = '<b>Please select a collection</b>';
+        return;
+    }
 
     if (files.length === 0) {
         document.querySelector('#flow-stats').innerHTML = '<b>Please select files/directories to upload.</b>';
