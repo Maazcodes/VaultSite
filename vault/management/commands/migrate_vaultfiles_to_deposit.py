@@ -10,7 +10,7 @@ def gen_flow_identifier(file):
     identifier = unicodedata.normalize("NFKC", file.client_filename)
     identifier = re.sub(r"[^\w\s-]", "", identifier.lower())
     identifier = re.sub(r"[-\s]+", "-", identifier).strip("-_")
-    return str(file.size) + "-" + identifier + "-1.tmp"
+    return str(file.size) + "-" + identifier
 
 
 class Command(BaseCommand):
@@ -27,6 +27,11 @@ class Command(BaseCommand):
             user = User.objects.get(id=options["user_id"])
         except User.DoesNotExist:
             raise CommandError(f'User {options["user_id"]} does not exist')
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'User found: "{user.id}": {user.username}'
+            )
+        )
 
         for collection_id in options["collection_ids"]:
             try:
@@ -57,22 +62,27 @@ class Command(BaseCommand):
                 deposit_files = []
                 for file in files:
                     flow_identifier = gen_flow_identifier(file)
-                    chunk_file_path = os.path.join(osfs_root, "chunks", flow_identifier)
+                    chunk_file_path = os.path.join(osfs_root, "chunks", flow_identifier) + "-1.tmp"
                     deposit_files.append(
                         DepositFile(
                             deposit=deposit,
                             flow_identifier=flow_identifier,
                             name=os.path.split(file.client_filename)[1],
                             relative_path=file.client_filename,
-                            size=File.size,
-                            type=None,
+                            size=file.size,
+                            type="",
                             pre_deposit_modified_at=file.creation_date,
                         )
                     )
-                    os.link(file.staging_filename, chunk_file_path)
+                    try:
+                        os.link(file.staging_filename, chunk_file_path)
+                    except FileExistsError as e:
+                        self.stdout.write(
+                            self.style.WARNING(f"Destination chunk file already exists {chunk_file_path}")
+                        )
                 DepositFile.objects.bulk_create(deposit_files)
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"Deposit created: {deposit.id}. Files are in place. Please set DepositFile entries to UPLOADED to begin processing"
+                        f"Deposit created. id:{deposit.id}. {len(deposit_files)} files are in place. Please set DepositFile entries to UPLOADED to begin processing"
                     )
                 )
