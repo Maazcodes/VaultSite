@@ -157,7 +157,7 @@ def report(request, report_id):
 
 @login_required
 def deposit(request):
-    return redirect("deposit_web")
+    return redirect("deposit_flow")
 
 
 def create_attribs_dict(request):
