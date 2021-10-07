@@ -61,7 +61,7 @@ class Command(BaseCommand):
                             TreeNode(
                                 parent=node,
                                 name=f"depth{current_depth}node{i}",
-                                node_type=TreeNode.Type.DIRECTORY,
+                                node_type=TreeNode.Type.FOLDER,
                             )
                             for i in range(options["width"])
                         )

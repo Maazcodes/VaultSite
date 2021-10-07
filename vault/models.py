@@ -251,10 +251,10 @@ class DepositFile(models.Model):
 class TreeNode(models.Model):
     class Type(models.TextChoices):
         FILE = "FILE", "File"  # A file uploaded by the user
-        DIRECTORY = (
-            "DIRECTORY",
-            "Directory",
-        )  # directory node other than collection node
+        FOLDER = (
+            "FOLDER",
+            "Folder",
+        )  # folder node other than collection node
         COLLECTION = "COLLECTION", "Collection"  # collection node
         ORGANIZATION = (
             "ORGANIZATION",
@@ -270,7 +270,7 @@ class TreeNode(models.Model):
         db_index=False,
     )  # index (parent, name) created separately
     path = LtreeField()  # index created separately
-    name = models.TextField()  # Name would be the client filename / directory name
+    name = models.TextField()  # Name would be the client filename / folder name
 
     md5_sum = models.CharField(
         max_length=32, validators=[md5_validator], blank=True, null=True

@@ -62,7 +62,7 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 choices=[
                     ("FILE", "File"),
-                    ("DIRECTORY", "Directory"),
+                    ("FOLDER", "Folder"),
                     ("COLLECTION", "Collection"),
                     ("ORGANIZATION", "Organization"),
                 ],
