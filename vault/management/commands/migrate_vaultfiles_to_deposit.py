@@ -18,7 +18,7 @@ def gen_flow_identifier(file):
     identifier = unicodedata.normalize("NFKC", file.client_filename)
     identifier = re.sub(r"[^\w\s-]", "", identifier.lower())
     identifier = re.sub(r"[-\s]+", "-", identifier).strip("-_")
-    return str(file.size) + "-" + identifier
+    return str(file.size) + "-migrate-" + identifier
 
 
 def find_parent_node(deposit_file):
@@ -92,13 +92,12 @@ class Command(BaseCommand):
                 skipped_files = []
                 for file in files:
                     flow_identifier = gen_flow_identifier(file)
+                    os.makedirs(os.path.join(osfs_root, "chunks"), exist_ok=True)
                     chunk_file_path = (
                         os.path.join(osfs_root, "chunks", flow_identifier) + "-1.tmp"
                     )
 
-                    # todo don't make deposit file if Treenode already exists!
-                    # todo Warn if this happens!
-
+                    # os.path.split returns the path in field 0 and the filename in field 1
                     deposit_file = DepositFile(
                         deposit=deposit,
                         flow_identifier=flow_identifier,
@@ -124,15 +123,15 @@ class Command(BaseCommand):
                         continue
                     else:
                         deposit_files.append(deposit_file)
-
-                    try:
-                        os.link(file.staging_filename, chunk_file_path)
-                    except FileExistsError as e:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f"Destination chunk file already exists {chunk_file_path}"
+                        try:
+                            os.link(file.staging_filename, chunk_file_path)
+                        except FileExistsError as e:
+                            self.stdout.write(
+                                self.style.WARNING(
+                                    f"Destination chunk file already exists {chunk_file_path}"
+                                )
                             )
-                        )
+
                 if len(deposit_files) == 0:
                     self.stdout.write(
                         self.style.WARNING(

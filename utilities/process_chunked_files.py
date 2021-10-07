@@ -139,16 +139,21 @@ def process_uploaded_deposit_files():
                             f"\tpre_deposit_modified_at:{file_node.pre_deposit_modified_at}\n" +
                             f"\tuploaded_by:{file_node.uploaded_by}\n"
                         )
-                        file_node.md5_sum = deposit_file.md5_sum,
-                        file_node.sha1_sum = deposit_file.sha1_sum,
-                        file_node.sha256_sum = deposit_file.sha256_sum,
-                        file_node.size = deposit_file.size,
-                        file_node.file_type = deposit_file.type,
-                        file_node.uploaded_at = deposit_file.uploaded_at,
-                        file_node.modified_at = deposit_file.hashed_at,
-                        file_node.pre_deposit_modified_at = deposit_file.pre_deposit_modified_at,
+                        file_node.md5_sum = deposit_file.md5_sum
+                        file_node.sha1_sum = deposit_file.sha1_sum
+                        file_node.sha256_sum = deposit_file.sha256_sum
+                        file_node.size = deposit_file.size
+                        file_node.file_type = deposit_file.type
+                        file_node.uploaded_at = deposit_file.uploaded_at
+                        file_node.modified_at = deposit_file.hashed_at
+                        file_node.pre_deposit_modified_at = deposit_file.pre_deposit_modified_at
                         file_node.uploaded_by = deposit_file.deposit.user
-                        file_node.save()
+                        try:
+                            file_node.save()
+                        except Exception as e:
+                            logger.error(
+                                f"Problem saving FileNode {file_node.id} {file_node.name}"
+                            )
 
                     deposit_file.tree_node = file_node
                     deposit_file.state = DepositFile.State.HASHED
