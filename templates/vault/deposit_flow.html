@@ -235,6 +235,7 @@ function start_deposit(flow, files) {
     let payload = {
         "collection_id": collection_id,
         "files": files,
+        "total_size": upload_size
     }
     xhr.send(JSON.stringify(payload));
 }

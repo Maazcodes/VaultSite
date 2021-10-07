@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -73,9 +74,9 @@ def reports(request):
 def collections_stats(request):
     org = request.user.organization
     collections = models.Collection.objects.filter(organization=org).annotate(
-        file_count=Count("file"),
-        total_size=Sum("file__size"),
-        last_modified=Max("file__modified_date"),
+        total_size=Sum("deposit__files__size"),
+        file_count=Count("deposit__files"),
+        last_modified=Max("deposit__files__registered_at"), # Not sure what query is here 
     )
     reports = models.Report.objects.filter(
         collection__organization=org, report_type=models.Report.ReportType.FIXITY
@@ -133,7 +134,7 @@ def reports_files(request):
 def collections_summary(request):
     org = request.user.organization
     collections = models.Collection.objects.filter(organization=org).annotate(
-        file_count=Count("file")
+        file_count=Count("deposit__files")
     )
     return JsonResponse(
         {
@@ -355,9 +356,9 @@ def register_deposit(request):
     org_id = request.user.organization_id
     collection_id = body.get("collection_id")
     # Include organization_id in filter to ensure we have permission
-    collection = get_object_or_404(
-        models.Collection, pk=collection_id, organization_id=org_id
-    )
+    collection = models.Collection.objects.filter(id = collection_id).annotate(
+        total_size=Sum("deposit__files__size"),
+        file_count=Count("deposit__files")).first()
 
     deposit = models.Deposit.objects.create(
         organization_id=org_id,
@@ -377,6 +378,20 @@ def register_deposit(request):
             )
         )
     models.DepositFile.objects.bulk_create(deposit_files)
+    models.Report.objects.create(
+        collection=collection,
+        report_type=models.Report.ReportType.DEPOSIT,
+        started_at=datetime.datetime.now(datetime.timezone.utc),
+        ended_at=datetime.datetime.now(datetime.timezone.utc),
+        total_size=body.get("total_size",0),
+        file_count=len(body.get("files", [])),
+        collection_total_size = collection.total_size,
+        collection_file_count = collection.file_count,
+        error_count=0,
+        missing_location_count=0,
+        mismatch_count=0,
+        avg_replication=collection.target_replication,
+    )
     return JsonResponse({"deposit_id": deposit.pk})
 
 
@@ -476,20 +491,34 @@ def flow_chunk(request):
 def hashed_status(request):
     if request.method != "GET":
         return HttpResponseNotAllowed(permitted_methods=["GET"])
-    deposit_id = request.GET.get('deposit_id')
+    deposit_id = request.GET.get("deposit_id")
     if not deposit_id:
         return HttpResponseBadRequest()
     deposit = get_object_or_404(
         models.Deposit,
         pk=deposit_id,
-        organization=get_object_or_404(models.Organization, pk=request.user.organization_id)
+        organization=get_object_or_404(
+            models.Organization, pk=request.user.organization_id
+        ),
     )
     from functools import reduce
-    deposit_files = models.DepositFile.objects.filter(deposit = deposit).values("state").annotate(files=Count("state")).order_by("state")
-    total_files = reduce(lambda t, t1: t1['files'] +  t['files'], deposit_files) if len(deposit_files) > 1 else deposit_files[0]['files']
+
+    deposit_files = (
+        models.DepositFile.objects.filter(deposit=deposit)
+        .values("state")
+        .annotate(files=Count("state"))
+        .order_by("state")
+    )
+    total_files = (
+        reduce(lambda t, t1: t1["files"] + t["files"], deposit_files)
+        if len(deposit_files) > 1
+        else deposit_files[0]["files"]
+    )
     return JsonResponse(
         {
-            "hashed_files": deposit_files[2]['files'] if deposit_files and len(deposit_files) >= 3 else 0,
+            "hashed_files": deposit_files[2]["files"]
+            if deposit_files and len(deposit_files) >= 3
+            else 0,
             "total_files": total_files,
         }
     )
