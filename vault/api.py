@@ -14,6 +14,7 @@ from django.http import (
     HttpResponseNotAllowed,
 )
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from fs.osfs import OSFS
@@ -466,6 +467,7 @@ def flow_chunk(request):
                 return HttpResponseBadRequest()
         logger.info(f"all chunks saved for {chunk.file_identifier}")
         deposit_file.state = models.DepositFile.State.UPLOADED
+        deposit_file.uploaded_at = timezone.now()
         deposit_file.save()
 
         return HttpResponse()

@@ -133,11 +133,7 @@ class Command(BaseCommand):
                             )
 
                 if len(deposit_files) == 0:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"No deposit files created."
-                        )
-                    )
+                    self.stdout.write(self.style.WARNING(f"No deposit files created."))
                 else:
                     DepositFile.objects.bulk_create(deposit_files)
                     self.stdout.write(

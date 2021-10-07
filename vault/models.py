@@ -291,7 +291,7 @@ class TreeNode(models.Model):
     pbox_item = models.CharField(max_length=255, blank=True, null=True)
 
     uploaded_at = models.DateTimeField(
-        auto_now_add=True, blank=True, null=True
+        blank=True, null=True
     )  # Date on which the file was uploaded
     pre_deposit_modified_at = models.DateTimeField(
         blank=True, null=True
