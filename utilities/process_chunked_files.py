@@ -24,7 +24,7 @@ from django.utils import timezone
 from vault.models import DepositFile, Deposit, TreeNode, Collection, Organization
 
 SLEEP_TIME = 20
-READ_BUFFER_SIZE = 2048
+READ_BUFFER_SIZE = 2 * 1024 * 1024
 logger = logging.getLogger(__name__)
 
 shutdown = threading.Event()
@@ -96,7 +96,6 @@ def process_uploaded_deposit_files():
                     chunk_filename = "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
                     chunk_path = os.path.join(osfs_root, chunk_filename)
                     try:
-                        #for chunk_bytes in read_file_bytes(chunk_path):
                         with open(chunk_path, "rb") as f:
                             while True:
                                 bytes = f.read(READ_BUFFER_SIZE)
@@ -121,7 +120,36 @@ def process_uploaded_deposit_files():
                     )
 
                     parent_node = make_or_find_parent_node(deposit_file)
-                    file_node = make_or_find_file_node(deposit_file, parent_node)
+                    file_node, file_node_created = make_or_find_file_node(deposit_file, parent_node)
+
+                    if not file_node_created:
+                        # We just replaced the old file, update tree node values to match
+                        logger.info(
+                            f"TreeNode entry replaced: id:{file_node.id} - {file_node.name}\n" +
+                            "\tPrevious data was:"
+                        )
+                        logger.info(
+                            f"\tmd5_sum:{file_node.md5_sum}\n" +
+                            f"\tsha1_sum:{file_node.sha1_sum}\n" +
+                            f"\tsha256_sum:{file_node.sha256_sum}\n" +
+                            f"\tsize:{file_node.size}\n" +
+                            f"\tfile_type:{file_node.file_type}\n" +
+                            f"\tuploaded_at:{file_node.uploaded_at}\n" +
+                            f"\tmodified_at:{file_node.modified_at}\n" +
+                            f"\tpre_deposit_modified_at:{file_node.pre_deposit_modified_at}\n" +
+                            f"\tuploaded_by:{file_node.uploaded_by}\n"
+                        )
+                        file_node.md5_sum = deposit_file.md5_sum,
+                        file_node.sha1_sum = deposit_file.sha1_sum,
+                        file_node.sha256_sum = deposit_file.sha256_sum,
+                        file_node.size = deposit_file.size,
+                        file_node.file_type = deposit_file.type,
+                        file_node.uploaded_at = deposit_file.uploaded_at,
+                        file_node.modified_at = deposit_file.hashed_at,
+                        file_node.pre_deposit_modified_at = deposit_file.pre_deposit_modified_at,
+                        file_node.uploaded_by = deposit_file.deposit.user
+                        file_node.save()
+
                     deposit_file.tree_node = file_node
                     deposit_file.state = DepositFile.State.HASHED
                     deposit_file.save()
@@ -190,7 +218,7 @@ def make_or_find_file_node(deposit_file, parent):
     msg = "created" if created else "already exists"
     logger.info(f"TreeNode FILE {deposit_file.sha256_sum} {deposit_file.name} {msg}")
 
-    return file_node
+    return file_node, created
 
 
 def make_or_find_parent_node(deposit_file):
