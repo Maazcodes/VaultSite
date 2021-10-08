@@ -507,7 +507,15 @@ def hashed_status(request):
             models.Organization, pk=request.user.organization_id
         ),
     )
+    
     from functools import reduce
+
+    state = {
+        "REGISTERED": 0,
+        "UPLOADED": 0,
+        "HASHED": 0,
+        "REPLICATED": 0
+    }
 
     deposit_files = (
         models.DepositFile.objects.filter(deposit=deposit)
@@ -515,16 +523,16 @@ def hashed_status(request):
         .annotate(files=Count("state"))
         .order_by("state")
     )
-    total_files = (
-        reduce(lambda t, t1: t1["files"] + t["files"], deposit_files)
-        if len(deposit_files) > 1
-        else deposit_files[0]["files"]
-    )
+
+    total_files = 0
+
+    for deposit_file in deposit_files:
+        state[deposit_file["state"]] = deposit_file["files"]
+        total_files += deposit_file["files"]
+
     return JsonResponse(
         {
-            "hashed_files": deposit_files[2]["files"]
-            if deposit_files and len(deposit_files) >= 3
-            else 0,
+            "hashed_files": state["HASHED"],
             "total_files": total_files,
         }
     )

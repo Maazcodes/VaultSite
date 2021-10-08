@@ -106,6 +106,7 @@
     </div>
 </div>
 <script>
+
 var flow = new Flow({
   target:'{{ url("api_flow_chunk") }}',
   query:{upload_token:'my_token'},
@@ -113,6 +114,8 @@ var flow = new Flow({
   speedSmoothingFactor: 0.01,
   progressCallbacksInterval: 1000
 });
+
+
 flow.assignBrowse(document.getElementById('browseFilesButton'));
 flow.assignBrowse(document.getElementById('browseDirectoriesButton'), true);
 flow.assignDrop(document.getElementById('dropTarget'));
@@ -154,7 +157,7 @@ function changeStats() {
 
 document.getElementById('id_collection').addEventListener("change", changeStats);
 
-function deposit_status() {
+function deposit_status(time) {
     if (currentDepositId == undefined) {
         console.error("Deposit Id not defined");
     }
@@ -167,12 +170,20 @@ function deposit_status() {
 		    res = JSON.parse(xhr.response);
             let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
+            if (time > 60) { // Processing files taking longer than 60 seconds
+                console.error("Timeout: Processing files taking longer than 60 seconds");
+                document.querySelector('#flow-stats').innerHTML = "Error Processing Files";
+                return;
+            }
             if (res["hashed_files"] < res["total_files"]) {
                 setTimeout(function(){  console.log("Calling deposit_status again");
-                deposit_status() }, 1000);
+                deposit_status(time + 1) }, 1000);
             }
-            // time out
-            // error state
+        }
+        else {
+            console.error("API Error: Cannot Fetch Status of API");
+            document.querySelector('#flow-stats').innerHTML = "API Error: Cannot Fetch Deposit Status";
+            return;
         }
     }
 }
@@ -185,13 +196,15 @@ flow.on('complete', function(){
     files = [];
     upload_size = 0;
     document.querySelector("#progress_bar_flow").style.display = 'none';
-    deposit_status();
+    deposit_status(0);
 });
+
 flow.on('progress', function() {
     document.querySelector('#flow-stats').innerHTML = "Uploading Files (Time Remaining: " + flow.timeRemaining() + "s )";
     // document.querySelector('#flow-stats').innerHTML = "Uploading Files: (" + (flow.progress()*100).toFixed(2); + "% )";
     document.querySelector('#progress_bar_flow').value = flow.progress()*100;
 });
+
 function start_deposit(flow, files) {
 
     if ($('#id_collection').find(":selected").val() == "") {
