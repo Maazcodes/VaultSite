@@ -70,5 +70,6 @@ urlpatterns = [
         name="api_flow_chunk",
     ),
     path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
+    path("api/deposit_status", api.hashed_status, name="api_deposit_status"),
     path("admin/", admin.site.urls),
 ]

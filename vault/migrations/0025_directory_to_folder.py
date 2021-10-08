@@ -2,15 +2,17 @@
 
 from django.db import migrations
 
+from vault.models import TreeNode
+
 
 def directory_to_folder(apps, schema_editor):
     """Move TreeNode.node_type from DIRECTORY to FOLDER."""
     # We can't import the TreeNode model directly as it may be a newer
     # version than this migration expects. We use the historical version.
-    TreeNode = apps.get_model("vault", "TreeNode")
     for node in TreeNode.objects.all():
-        node.node_type = TreeNode.Type.FOLDER
-        node.save()
+        if node.node_type == "DIRECTORY":
+            node.node_type = TreeNode.Type.FOLDER
+            node.save()
 
 
 class Migration(migrations.Migration):
