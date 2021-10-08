@@ -72,7 +72,7 @@ class Command(BaseCommand):
                 )
             )
 
-            files = File.objects.filter(collection=collection_id)
+            files = File.objects.filter(collection=collection_id).order_by("id")
             if len(files) == 0:
                 self.stdout.write(
                     self.style.WARNING(f"No files found for collection {collection_id}")
