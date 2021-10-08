@@ -41,7 +41,7 @@ shutdown = threading.Event()
 # move file into tree
 
 
-def process_uploaded_deposit_files():
+def process_uploaded_deposit_files(args):
 
     while True:
         for deposit_file in DepositFile.objects.filter(
@@ -188,7 +188,8 @@ def process_uploaded_deposit_files():
                 ):
                     deposit.state = Deposit.State.HASHED
                     deposit.save()
-                    deposit.make_deposit_report()
+                    if not args.no_deposit_report:
+                        deposit.make_deposit_report()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
@@ -288,6 +289,14 @@ def main(argv=None):
         const=logging.DEBUG,
         help="verbose logging",
     )
+    arg_parser.add_argument(
+        "--no-deposit-report",
+        dest="no_deposit_report",
+        action="store_const",
+        default=False,
+        const=True,
+        help="Don't run deposit Deposit.make_deposit_report() when a Deposit is finalized."
+    )
     args = arg_parser.parse_args(args=sys.argv[1:])
 
     logging.root.setLevel(level=args.log_level)
@@ -297,7 +306,7 @@ def main(argv=None):
     signal.signal(signal.SIGHUP, sig_handler)
     signal.signal(signal.SIGQUIT, sig_handler)
 
-    process_uploaded_deposit_files()
+    process_uploaded_deposit_files(args)
 
 
 def sig_handler(signum, frame):
