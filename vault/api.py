@@ -71,14 +71,34 @@ def reports(request):
 @csrf_exempt
 @login_required
 def collections_stats(request):
-    org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org).annotate(
-        file_count=Count("file"),
-        total_size=Sum("file__size"),
-        last_modified=Max("file__modified_date"),
-    )
+    org_id = request.user.organization_id
+    org_root = request.user.organization.tree_node_id
+    if org_root:
+        org_root = str(org_root)
+        collections = models.TreeNode.objects.raw(
+            """
+        select coll.id as collection_id, 
+               stats.* 
+        from vault_collection coll
+            join (
+                select colln.*, 
+                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+                       -- subtract 1 from file_count as nodes are own descendants
+                       -- could also filter on node_type to disallow FOLDER
+                       count(descn.id) - 1 as file_count,
+                       max(descn.modified_at) as last_modified 
+                from vault_treenode colln, vault_treenode descn
+                where colln.node_type = 'COLLECTION' 
+                      and descn.path <@ colln.path 
+                      and colln.path <@ Cast(%s as ltree)
+                group by colln.id
+            ) stats on coll.tree_node_id = stats.id""",
+            [org_root],
+        )
+    else:
+        collections = []
     reports = models.Report.objects.filter(
-        collection__organization=org, report_type=models.Report.ReportType.FIXITY
+        collection__organization=org_id, report_type=models.Report.ReportType.FIXITY
     ).order_by("-ended_at")
     latest_report = (
         reports.values(
@@ -92,7 +112,7 @@ def collections_stats(request):
         {
             "collections": [
                 {
-                    "id": collection.pk,
+                    "id": collection.collection_id,
                     "time": collection.last_modified,
                     "fileCount": collection.file_count,
                     "totalSize": collection.total_size,

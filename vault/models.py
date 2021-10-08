@@ -1,9 +1,10 @@
+import datetime
 import re
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import UniqueConstraint, IntegerChoices
+from django.db.models import UniqueConstraint, IntegerChoices, Sum, Count
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -208,6 +209,32 @@ class Deposit(models.Model):
     def __str__(self):
         return f"Deposit-{self.organization_id}-{self.collection_id}-{self.registered_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
+    def make_deposit_report(self):
+        deposit_stats = TreeNode.objects.filter(depositfile__deposit=self).aggregate(
+            total_size=Sum("size"), file_count=Count("*")
+        )
+        collection_root = self.collection.tree_node
+        collection_stats = TreeNode.objects.filter(
+            path__descendant=collection_root.path
+        ).aggregate(collection_total_size=Sum("size"), collection_file_count=Count("*"))
+        report = Report(
+            collection=self.collection,
+            report_type=Report.ReportType.DEPOSIT,
+            started_at=self.registered_at,
+            ended_at=datetime.datetime.now(
+                datetime.timezone.utc
+            ),  # TODO: should this be replicated_at?
+            total_size=deposit_stats["total_size"],
+            file_count=deposit_stats["file_count"],
+            collection_total_size=collection_stats["collection_total_size"],
+            collection_file_count=collection_stats["collection_file_count"],
+            error_count=0,
+            missing_location_count=0,
+            mismatch_count=0,
+            avg_replication=self.collection.target_replication,
+        )
+        report.save()
+
 
 class DepositFile(models.Model):
     class State(models.TextChoices):
@@ -251,10 +278,10 @@ class DepositFile(models.Model):
 class TreeNode(models.Model):
     class Type(models.TextChoices):
         FILE = "FILE", "File"  # A file uploaded by the user
-        DIRECTORY = (
-            "DIRECTORY",
-            "Directory",
-        )  # directory node other than collection node
+        FOLDER = (
+            "FOLDER",
+            "Folder",
+        )  # folder node other than collection node
         COLLECTION = "COLLECTION", "Collection"  # collection node
         ORGANIZATION = (
             "ORGANIZATION",
@@ -270,7 +297,7 @@ class TreeNode(models.Model):
         db_index=False,
     )  # index (parent, name) created separately
     path = LtreeField()  # index created separately
-    name = models.TextField()  # Name would be the client filename / directory name
+    name = models.TextField()  # Name would be the client filename / folder name
 
     md5_sum = models.CharField(
         max_length=32, validators=[md5_validator], blank=True, null=True

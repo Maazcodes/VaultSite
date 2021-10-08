@@ -34,7 +34,7 @@ shutdown = threading.Event()
 # create tree node
 # for now parent is collection
 # todo parent will be specified dir in collection maybe
-# create chain directory tree nodes saving along the way
+# create chain folder tree nodes saving along the way
 # create file tree node, save
 # make sure collection has a tree node
 # move file into tree
@@ -208,7 +208,7 @@ def make_or_find_parent_node(deposit_file):
         parent_segment, created = TreeNode.objects.get_or_create(
             parent=parent_segment,
             name=segment,
-            defaults={"node_type": TreeNode.Type.DIRECTORY},
+            defaults={"node_type": TreeNode.Type.FOLDER},
         )
         msg = "created" if created else "already exists"
         logger.info(f"TreeNode DIRECTORY {segment} for {deposit_file.sha256_sum} {msg}")
