@@ -295,7 +295,7 @@ def main(argv=None):
         action="store_const",
         default=False,
         const=True,
-        help="Don't run deposit Deposit.make_deposit_report() when a Deposit is finalized."
+        help="Don't run deposit Deposit.make_deposit_report() when a Deposit is finalized.",
     )
     args = arg_parser.parse_args(args=sys.argv[1:])
 
