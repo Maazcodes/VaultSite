@@ -35,7 +35,7 @@ def find_parent_node(deposit_file):
     for segment in filter(None, deposit_file.relative_path.split("/")[:-1]):
         try:
             parent_segment = TreeNode.objects.get(
-                parent=parent_segment, name=segment, node_type=TreeNode.Type.DIRECTORY
+                parent=parent_segment, name=segment, node_type=TreeNode.Type.FOLDER
             )
         except TreeNode.DoesNotExist:
             return None
