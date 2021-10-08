@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0025_directory_to_folder'),
+        ("vault", "0025_directory_to_folder"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='treenode',
-            name='uploaded_at',
+            model_name="treenode",
+            name="uploaded_at",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

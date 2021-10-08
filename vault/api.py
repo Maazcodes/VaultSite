@@ -166,24 +166,22 @@ def collections_summary(request):
             for possible_stats in collection_stats:
                 if possible_stats.collection_id == collection.pk:
                     stats = possible_stats
-        collection_output.append({
-            "id": collection.pk,
-            "name": collection.name,
-            "fileCount": stats.file_count if stats else 0,
-            "regions": {
-                region: stats.file_count if stats else 0
-                for region in collection.target_geolocations.values_list(
-                    "name", flat=True
-                )
-            },
-            "avgReplication": collection.target_replication,
-        })
+        collection_output.append(
+            {
+                "id": collection.pk,
+                "name": collection.name,
+                "fileCount": stats.file_count if stats else 0,
+                "regions": {
+                    region: stats.file_count if stats else 0
+                    for region in collection.target_geolocations.values_list(
+                        "name", flat=True
+                    )
+                },
+                "avgReplication": collection.target_replication,
+            }
+        )
 
-    return JsonResponse(
-        {
-            "collections": collection_output
-        }
-    )
+    return JsonResponse({"collections": collection_output})
 
 
 @login_required
