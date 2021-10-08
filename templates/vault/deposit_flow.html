@@ -170,11 +170,11 @@ function deposit_status(time) {
 		    res = JSON.parse(xhr.response);
             let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
-            if (time > 60) { // Processing files taking longer than 60 seconds
-                console.error("Timeout: Processing files taking longer than 60 seconds");
-                document.querySelector('#flow-stats').innerHTML = "Error Processing Files";
-                return;
-            }
+            // if (time > 60) { // Processing files taking longer than 60 seconds
+            //     console.error("Timeout: Processing files taking longer than 60 seconds");
+            //     document.querySelector('#flow-stats').innerHTML = "Error Processing Files";
+            //     return;
+            // }
             if (res["hashed_files"] < res["total_files"]) {
                 setTimeout(function(){  console.log("Calling deposit_status again");
                 deposit_status(time + 1) }, 1000);
