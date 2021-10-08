@@ -76,7 +76,9 @@ def collections_stats(request):
     collections = models.Collection.objects.filter(organization=org).annotate(
         total_size=Sum("deposit__files__size"),
         file_count=Count("deposit__files"),
-        last_modified=Max("deposit__files__registered_at"), # Not sure what query is here 
+        last_modified=Max(
+            "deposit__files__registered_at"
+        ),
     )
     reports = models.Report.objects.filter(
         collection__organization=org, report_type=models.Report.ReportType.FIXITY
@@ -356,9 +358,13 @@ def register_deposit(request):
     org_id = request.user.organization_id
     collection_id = body.get("collection_id")
     # Include organization_id in filter to ensure we have permission
-    collection = models.Collection.objects.filter(id = collection_id).annotate(
-        total_size=Sum("deposit__files__size"),
-        file_count=Count("deposit__files")).first()
+    collection = (
+        models.Collection.objects.filter(id=collection_id)
+        .annotate(
+            total_size=Sum("deposit__files__size"), file_count=Count("deposit__files")
+        )
+        .first()
+    )
 
     deposit = models.Deposit.objects.create(
         organization_id=org_id,
@@ -383,10 +389,10 @@ def register_deposit(request):
         report_type=models.Report.ReportType.DEPOSIT,
         started_at=datetime.datetime.now(datetime.timezone.utc),
         ended_at=datetime.datetime.now(datetime.timezone.utc),
-        total_size=body.get("total_size",0),
+        total_size=body.get("total_size", 0),
         file_count=len(body.get("files", [])),
-        collection_total_size = collection.total_size,
-        collection_file_count = collection.file_count,
+        collection_total_size=collection.total_size if collection.total_size else 0,
+        collection_file_count=collection.file_count if collection.file_count else 0,
         error_count=0,
         missing_location_count=0,
         mismatch_count=0,
