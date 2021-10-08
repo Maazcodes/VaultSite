@@ -5,6 +5,7 @@ import os
 import fs.errors
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import BadRequest
 from django.db.models import Count, Sum, Max
 from django.http import (
     Http404,
@@ -14,6 +15,7 @@ from django.http import (
     HttpResponseNotAllowed,
 )
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from fs.osfs import OSFS
@@ -417,7 +419,9 @@ def flow_chunk(request):
         chunk = form.flow_chunk_get()
 
         # check the org matches the deposit
-        get_object_or_404(models.Deposit, pk=chunk.deposit_id, organization_id=org_id)
+        deposit = get_object_or_404(
+            models.Deposit, pk=chunk.deposit_id, organization_id=org_id
+        )
 
         chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
         chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
@@ -427,9 +431,19 @@ def flow_chunk(request):
             have_tmp = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_filename}")
             have_out = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_out_filename}")
         if have_tmp or have_out:
-            # TODO: we could check here if we have all chunks for the file
-            # TODO: if all chunks, set DepositFile.state = UPLOADED
-            # TODO: or maybe it doesn't matter, the DepositFile just stays REGISTERED?
+            if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
+                return HttpResponse()
+            else:
+                logger.info(f"all chunks saved for {chunk.file_identifier}")
+                deposit_file = get_object_or_404(
+                    models.DepositFile,
+                    deposit=deposit,
+                    flow_identifier=chunk.file_identifier,
+                )
+                deposit_file.state = models.DepositFile.State.UPLOADED
+                deposit_file.uploaded_at = timezone.now()
+                deposit_file.save()
+
             return HttpResponse(status=200)  # we have the chunk don't send it again
         else:
             return HttpResponse(status=204)  # please send us this chunk
@@ -466,26 +480,37 @@ def flow_chunk(request):
                 chunk_out.close()
                 org_fs.move(chunk_out_filename, chunk_filename, overwrite=True)
 
-        # Check if we have all chunks for the file
-        with OSFS(
-            os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
-        ) as org_fs:
-            total_saved_size = 0
-            for i in reversed(range(1, chunk.file_total_chunks + 1)):
-                try:
-                    saved_size = org_fs.getsize(
-                        _chunk_filename(chunk.file_identifier, i)
-                    )
-                    total_saved_size += saved_size
-                except fs.errors.ResourceNotFound:
-                    return HttpResponse()
-            if not total_saved_size == chunk.file_total_size:
-                logger.warning(
-                    f"file has all chunks but wrong total size: {chunk.file_identifier}"
-                )
-                return HttpResponseBadRequest()
-        logger.info(f"all chunks saved for {chunk.file_identifier}")
-        deposit_file.state = models.DepositFile.State.UPLOADED
-        deposit_file.save()
+        if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
+            return HttpResponse()
+        else:
+            logger.info(f"all chunks saved for {chunk.file_identifier}")
+            deposit_file.state = models.DepositFile.State.UPLOADED
+            deposit_file.uploaded_at = timezone.now()
+            deposit_file.save()
 
         return HttpResponse()
+
+
+def all_chunks_uploaded(chunk, org_chunk_tmp_path):
+    # Check if we have all chunks for the file
+    with OSFS(
+        os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
+    ) as org_fs:
+        total_saved_size = 0
+        for i in reversed(range(1, chunk.file_total_chunks + 1)):
+            try:
+                saved_size = org_fs.getsize(_chunk_filename(chunk.file_identifier, i))
+                total_saved_size += saved_size
+            except fs.errors.ResourceNotFound:
+                return False
+        if not total_saved_size == chunk.file_total_size:
+            logger.warning(
+                f"file has all chunks but wrong total size: {chunk.file_identifier}"
+            )
+            raise DepositException
+
+        return True
+
+
+class DepositException(Exception):
+    pass

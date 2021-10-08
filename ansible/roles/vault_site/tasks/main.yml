@@ -1,5 +1,8 @@
 ---
 
+- name: Install file upload processing services
+  include_tasks: process_uploads_service.yml
+
 - name: Update and upgrade apt packages
   become: true
   apt:
