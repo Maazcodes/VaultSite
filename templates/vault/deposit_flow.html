@@ -179,6 +179,9 @@ function deposit_status(time) {
                 setTimeout(function(){  console.log("Calling deposit_status again");
                 deposit_status(time + 1) }, 1000);
             }
+            else {
+                document.querySelector('#flow-stats').innerHTML = "Upload Complete";
+            }
         }
         else {
             console.error("API Error: Cannot Fetch Status of API");
