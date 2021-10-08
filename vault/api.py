@@ -523,6 +523,7 @@ def all_chunks_uploaded(chunk, org_chunk_tmp_path):
 class DepositException(Exception):
     pass
 
+
 @csrf_exempt
 @login_required
 def hashed_status(request):
