@@ -411,21 +411,18 @@ def flow_chunk(request):
             have_tmp = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_filename}")
             have_out = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_out_filename}")
         if have_tmp or have_out:
-            try:
-                if not check_all_chunks_uploaded(chunk, org_chunk_tmp_path):
-                    return HttpResponse()
-                else:
-                    logger.info(f"all chunks saved for {chunk.file_identifier}")
-                    deposit_file = get_object_or_404(
-                        models.DepositFile,
-                        deposit=deposit,
-                        flow_identifier=chunk.file_identifier,
-                    )
-                    deposit_file.state = models.DepositFile.State.UPLOADED
-                    deposit_file.uploaded_at = timezone.now()
-                    deposit_file.save()
-            except BadRequest:
-                return HttpResponseBadRequest()
+            if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
+                return HttpResponse()
+            else:
+                logger.info(f"all chunks saved for {chunk.file_identifier}")
+                deposit_file = get_object_or_404(
+                    models.DepositFile,
+                    deposit=deposit,
+                    flow_identifier=chunk.file_identifier,
+                )
+                deposit_file.state = models.DepositFile.State.UPLOADED
+                deposit_file.uploaded_at = timezone.now()
+                deposit_file.save()
 
             return HttpResponse(status=200)  # we have the chunk don't send it again
         else:
@@ -463,21 +460,18 @@ def flow_chunk(request):
                 chunk_out.close()
                 org_fs.move(chunk_out_filename, chunk_filename, overwrite=True)
 
-        try:
-            if not check_all_chunks_uploaded(chunk, org_chunk_tmp_path):
-                return HttpResponse()
-            else:
-                logger.info(f"all chunks saved for {chunk.file_identifier}")
-                deposit_file.state = models.DepositFile.State.UPLOADED
-                deposit_file.uploaded_at = timezone.now()
-                deposit_file.save()
-        except BadRequest:
-            return HttpResponseBadRequest()
+        if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
+            return HttpResponse()
+        else:
+            logger.info(f"all chunks saved for {chunk.file_identifier}")
+            deposit_file.state = models.DepositFile.State.UPLOADED
+            deposit_file.uploaded_at = timezone.now()
+            deposit_file.save()
 
         return HttpResponse()
 
 
-def check_all_chunks_uploaded(chunk, org_chunk_tmp_path):
+def all_chunks_uploaded(chunk, org_chunk_tmp_path):
     # Check if we have all chunks for the file
     with OSFS(
         os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
@@ -493,6 +487,10 @@ def check_all_chunks_uploaded(chunk, org_chunk_tmp_path):
             logger.warning(
                 f"file has all chunks but wrong total size: {chunk.file_identifier}"
             )
-            raise BadRequest
+            raise DepositException
 
         return True
+
+
+class DepositException(Exception):
+    pass

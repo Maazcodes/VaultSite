@@ -25,7 +25,6 @@ def find_parent_node(deposit_file):
     organization = Organization.objects.get(id=deposit_file.deposit.organization_id)
     collection = Collection.objects.get(id=deposit_file.deposit.collection_id)
 
-    # Make collection and org tree nodes if non existent
     if organization.tree_node is None:
         return None
     if collection.tree_node is None:
