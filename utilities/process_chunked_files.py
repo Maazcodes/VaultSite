@@ -101,7 +101,7 @@ def process_uploaded_deposit_files(args):
                         with open(chunk_path, "rb") as f:
                             while True:
                                 bytes = f.read(READ_BUFFER_SIZE)
-                                if bytes:
+                                if bytes or 0 == deposit_file.size:
                                     org_fs.appendbytes(
                                         "/chunks/" + merged_filename, bytes
                                     )
@@ -121,9 +121,14 @@ def process_uploaded_deposit_files(args):
                     deposit_file.sha1_sum = sha1_hash.hexdigest()
                     deposit_file.sha256_sum = sha256_hash.hexdigest()
                     deposit_file.hashed_at = timezone.now()
-                    move_into_shafs(
-                        deposit_file, org_fs.getospath("/chunks/" + merged_filename)
-                    )
+                    try:
+                        move_into_shafs(
+                            deposit_file, org_fs.getospath("/chunks/" + merged_filename)
+                        )
+                    except OSError as err:
+                        logger.error(f"Error moving merged file to destination {merged_filename} - {err}")
+                        # todo Set a DepositFile error status when that exists
+                        continue
 
                     parent_node = make_or_find_parent_node(deposit_file)
                     file_node, file_node_created = make_or_find_file_node(
@@ -198,14 +203,11 @@ def process_uploaded_deposit_files(args):
 
 def move_into_shafs(deposit_file, current_file_path):
     shafs_root = get_shafs_folder(deposit_file)
-    try:
-        os.makedirs(shafs_root, exist_ok=True)
-        shutil.move(
-            current_file_path,
-            os.path.join(shafs_root, deposit_file.sha256_sum),
-        )
-    except OSError as err:
-        logger.error(f"Error moving merged file to destination {shafs_root} - {err}")
+    os.makedirs(shafs_root, exist_ok=True)
+    shutil.move(
+        current_file_path,
+        os.path.join(shafs_root, deposit_file.sha256_sum),
+    )
 
 
 # TODO expand this in the future for shafs folder structure
