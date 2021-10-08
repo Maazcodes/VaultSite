@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import UniqueConstraint, IntegerChoices, Sum, Count
+from django.db.models.functions import Coalesce
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -211,12 +212,15 @@ class Deposit(models.Model):
 
     def make_deposit_report(self):
         deposit_stats = TreeNode.objects.filter(depositfile__deposit=self).aggregate(
-            total_size=Sum("size"), file_count=Count("*")
+            total_size=Coalesce(Sum("size"), 0), file_count=Coalesce(Count("*"), 0)
         )
         collection_root = self.collection.tree_node
         collection_stats = TreeNode.objects.filter(
             path__descendant=collection_root.path
-        ).aggregate(collection_total_size=Sum("size"), collection_file_count=Count("*"))
+        ).aggregate(
+            collection_total_size=Coalesce(Sum("size"), 0),
+            collection_file_count=Coalesce(Count("*"), 0),
+        )
         report = Report(
             collection=self.collection,
             report_type=Report.ReportType.DEPOSIT,
@@ -318,7 +322,7 @@ class TreeNode(models.Model):
     pbox_item = models.CharField(max_length=255, blank=True, null=True)
 
     uploaded_at = models.DateTimeField(
-        auto_now_add=True, blank=True, null=True
+        blank=True, null=True
     )  # Date on which the file was uploaded
     pre_deposit_modified_at = models.DateTimeField(
         blank=True, null=True
