@@ -1,0 +1,10 @@
+/var/log/{{item}}.log {
+    rotate 10
+    size 5G
+    notifempty
+    compress
+    delaycompress
+    postrotate
+        svc -t /etc/service/{{item}}
+    endscript
+}

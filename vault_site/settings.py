@@ -43,15 +43,20 @@ SECRET_KEY = conf.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = conf.get("DEBUG", True)
 
+DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
+
+IA_CONFIG_PATH = conf.get("IA_CONFIG_PATH")
+
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "wbgrp-svc600.us.archive.org",
     "207.241.235.20",
-    "phil-dev.us.archive.org",
     "207.241.225.89",
     "avdempsey-dev.us.archive.org",
+    "adam-dev.us.archive.org",
     "wbgrp-svc018.us.archive.org",
+    "wbgrp-vault-site-qa.us.archive.org",
 ]
 
 FILE_UPLOAD_HANDLERS = [
@@ -116,22 +121,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "vault_site.wsgi.application"
 
-# I am skeptical of the security of the ModelBackend,
-# but will give it the benefit of the doubt until I
-# understand it better.
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.RemoteUserBackend",
-    #'django.contrib.auth.backends.ModelBackend',
+    # "django.contrib.auth.backends.ModelBackend",
 ]
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
         "NAME": conf.get("VAULT_POSTGRES_NAME", "vault"),
@@ -206,6 +204,7 @@ sentry_sdk.init(
     integrations=[DjangoIntegration()],
     traces_sample_rate=1.0,
     send_default_pii=True,
+    environment=DEPLOYMENT_ENVIRONMENT,
 )
 
 
