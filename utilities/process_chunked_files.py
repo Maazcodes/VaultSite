@@ -97,17 +97,27 @@ def process_uploaded_deposit_files(args):
                         "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
                     )
                     chunk_path = os.path.join(osfs_root, chunk_filename)
+                    merged_chunk_path = os.path.join(
+                        osfs_root, "chunks", merged_filename
+                    )
                     try:
                         with open(chunk_path, "rb") as f:
                             while True:
                                 bytes = f.read(READ_BUFFER_SIZE)
-                                if bytes or 0 == deposit_file.size:
+                                if bytes:
                                     org_fs.appendbytes(
                                         "/chunks/" + merged_filename, bytes
                                     )
                                     md5_hash.update(bytes)
                                     sha1_hash.update(bytes)
                                     sha256_hash.update(bytes)
+                                elif 0 == deposit_file.size:
+                                    with open(merged_chunk_path, mode="a"):
+                                        pass
+                                    md5_hash.update(b"")
+                                    sha1_hash.update(b"")
+                                    sha256_hash.update(b"")
+                                    break
                                 else:
                                     break
 
@@ -126,7 +136,9 @@ def process_uploaded_deposit_files(args):
                             deposit_file, org_fs.getospath("/chunks/" + merged_filename)
                         )
                     except OSError as err:
-                        logger.error(f"Error moving merged file to destination {merged_filename} - {err}")
+                        logger.error(
+                            f"Error moving merged file to destination {merged_filename} - {err}"
+                        )
                         # todo Set a DepositFile error status when that exists
                         continue
 
