@@ -188,6 +188,7 @@ def process_uploaded_deposit_files():
                 ):
                     deposit.state = Deposit.State.HASHED
                     deposit.save()
+                    deposit.make_deposit_report()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
