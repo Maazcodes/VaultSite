@@ -266,7 +266,7 @@ def make_or_find_parent_node(deposit_file):
             defaults={"node_type": TreeNode.Type.FOLDER},
         )
         msg = "created" if created else "already exists"
-        logger.info(f"TreeNode DIRECTORY {segment} for {deposit_file.sha256_sum} {msg}")
+        logger.info(f"TreeNode FOLDER {segment} for {deposit_file.sha256_sum} {msg}")
 
     return parent_segment
 

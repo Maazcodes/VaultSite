@@ -74,29 +74,9 @@ def reports(request):
 @login_required
 def collections_stats(request):
     org_id = request.user.organization_id
-    org_root = request.user.organization.tree_node_id
-    if org_root:
-        org_root = str(org_root)
-        collections = models.TreeNode.objects.raw(
-            """
-        select coll.id as collection_id, 
-               stats.* 
-        from vault_collection coll
-            join (
-                select colln.*, 
-                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
-                       -- subtract 1 from file_count as nodes are own descendants
-                       -- could also filter on node_type to disallow FOLDER
-                       count(descn.id) - 1 as file_count,
-                       max(descn.modified_at) as last_modified 
-                from vault_treenode colln, vault_treenode descn
-                where colln.node_type = 'COLLECTION' 
-                      and descn.path <@ colln.path 
-                      and colln.path <@ Cast(%s as ltree)
-                group by colln.id
-            ) stats on coll.tree_node_id = stats.id""",
-            [org_root],
-        )
+    org_node_id = request.user.organization.tree_node_id
+    if org_node_id:
+        collections = org_collection_sizes(org_node_id)
     else:
         collections = []
     reports = models.Report.objects.filter(
@@ -129,6 +109,30 @@ def collections_stats(request):
     )
 
 
+def org_collection_sizes(org_node_id):
+    org_root = str(org_node_id)
+    return models.TreeNode.objects.raw(
+        """
+    select coll.id as collection_id, 
+           stats.* 
+    from vault_collection coll
+        join (
+            select colln.*, 
+                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+                   -- subtract 1 from file_count as nodes are own descendants
+                   -- could also filter on node_type to disallow FOLDER
+                   count(descn.id) - 1 as file_count,
+                   max(descn.modified_at) as last_modified 
+            from vault_treenode colln, vault_treenode descn
+            where colln.node_type = 'COLLECTION' 
+                  and descn.path <@ colln.path 
+                  and colln.path <@ Cast(%s as ltree)
+            group by colln.id
+        ) stats on coll.tree_node_id = stats.id""",
+        [org_root],
+    )
+
+
 @login_required
 def reports_files(request):
     org = request.user.organization
@@ -154,28 +158,32 @@ def reports_files(request):
 @login_required
 def collections_summary(request):
     org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org).annotate(
-        file_count=Count("file")
-    )
-    return JsonResponse(
-        {
-            "collections": [
-                {
-                    "id": collection.pk,
-                    "name": collection.name,
-                    "fileCount": collection.file_count,
-                    "regions": {
-                        region: collection.file_count
-                        for region in collection.target_geolocations.values_list(
-                            "name", flat=True
-                        )
-                    },
-                    "avgReplication": collection.target_replication,
-                }
-                for collection in collections
-            ]
-        }
-    )
+    tree_node_id = str(org.tree_node_id)
+    collection_stats = org_collection_sizes(tree_node_id)
+    collections = models.Collection.objects.filter(organization=org)
+    collection_output = []
+    for collection in collections:
+        stats = None
+        if collection_stats:
+            for possible_stats in collection_stats:
+                if possible_stats.collection_id == collection.pk:
+                    stats = possible_stats
+        collection_output.append(
+            {
+                "id": collection.pk,
+                "name": collection.name,
+                "fileCount": stats.file_count if stats else 0,
+                "regions": {
+                    region: stats.file_count if stats else 0
+                    for region in collection.target_geolocations.values_list(
+                        "name", flat=True
+                    )
+                },
+                "avgReplication": collection.target_replication,
+            }
+        )
+
+    return JsonResponse({"collections": collection_output})
 
 
 @login_required
