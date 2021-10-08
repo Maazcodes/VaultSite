@@ -5,6 +5,7 @@ import os
 import fs.errors
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import BadRequest
 from django.db.models import Count, Sum, Max
 from django.http import (
     Http404,
@@ -14,6 +15,7 @@ from django.http import (
     HttpResponseNotAllowed,
 )
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from fs.osfs import OSFS
@@ -71,14 +73,14 @@ def reports(request):
 @csrf_exempt
 @login_required
 def collections_stats(request):
-    org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org).annotate(
-        file_count=Count("file"),
-        total_size=Sum("file__size"),
-        last_modified=Max("file__modified_date"),
-    )
+    org_id = request.user.organization_id
+    org_node_id = request.user.organization.tree_node_id
+    if org_node_id:
+        collections = org_collection_sizes(org_node_id)
+    else:
+        collections = []
     reports = models.Report.objects.filter(
-        collection__organization=org, report_type=models.Report.ReportType.FIXITY
+        collection__organization=org_id, report_type=models.Report.ReportType.FIXITY
     ).order_by("-ended_at")
     latest_report = (
         reports.values(
@@ -92,7 +94,7 @@ def collections_stats(request):
         {
             "collections": [
                 {
-                    "id": collection.pk,
+                    "id": collection.collection_id,
                     "time": collection.last_modified,
                     "fileCount": collection.file_count,
                     "totalSize": collection.total_size,
@@ -104,6 +106,30 @@ def collections_stats(request):
             ],
             "latestReport": latest_report,
         }
+    )
+
+
+def org_collection_sizes(org_node_id):
+    org_root = str(org_node_id)
+    return models.TreeNode.objects.raw(
+        """
+    select coll.id as collection_id, 
+           stats.* 
+    from vault_collection coll
+        join (
+            select colln.*, 
+                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+                   -- subtract 1 from file_count as nodes are own descendants
+                   -- could also filter on node_type to disallow FOLDER
+                   count(descn.id) - 1 as file_count,
+                   max(descn.modified_at) as last_modified 
+            from vault_treenode colln, vault_treenode descn
+            where colln.node_type = 'COLLECTION' 
+                  and descn.path <@ colln.path 
+                  and colln.path <@ Cast(%s as ltree)
+            group by colln.id
+        ) stats on coll.tree_node_id = stats.id""",
+        [org_root],
     )
 
 
@@ -132,28 +158,32 @@ def reports_files(request):
 @login_required
 def collections_summary(request):
     org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org).annotate(
-        file_count=Count("file")
-    )
-    return JsonResponse(
-        {
-            "collections": [
-                {
-                    "id": collection.pk,
-                    "name": collection.name,
-                    "fileCount": collection.file_count,
-                    "regions": {
-                        region: collection.file_count
-                        for region in collection.target_geolocations.values_list(
-                            "name", flat=True
-                        )
-                    },
-                    "avgReplication": collection.target_replication,
-                }
-                for collection in collections
-            ]
-        }
-    )
+    tree_node_id = str(org.tree_node_id)
+    collection_stats = org_collection_sizes(tree_node_id)
+    collections = models.Collection.objects.filter(organization=org)
+    collection_output = []
+    for collection in collections:
+        stats = None
+        if collection_stats:
+            for possible_stats in collection_stats:
+                if possible_stats.collection_id == collection.pk:
+                    stats = possible_stats
+        collection_output.append(
+            {
+                "id": collection.pk,
+                "name": collection.name,
+                "fileCount": stats.file_count if stats else 0,
+                "regions": {
+                    region: stats.file_count if stats else 0
+                    for region in collection.target_geolocations.values_list(
+                        "name", flat=True
+                    )
+                },
+                "avgReplication": collection.target_replication,
+            }
+        )
+
+    return JsonResponse({"collections": collection_output})
 
 
 @login_required
@@ -397,7 +427,9 @@ def flow_chunk(request):
         chunk = form.flow_chunk_get()
 
         # check the org matches the deposit
-        get_object_or_404(models.Deposit, pk=chunk.deposit_id, organization_id=org_id)
+        deposit = get_object_or_404(
+            models.Deposit, pk=chunk.deposit_id, organization_id=org_id
+        )
 
         chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
         chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
@@ -407,9 +439,19 @@ def flow_chunk(request):
             have_tmp = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_filename}")
             have_out = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_out_filename}")
         if have_tmp or have_out:
-            # TODO: we could check here if we have all chunks for the file
-            # TODO: if all chunks, set DepositFile.state = UPLOADED
-            # TODO: or maybe it doesn't matter, the DepositFile just stays REGISTERED?
+            if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
+                return HttpResponse()
+            else:
+                logger.info(f"all chunks saved for {chunk.file_identifier}")
+                deposit_file = get_object_or_404(
+                    models.DepositFile,
+                    deposit=deposit,
+                    flow_identifier=chunk.file_identifier,
+                )
+                deposit_file.state = models.DepositFile.State.UPLOADED
+                deposit_file.uploaded_at = timezone.now()
+                deposit_file.save()
+
             return HttpResponse(status=200)  # we have the chunk don't send it again
         else:
             return HttpResponse(status=204)  # please send us this chunk
@@ -446,26 +488,78 @@ def flow_chunk(request):
                 chunk_out.close()
                 org_fs.move(chunk_out_filename, chunk_filename, overwrite=True)
 
-        # Check if we have all chunks for the file
-        with OSFS(
-            os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
-        ) as org_fs:
-            total_saved_size = 0
-            for i in reversed(range(1, chunk.file_total_chunks + 1)):
-                try:
-                    saved_size = org_fs.getsize(
-                        _chunk_filename(chunk.file_identifier, i)
-                    )
-                    total_saved_size += saved_size
-                except fs.errors.ResourceNotFound:
-                    return HttpResponse()
-            if not total_saved_size == chunk.file_total_size:
-                logger.warning(
-                    f"file has all chunks but wrong total size: {chunk.file_identifier}"
-                )
-                return HttpResponseBadRequest()
-        logger.info(f"all chunks saved for {chunk.file_identifier}")
-        deposit_file.state = models.DepositFile.State.UPLOADED
-        deposit_file.save()
+        if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
+            return HttpResponse()
+        else:
+            logger.info(f"all chunks saved for {chunk.file_identifier}")
+            deposit_file.state = models.DepositFile.State.UPLOADED
+            deposit_file.uploaded_at = timezone.now()
+            deposit_file.save()
 
         return HttpResponse()
+
+
+def all_chunks_uploaded(chunk, org_chunk_tmp_path):
+    # Check if we have all chunks for the file
+    with OSFS(
+        os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
+    ) as org_fs:
+        total_saved_size = 0
+        for i in reversed(range(1, chunk.file_total_chunks + 1)):
+            try:
+                saved_size = org_fs.getsize(_chunk_filename(chunk.file_identifier, i))
+                total_saved_size += saved_size
+            except fs.errors.ResourceNotFound:
+                return False
+        if not total_saved_size == chunk.file_total_size:
+            logger.warning(
+                f"file has all chunks but wrong total size: {chunk.file_identifier}"
+            )
+            raise DepositException
+
+        return True
+
+
+class DepositException(Exception):
+    pass
+
+
+@csrf_exempt
+@login_required
+def hashed_status(request):
+    if request.method != "GET":
+        return HttpResponseNotAllowed(permitted_methods=["GET"])
+    deposit_id = request.GET.get("deposit_id")
+    if not deposit_id:
+        return HttpResponseBadRequest()
+    deposit = get_object_or_404(
+        models.Deposit,
+        pk=deposit_id,
+        organization=get_object_or_404(
+            models.Organization, pk=request.user.organization_id
+        ),
+    )
+
+    from functools import reduce
+
+    state = {"REGISTERED": 0, "UPLOADED": 0, "HASHED": 0, "REPLICATED": 0}
+
+    deposit_files = (
+        models.DepositFile.objects.filter(deposit=deposit)
+        .values("state")
+        .annotate(files=Count("state"))
+        .order_by("state")
+    )
+
+    total_files = 0
+
+    for deposit_file in deposit_files:
+        state[deposit_file["state"]] = deposit_file["files"]
+        total_files += deposit_file["files"]
+
+    return JsonResponse(
+        {
+            "hashed_files": state["HASHED"],
+            "total_files": total_files,
+        }
+    )
