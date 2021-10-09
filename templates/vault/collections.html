@@ -27,7 +27,7 @@
                 {% for collection in collections %}
                     <tbody>
                     <tr>
-                        <td><a href="{{ url("collection", args=(collection.pk,)) }}">{{ collection.name }}</a></td>
+                        <td><a href="{{ url("collection", args=(collection.collection_id,)) }}">{{ collection.name }}</a></td>
                         {% if collection.total_size is none %}
                             <td>-</td>
                         {% else %}
@@ -39,13 +39,13 @@
                         {% else %}
                             <td>{{ collection.last_modified.strftime('%B %-d, %Y') }}</td>
                         {% endif %}
-                        {% if collection.last_fixity_report() is none %}
+                        {% if collection.last_fixity_report is none %}
                             <td>-</td>
                         {% else %}
                             <td>{{ collection.last_fixity_report().ended_at.strftime('%B %-d, %Y') }}</td>
                         {% endif %}
-                        <td>{% if collection.file_count is gt 0 %}<a href="{{ collection.filepath() }}" target="_blank">View Files</a>{% else %} - {% endif %}</td>
-                        <td><a href="{{ url("collection", args=(collection.pk,)) }}">Edit Settings</a></td>
+                        <td>{% if collection.file_count is gt 0 %}<a href="{{ url("files", args=[collection.name]) }}" target="_blank">View Files</a>{% else %} - {% endif %}</td>
+                        <td><a href="{{ url("collection", args=(collection.collection_id,)) }}">Edit Settings</a></td>
                     </tr>
                     </tbody>
                 {% endfor %}
