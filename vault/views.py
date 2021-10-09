@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Max, Sum, Count
+from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
@@ -78,11 +79,33 @@ def collections(request):
             return redirect("dashboard")
     else:
         form = forms.CreateCollectionForm()
-        collections = models.Collection.objects.filter(organization=org).annotate(
-            total_size=Sum("file__size"),
-            file_count=Count("file"),
-            last_modified=Max("file__modified_date"),
+        org_root = str(org.tree_node_id)
+        collections = models.TreeNode.objects.raw(
+            """
+        select coll.id as collection_id, 
+               NULL as last_fixity_report,
+               stats.* 
+        from vault_collection coll
+            join (
+                select colln.*, 
+                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+                       -- subtract 1 from file_count as nodes are own descendants
+                       -- could also filter on node_type to disallow FOLDER
+                       count(descn.id) - 1 as file_count,
+                       max(descn.modified_at) as last_modified
+                from vault_treenode colln, vault_treenode descn
+                where colln.node_type = 'COLLECTION' 
+                      and descn.path <@ colln.path 
+                      and colln.path <@ Cast(%s as ltree)
+                group by colln.id
+            ) stats on coll.tree_node_id = stats.id""",
+            [org_root],
         )
+        # collections = models.Collection.objects.filter(organization=org).annotate(
+        #     total_size=Sum("file__size"),
+        #     file_count=Count("file"),
+        #     last_modified=Max("file__modified_date"),
+        # )
         return TemplateResponse(
             request,
             "vault/collections.html",
@@ -106,15 +129,24 @@ def collection(request, collection_id):
             collection.save()
             messages.success(request, "Collection settings updated.")
 
-    collection = (
-        models.Collection.objects.filter(organization=org, pk=collection_id)
-        .annotate(
-            file_count=Count("file"),
-            total_size=Sum("file__size"),
-            last_modified=Max("file__modified_date"),
+    collection = get_object_or_404(models.Collection, organization=org, pk=collection_id)
+    collection_stats = (
+        models.TreeNode.objects.filter(path__descendant=collection.tree_node.path)
+        .aggregate(
+            file_count=Coalesce(Count("*"), 0),
+            total_size=Coalesce(Sum("size"), 0),
+            last_modified=Max("modified_at"),
         )
-        .first()
     )
+    # collection = (
+    #     models.Collection.objects.filter(organization=org, pk=collection_id)
+    #     .annotate(
+    #         file_count=Count("file"),
+    #         total_size=Sum("file__size"),
+    #         last_modified=Max("file__modified_date"),
+    #     )
+    #     .first()
+    # )
     form = forms.EditCollectionSettingsForm(
         initial=(
             {
@@ -132,6 +164,7 @@ def collection(request, collection_id):
         "vault/collection.html",
         {
             "collection": collection,
+            "collection_stats": collection_stats,
             "form": form,
             "reports": reports,
         },
