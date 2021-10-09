@@ -129,15 +129,17 @@ def collection(request, collection_id):
             collection.save()
             messages.success(request, "Collection settings updated.")
 
-    collection = get_object_or_404(models.Collection, organization=org, pk=collection_id)
-    collection_stats = (
-        models.TreeNode.objects.filter(path__descendant=collection.tree_node.path)
-        .aggregate(
-            file_count=Coalesce(Count("*"), 0),
-            total_size=Coalesce(Sum("size"), 0),
-            last_modified=Max("modified_at"),
-        )
+    collection = get_object_or_404(
+        models.Collection, organization=org, pk=collection_id
     )
+    collection_stats = models.TreeNode.objects.filter(
+        path__descendant=collection.tree_node.path
+    ).aggregate(
+        file_count=Coalesce(Count("*"), 0),
+        total_size=Coalesce(Sum("size"), 0),
+        last_modified=Max("modified_at"),
+    )
+    collection_stats["file_count"] -= 1
     # collection = (
     #     models.Collection.objects.filter(organization=org, pk=collection_id)
     #     .annotate(
