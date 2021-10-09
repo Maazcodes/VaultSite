@@ -10,13 +10,13 @@
             <br>
             <h2>Collection Stats</h2>
             <ul>
-                <li>Total Size: {% if collection.total_size is none %}-{% else %}{{ collection.total_size|filesizeformat }}{% endif %}</li>
-                <li>File Count: {{ collection.file_count if collection.file_count is gt 0 else "-" }}</li>
-                <li>Most Recent Deposit: {% if collection.last_modified is none %}-{% else %}{{ collection.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
+                <li>Total Size: {% if collection_stats.total_size is none %}-{% else %}{{ collection_stats.total_size|filesizeformat }}{% endif %}</li>
+                <li>File Count: {{ collection_stats.file_count if collection_stats.file_count is gt 0 else "-" }}</li>
+                <li>Most Recent Deposit: {% if collection_stats.last_modified is none %}-{% else %}{{ collection_stats.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
             </ul>
 
-            {% if collection.file_count is gt 0 %}
-                <a href="{{ collection.filepath() }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
+            {% if collection_stats.file_count is gt 0 %}
+                <a href="{{ url("files", args=[collection.name]) }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
             {% endif %}
 
             <h2>Collection Events</h2>
