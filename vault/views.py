@@ -474,9 +474,13 @@ def administration_help(request):
 def deposit_flow(request):
     org = request.user.organization
     collections = models.Collection.objects.filter(organization=org)
-    total_used_quota = models.TreeNode.objects.filter(
-        path__descendant=org.path
-    ).aggregate(total=Coalesce(Sum("size")))["total"]
+    org_root = org.tree_node
+    if org_root:
+        total_used_quota = models.TreeNode.objects.filter(
+            path__descendant=org_root.path
+        ).aggregate(total=Coalesce(Sum("size"), 0))["total"]
+    else:
+        total_used_quota = 0
     collection_form = forms.RegisterDepositForm(collections=collections)
     return TemplateResponse(
         request,
