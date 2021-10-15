@@ -65,7 +65,7 @@ def process_uploaded_deposit_files(args):
                         )
                         if not c.is_dir
                     ]
-                except ResourceNotFound as e:
+                except (FileNotFoundError, ResourceNotFound) as e:
                     logging.warning(f"Error listing files in /chunks {e}")
 
                 chunk_count = len(chunk_list)
