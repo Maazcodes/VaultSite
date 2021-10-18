@@ -59,6 +59,10 @@ ALLOWED_HOSTS = [
     "wbgrp-vault-site-qa.us.archive.org",
 ]
 
+# Allow registration of large Deposits in single request
+# TODO: chunk deposit registration so we can cap POST size
+DATA_UPLOAD_MAX_MEMORY_SIZE = None  # Defaults to 2.5MB
+
 FILE_UPLOAD_HANDLERS = [
     #'django.core.files.uploadhandler.MemoryFileUploadHandler',
     "django.core.files.uploadhandler.TemporaryFileUploadHandler",
