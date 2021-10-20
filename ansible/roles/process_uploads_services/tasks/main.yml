@@ -36,7 +36,7 @@
   become: true
   vars:
     user: root
-    venv_activate: "{{ vault_project_root }}/venv/bin/activate"
+    venv_activate: "{{ vault_site_venv }}/bin/activate"
     command: "python3 {{ vault_project_root }}/vault-site/utilities/process_chunked_files.py"
     name: process_chunked_files
   template:
@@ -51,7 +51,7 @@
   become: true
   vars:
     user: root
-    venv_activate: "{{ vault_project_root }}/venv/bin/activate"
+    venv_activate: "{{ vault_site_venv }}/bin/activate"
     command: "python3 {{ vault_project_root }}/vault-site/utilities/process_hashed_files.py"
     name: process_hashed_files
   template:
