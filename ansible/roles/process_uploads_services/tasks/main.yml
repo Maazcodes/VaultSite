@@ -60,7 +60,7 @@
     owner: root
     mode: 0755
   notify:
-    - restart process_hashed_files
+    - disable process_hashed_files
 
 - name: install logrotate.d config
   become: true

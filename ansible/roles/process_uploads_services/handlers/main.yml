@@ -4,8 +4,9 @@
     state: restarted
   become: true
 
-- name: restart process_hashed_files
+- name: disable process_hashed_files
   service:
     name: process_hashed_files
-    state: restarted
+    state: stopped
+    enabled: no
   become: true
