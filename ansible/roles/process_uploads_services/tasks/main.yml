@@ -13,13 +13,13 @@
 - name: Ensure process_chunked_files.py is executable
   become: true
   file:
-    path: "{{vault_python_path}}/utilities/process_chunked_files.py"
+    path: "{{ vault_project_root }}/vault-site/utilities/process_chunked_files.py"
     mode: 0755
 
 - name: Ensure process_hashed_files.py is executable
   become: true
   file:
-    path: "{{vault_python_path}}/utilities/process_hashed_files.py"
+    path: "{{ vault_project_root }}/vault-site/utilities/process_hashed_files.py"
     mode: 0755
 
 - name: Ensure daemontools service directories are in place
@@ -30,14 +30,14 @@
     owner: root
   with_items:
     - process_chunked_files
-    - process_hashed_files
+#    - process_hashed_files
 
 - name: Deploy process_chunked_files service supervised by daemontools in /etc/service/process_chunked_files
   become: true
   vars:
     user: root
-    venv_activate: "{{ vault_project_root }}/venv/bin/activate"
-    command: "python3 {{vault_python_path}}/utilities/process_chunked_files.py"
+    venv_activate: "{{ vault_site_venv }}/bin/activate"
+    command: "python3 {{ vault_project_root }}/vault-site/utilities/process_chunked_files.py"
     name: process_chunked_files
   template:
     src: templates/service-skeleton.j2
@@ -47,20 +47,20 @@
   notify:
     - restart process_chunked_files
 
-- name: Deploy process_hashed_files service supervised by daemontools in /etc/service/process_hashed_files
-  become: true
-  vars:
-    user: root
-    venv_activate: "{{ vault_project_root }}/venv/bin/activate"
-    command: "python3 {{vault_python_path}}/utilities/process_hashed_files.py"
-    name: process_hashed_files
-  template:
-    src: service-skeleton.j2
-    dest: "/etc/service/process_hashed_files/run"
-    owner: root
-    mode: 0755
-  notify:
-    - restart process_hashed_files
+#- name: Deploy process_hashed_files service supervised by daemontools in /etc/service/process_hashed_files
+#  become: true
+#  vars:
+#    user: root
+#    venv_activate: "{{ vault_site_venv }}/bin/activate"
+#    command: "python3 {{ vault_project_root }}/vault-site/utilities/process_hashed_files.py"
+#    name: process_hashed_files
+#  template:
+#    src: service-skeleton.j2
+#    dest: "/etc/service/process_hashed_files/run"
+#    owner: root
+#    mode: 0755
+#  notify:
+#    - disable process_hashed_files
 
 - name: install logrotate.d config
   become: true

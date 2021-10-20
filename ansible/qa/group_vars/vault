@@ -1,0 +1,3 @@
+---
+vault_project_root: "/opt/DPS"
+vault_site_venv: "{{ vault_project_root }}/vault-site-venv"

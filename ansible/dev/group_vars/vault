@@ -3,8 +3,8 @@ vault_domain_name: "avdempsey-dev.us.archive.org"
 vault_project_root: "/opt/DPS"
 vault_django_settings: "{{ vault_project_root }}/vault-site/vault_site/settings.py"
 vault_static_root: "{{ vault_project_root }}/static"
+vault_site_venv: "{{ vault_project_root }}/venv"
 vault_wsgi_module: vault_site.wsgi
-vault_python_path: "{{ vault_project_root }}/vault-site"
 vault_user: "avdempsey"
 vault_django_secret_key: !vault |
           $ANSIBLE_VAULT;1.1;AES256
