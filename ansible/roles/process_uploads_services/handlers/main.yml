@@ -1,12 +1,14 @@
 - name: restart process_chunked_files
-  service:
+  svc:
     name: process_chunked_files
     state: restarted
+    service_dir: /etc/service
   become: true
 
 - name: disable process_hashed_files
-  service:
+  svc:
     name: process_hashed_files
     state: stopped
     enabled: no
+    service_dir: /etc/service
   become: true
