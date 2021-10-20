@@ -1,0 +1,5 @@
+---
+- name: Deploy Vault
+  hosts: process_uploads_services
+  roles:
+    - process_uploads_services
