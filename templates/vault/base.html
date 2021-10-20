@@ -37,13 +37,19 @@
 	<meta class="foundation-mq-large">
 	<script src="/vault/static/js/jquery.min.js"></script>
 	<script src="/vault/static/js/sentry/bundle.js"></script>
+	<script src="/vault/static/js/sentry/captureconsole.min.js"></script>
 	<script type="text/javascript">
+
 		if (typeof Sentry == "undefined") {
 			console.error("Sentry/ Sentry Integrations Undefined");
 			} else {
 				Sentry.init({
 				dsn: "{{ SENTRY_DSN }}",
-
+				integrations: [
+					new Sentry.Integrations.CaptureConsole({
+						levels: ['error']
+					})
+				],
 				// Alternatively, use `process.env.npm_package_version` for a dynamic release version
 				// if your build tool supports it.
 				release: "vault@1.0.0",
@@ -52,6 +58,7 @@
 				// of transactions for performance monitoring.
 				// We recommend adjusting this value in production
 				tracesSampleRate: 1.0,
+				maxBreadcrumbs: 50
 				});
 			}
 	</script>
