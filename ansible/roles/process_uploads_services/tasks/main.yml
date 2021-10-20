@@ -30,7 +30,7 @@
     owner: root
   with_items:
     - process_chunked_files
-    - process_hashed_files
+#    - process_hashed_files
 
 - name: Deploy process_chunked_files service supervised by daemontools in /etc/service/process_chunked_files
   become: true
