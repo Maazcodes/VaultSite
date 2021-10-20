@@ -1,2 +1,5 @@
 [vault]
 wbgrp-svc600
+
+[process_uploads_services]
+wbgrp-svc600

@@ -1,2 +1,5 @@
 [vault]
-avdempsey-dev
+adam-dev
+
+[process_uploads_services]
+adam-dev
