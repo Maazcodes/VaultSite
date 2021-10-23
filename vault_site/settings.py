@@ -14,6 +14,9 @@ import os
 import yaml
 from pathlib import Path
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,7 +33,6 @@ EMAIL_HOST = "mail.archive.org"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-conf = {}
 with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
     conf = yaml.safe_load(f)
 
@@ -64,7 +66,7 @@ ALLOWED_HOSTS = [
 DATA_UPLOAD_MAX_MEMORY_SIZE = None  # Defaults to 2.5MB
 
 FILE_UPLOAD_HANDLERS = [
-    #'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    # 'django.core.files.uploadhandler.MemoryFileUploadHandler',
     "django.core.files.uploadhandler.TemporaryFileUploadHandler",
 ]
 
@@ -198,15 +200,26 @@ AUTH_USER_MODEL = "vault.User"
 
 LOGIN_URL = "/vault/accounts/login/"
 
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
 
 SENTRY_DSN = conf.get("SENTRY_DSN", "")
+
+
+SAMPLED_PATHS = {"/api/flow_chunk", "/api/deposit_status"}
+
+
+def traces_sampler(sampling_context):
+    env = sampling_context.get("wsgi_environ", {})
+    path = env.get("PATH_INFO")
+    if path and path in SAMPLED_PATHS:
+        return 0.001
+    else:
+        return 0.1
+
 
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,
+    traces_sampler=traces_sampler,
     send_default_pii=True,
     environment=DEPLOYMENT_ENVIRONMENT,
 )
