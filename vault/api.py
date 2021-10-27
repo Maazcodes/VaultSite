@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import BadRequest
 from django.db.models import Count, Sum, Max
+from django.db.models.functions import Coalesce
 from django.http import (
     Http404,
     JsonResponse,
@@ -557,9 +558,14 @@ def hashed_status(request):
         state[deposit_file["state"]] = deposit_file["files"]
         total_files += deposit_file["files"]
 
+    file_queue = models.DepositFile.objects.filter(
+        state=models.DepositFile.State.UPLOADED
+    ).aggregate(file_count=Coalesce(Count("*"), 0))["file_count"]
+
     return JsonResponse(
         {
             "hashed_files": state["HASHED"],
             "total_files": total_files,
+            "file_queue": file_queue,
         }
     )

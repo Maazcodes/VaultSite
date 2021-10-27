@@ -38,7 +38,9 @@ shutdown = threading.Event()
 def process_hashed_deposit_files():
 
     while True:
-        for deposit_file in DepositFile.objects.filter(state=DepositFile.State.HASHED).order_by("id"):
+        for deposit_file in DepositFile.objects.filter(
+            state=DepositFile.State.HASHED
+        ).order_by("id"):
             org_id = deposit_file.deposit.organization_id
             org_tmp_path = str(org_id)
 
