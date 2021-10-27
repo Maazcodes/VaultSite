@@ -112,7 +112,10 @@ var flow = new Flow({
   query:{upload_token:'my_token'},
   simultaneousUploads: 3,
   speedSmoothingFactor: 0.01,
-  progressCallbacksInterval: 1000
+  progressCallbacksInterval: 1000,
+  maxChunkRetries: undefined,
+  chunkRetryInterval: 5000,
+  permanentErrors: [],
 });
 
 
@@ -168,7 +171,7 @@ function deposit_status(time) {
     xhr.onloadend = function() {
         if (xhr.status == 200) {
 		    res = JSON.parse(xhr.response);
-            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
+            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + ", Processing Queue: " + res["file_queue"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
             // if (time > 60) { // Processing files taking longer than 60 seconds
             //     console.error("Timeout: Processing files taking longer than 60 seconds");
@@ -183,10 +186,18 @@ function deposit_status(time) {
                 document.querySelector('#flow-stats').innerHTML = "Upload Complete";
             }
         }
+        else if (xhr.status == 400) {
+           console.error("Deposit Error: No Deposit ID");
+           document.querySelector('#flow-stats').innerHTML = "Deposit Error: No Deposit ID";
+        }
+        else if (xhr.status == 404) {
+            console.error("Deposit Error: No Deposit for ID");
+            document.querySelector('#flow-stats').innerHTML = "Deposit Error: No Deposit for ID"
+        }
         else {
             console.error("API Error: Cannot Fetch Status of API");
-            document.querySelector('#flow-stats').innerHTML = "API Error: Cannot Fetch Deposit Status";
-            return;
+            setTimeout(function(){  console.log("Calling deposit_status again");
+                deposit_status(time + 1) }, 1000);
         }
     }
 }
