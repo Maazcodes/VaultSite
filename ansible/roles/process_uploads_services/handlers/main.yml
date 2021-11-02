@@ -5,10 +5,9 @@
     service_dir: /etc/service
   become: true
 
-- name: disable process_hashed_files
+- name: restart process_hashed_files
   svc:
     name: process_hashed_files
-    state: stopped
-    enabled: no
+    state: restarted
     service_dir: /etc/service
   become: true
