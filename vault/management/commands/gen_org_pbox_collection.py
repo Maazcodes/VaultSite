@@ -13,7 +13,7 @@ class Command(BaseCommand):
     help = "Create a petabox collection for a vault Organization and sets the Organization.pbox_collection in the database"
 
     def add_arguments(self, parser):
-        parser.add_argument("collection_id", type=int, help="The Organization ID")
+        parser.add_argument("organization_id", type=int, help="The Organization ID")
         parser.add_argument(
             "pbox_collection_name", type=str, help="The desired Petabox collection name"
         )
@@ -27,11 +27,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         print(
-            options["collection_id"], options["pbox_collection_name"], options["force"]
+            options["organization_id"], options["pbox_collection_name"], options["force"]
         )
 
         try:
-            organization = Organization.objects.get(id=options["collection_id"])
+            organization = Organization.objects.get(id=options["organization_id"])
         except Organization.DoesNotExist:
             organization = None
             print("Organization not found")
