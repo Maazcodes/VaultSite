@@ -3,6 +3,7 @@ import json
 import logging
 from functools import reduce
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
@@ -13,6 +14,8 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from django.views.decorators.csrf import csrf_exempt
+
+import requests
 
 from vault import forms
 from vault import models
@@ -402,6 +405,14 @@ def deposit_web(request):
 
     total_used_quota = return_total_used_quota(organization=request.user.organization)
     reply.append({"total_used_quota": total_used_quota})
+
+    if settings.SLACK_WEBHOOK:
+        try:
+            org = request.user.organization
+            msg = f"<@avdempsey> {org.name} used the old uploader."
+            requests.post(settings.SLACK_WEBHOOK, data=json.dumps({"text": msg}))
+        except Exception:
+            pass
 
     if attribs.get("client", None) == "DOAJ_CLI":
         return return_doaj_report(attribs)

@@ -256,3 +256,5 @@ LOGGING = {
         },
     },
 }
+
+SLACK_WEBHOOK = conf.get("VAULT_SLACK_WEBHOOK")
