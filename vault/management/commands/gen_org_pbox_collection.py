@@ -27,7 +27,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         print(
-            options["organization_id"], options["pbox_collection_name"], options["force"]
+            options["organization_id"],
+            options["pbox_collection_name"],
+            options["force"],
         )
 
         try:
@@ -36,10 +38,22 @@ class Command(BaseCommand):
             organization = None
             print("Organization not found")
 
+        vault_parent_pbox_collection = "IA-DPS-Vault"
+        if settings.DEPLOYMENT_ENVIRONMENT != "PROD":
+            vault_parent_pbox_collection = (
+                "IA-DPS-Vault-" + settings.DEPLOYMENT_ENVIRONMENT
+            )
+        if (
+            settings.DEPLOYMENT_ENVIRONMENT is None
+            or settings.DEPLOYMENT_ENVIRONMENT == ""
+        ):
+            print("DEPLOYMENT_ENVIRONMENT not set")
+            return
+
         if organization:
             logo_path = "vault/static/vault-logo-3.png"
             metadata = {
-                "collection": "data",
+                "collection": vault_parent_pbox_collection,
                 "mediatype": "collection",
                 "creator": "Vault",
                 "noindex": "true",
