@@ -39,7 +39,7 @@ class Command(BaseCommand):
         if organization:
             logo_path = "vault/static/vault-logo-3.png"
             metadata = {
-                "collection": "web-group-internal",
+                "collection": "data",
                 "mediatype": "collection",
                 "creator": "Vault",
                 "noindex": "true",
