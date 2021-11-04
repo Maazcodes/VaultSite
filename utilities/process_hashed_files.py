@@ -111,12 +111,19 @@ def try_upload_to_pbox(deposit_file, file_path):
             creator="Vault",
             description=f"Data files for Vault digital preservation service - {org_id}",
         )
+        headers = {"x-archive-check-file": 0}
         try:
             responses = item.upload(
-                file_path, queue_derive=False, verify=True, metadata=metadata
+                file_path,
+                queue_derive=False,
+                verify=True,
+                metadata=metadata,
+                headers=headers,
             )
         except Exception as e:
             logger.error(f"Error uploading to petabox: {e}")
+            return 0, item_name
+
         if responses and len(responses) == 1:
             return responses[0].status_code, item_name
         else:
