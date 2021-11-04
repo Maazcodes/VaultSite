@@ -198,11 +198,11 @@ def main(argv=None):
     )
     args = arg_parser.parse_args(args=sys.argv[1:])
 
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=args.log_level,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
+    logging.root.setLevel(level=args.log_level)
+    logging_handler = logging.StreamHandler()
+    logging_formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    logging_handler.setFormatter(logging_formatter)
+    logger.addHandler(logging_handler)
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGHUP, sig_handler)
