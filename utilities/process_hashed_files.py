@@ -90,9 +90,13 @@ def process_hashed_deposit_files():
                 ):
                     deposit_file.deposit.state = Deposit.State.REPLICATED
                     deposit_file.deposit.save()
+            if shutdown.is_set():
+                logger.debug(f"Shutdown signal received. Stopping.")
+                return
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
+            logger.debug(f"Shutdown signal received. Stopping.")
             return
 
 
