@@ -359,7 +359,7 @@ window.onload = function () {
 
 
     async function doSomeSums(files) {
-        let tooBig = 1024*1024*1024; // 1GB
+        let tooBig = 1024*1024*1024; // 1GiB
         promises   = []; //GLOBAL
         let idx    = 0;
         shasumsList = [];
