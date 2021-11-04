@@ -125,6 +125,7 @@ def try_upload_to_pbox(deposit_file, file_path):
         metadata = dict(
             collection=deposit_file.deposit.organization.pbox_collection,
             mediatype="data",
+            noindex="true",
             creator="Vault",
             description=f"Data files for Vault digital preservation service - {org_id}",
         )
