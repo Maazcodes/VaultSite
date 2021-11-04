@@ -57,10 +57,20 @@ def process_hashed_deposit_files():
                 if status_code == 200:
                     deposit_file.tree_node.pbox_item = item_name
                     deposit_file.tree_node.save()
+                    logger.info(
+                        f"Upload success. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}"
+                    )
                 else:
                     logger.error(
                         f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}"
                     )
+                    if status_code == 503:
+                        logger.error(
+                            f"Petabox returning 503 Slow Down. Taking a break."
+                        )
+                        if shutdown.wait(2 * SLEEP_TIME):
+                            return
+                        continue
 
             if deposit_file.tree_node and deposit_file.tree_node.pbox_item:
                 deposit_file.state = DepositFile.State.REPLICATED
@@ -98,6 +108,9 @@ def try_upload_to_pbox(deposit_file, file_path):
     col_id = deposit_file.deposit.collection_id
 
     item_name = get_pbox_item_name(deposit_file)
+    logger.info(
+        f"Uploading file to petabox: {item_name}/{deposit_file.sha256_sum} - {deposit_file.sha256_sum.size} bytes"
+    )
     if item_name is not None:
         if not os.path.isfile(settings.IA_CONFIG_PATH):
             logger.error(f"IA config path not found: {settings.IA_CONFIG_PATH}")
@@ -112,6 +125,7 @@ def try_upload_to_pbox(deposit_file, file_path):
             description=f"Data files for Vault digital preservation service - {org_id}",
         )
         headers = {"x-archive-check-file": "0"}
+        responses = []
         try:
             responses = item.upload(
                 file_path,
@@ -122,7 +136,6 @@ def try_upload_to_pbox(deposit_file, file_path):
             )
         except Exception as e:
             logger.error(f"Error uploading to petabox: {e}")
-            return 0, item_name
 
         if responses and len(responses) == 1:
             return responses[0].status_code, item_name
@@ -185,8 +198,11 @@ def main(argv=None):
     )
     args = arg_parser.parse_args(args=sys.argv[1:])
 
-    logging.root.setLevel(level=args.log_level)
-    logger.addHandler(logging.StreamHandler())
+    logging.basicConfig(
+        stream=sys.stdout,
+        level=args.log_level,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGHUP, sig_handler)
