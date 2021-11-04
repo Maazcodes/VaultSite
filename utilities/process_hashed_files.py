@@ -111,7 +111,7 @@ def try_upload_to_pbox(deposit_file, file_path):
             creator="Vault",
             description=f"Data files for Vault digital preservation service - {org_id}",
         )
-        headers = {"x-archive-check-file": 0}
+        headers = {"x-archive-check-file": "0"}
         try:
             responses = item.upload(
                 file_path,
@@ -157,7 +157,7 @@ def get_pbox_item_name(deposit_file):
         if not item.exists:
             return item_name
         else:
-            if (
+            if (item.item_size is not None and item.files_count is not None) and (
                 item.item_size > MAX_PBOX_ITEM_BYTES
                 or item.files_count > MAX_PBOX_ITEM_FILES
             ):
