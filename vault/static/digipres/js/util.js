@@ -12,7 +12,7 @@ function formatNumber(number, decimal) {
 }
 
 function formatBytes(bytes, decimal) {
-    var byteUnits = ["B", "KB", "MB", "GB", "TB"];
+    var byteUnits = ["B", "KiB", "MiB", "GiB", "TiB"];
     var i = 0;
     while (bytes > 1024) {
         bytes = bytes / 1024;
