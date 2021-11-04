@@ -109,7 +109,7 @@ def try_upload_to_pbox(deposit_file, file_path):
 
     item_name = get_pbox_item_name(deposit_file)
     logger.info(
-        f"Uploading file to petabox: {item_name}/{deposit_file.sha256_sum} - {deposit_file.sha256_sum.size} bytes"
+        f"Uploading file to petabox: {item_name}/{deposit_file.sha256_sum} - {deposit_file.size} bytes"
     )
     if item_name is not None:
         if not os.path.isfile(settings.IA_CONFIG_PATH):
