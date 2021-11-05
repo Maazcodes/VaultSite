@@ -251,19 +251,25 @@ function start_deposit(flow, files) {
     }
 
     let xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-            start(xhr.response);
+    xhr.onreadystatechange = function () {
+        // In local files, status is 0 upon success in Mozilla Firefox
+        if(xhr.readyState === XMLHttpRequest.DONE) {
+            let status = xhr.status;
+            if (status === 0 || (status >= 200 && status < 400)) {
+                // The request has been completed successfully
+                start(xhr.response);
+            } else {
+                console.error("Error on deposit registration", xhr.response);
+            }
         }
-    }
-
-    xhr.open("POST", "{{ url("api_register_deposit") }}", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
+    };
     let payload = {
         "collection_id": collection_id,
         "files": files,
         "total_size": upload_size
     }
+    xhr.open("POST", "{{ url("api_register_deposit") }}", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
     xhr.send(JSON.stringify(payload));
 }
 
