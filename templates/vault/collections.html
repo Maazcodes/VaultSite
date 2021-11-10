@@ -31,7 +31,7 @@
                         {% if collection.total_size is none %}
                             <td>-</td>
                         {% else %}
-                            <td>{{ collection.total_size|filesizeformat }}</td>
+                            <td>{{ collection.total_size|filesizeformat(binary=true) }}</td>
                         {% endif %}
                         <td>{{ collection.file_count }}</td>
                         {% if collection.last_modified is none %}

@@ -37,7 +37,7 @@
                     <br />
                     <strong>Number of files</strong>: {{ report.file_count }}
                     <br />
-                    <strong>Total size</strong>: {{ report.total_size|filesizeformat }}
+                    <strong>Total size</strong>: {{ report.total_size|filesizeformat(binary=True) }}
                     <br />
                     <strong>Number of erroneous files</strong>: {{ report.error_count }}
 {#                    <% for (missingLocationCount <- report.missingLocationCount) { %>#}
