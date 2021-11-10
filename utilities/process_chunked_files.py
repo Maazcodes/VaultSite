@@ -180,9 +180,19 @@ def process_uploaded_deposit_files(args):
                         # todo Set a DepositFile error status when that exists
                         continue
 
+                    db_time = time.perf_counter()
                     parent_node = make_or_find_parent_node(deposit_file)
+                    parent_lookup_time = time.perf_counter() - db_time
+                    logger.info(
+                        f"{merged_filename} TREENODE Parent lookup time: {parent_lookup_time:.2f}s"
+                    )
+                    db_time = time.perf_counter()
                     file_node, file_node_created = make_or_find_file_node(
                         deposit_file, parent_node
+                    )
+                    treenode_insert_time = time.perf_counter() - db_time
+                    logger.info(
+                        f"{merged_filename} TREENODE insert time: {treenode_insert_time:.2f}s"
                     )
 
                     if not file_node_created:
