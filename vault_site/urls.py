@@ -33,6 +33,7 @@ urlpatterns = [
     # path('deposit/debug', views.deposit_debug, name='deposit_debug'),
     path("deposit/ait", views.deposit_ait, name="deposit_ait"),
     re_path(r"^meta/files/(?P<path>.*)", views.render_file_view, name="files"),
+    re_path(r"^meta/files2/(?P<path>.*)", views.render_web_components_file_view, name="files2"),
     path("administration", views.administration, name="administration"),
     path("administration/plan", views.administration_plan, name="administration_plan"),
     path(
@@ -71,5 +72,6 @@ urlpatterns = [
     ),
     path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
     path("api/deposit_status", api.hashed_status, name="api_deposit_status"),
+    path("api/path_listing", api.path_listing, name="api_path_listing"),
     path("admin/", admin.site.urls),
 ]

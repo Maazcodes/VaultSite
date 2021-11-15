@@ -212,6 +212,12 @@
 {#	</div>#}
 </div>
 {% endblock footer %}
+<!--
+     Don't include modal.js in the web component-based files view because pressing
+     Escape to close a UI5 modal generates a modal.js-related error.
+-->
+{% if not request.path.startswith('/meta/files2/') %}
 <script src="/vault/static/js/modal.js"></script>
+{% endif %}
 </body>
 </html>

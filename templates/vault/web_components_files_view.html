@@ -1,0 +1,60 @@
+{% extends "vault/base.html" %}
+
+{% block head %}
+
+  {{ super() }}
+
+  <script type="module" src="{{ static('js/components/FilesView.js') }}"></script>
+
+  <!--
+       UI5 Component Bundle
+       https://sap.github.io/ui5-webcomponents/playground/getting-started/first-steps
+
+       To create a bundle:
+
+       1. $ npm init vite
+       2. Set project name, framework=vanilla, variant=Javascript
+       3. $ cd {projectName}
+       4. $ npm install
+       5. Edit main.js to import only the modules you need, e.g.
+
+         import "@ui5/webcomponents/dist/Button.js";
+         import "@ui5/webcomponents/dist/Dialog";
+         import "@ui5/webcomponents/dist/List.js";
+         import "@ui5/webcomponents/dist/Popover.js";
+         import "@ui5/webcomponents/dist/StandardListItem.js";
+         import "@ui5/webcomponents/dist/Tab";
+         import "@ui5/webcomponents/dist/TabContainer";
+         import "@ui5/webcomponents/dist/Table.js";
+         import "@ui5/webcomponents/dist/TableCell.js";
+         import "@ui5/webcomponents/dist/TableColumn.js";
+         import "@ui5/webcomponents/dist/TableRow.js";
+         import "@ui5/webcomponents/dist/Tree.js";
+
+       6. $ npm run build
+       7. $ rm .../vault-site/vault/static/js/ext/ui5/*.js
+       8. $ cp dist/assets/*.js .../vault-site/vault/static/js/ext/ui5/
+       9. Replace the below "index.*.js" with the name of the one you just copied.
+  -->
+  <script type="module" src="{{ static('js/ext/ui5/index.3db35640.js') }}"></script>
+
+
+{% endblock head %}
+
+{% block header %}{% endblock header %}
+{% block sticky_message %}{% endblock sticky_message %}
+
+{% block content %}
+
+  {% if status == 404 %}
+  <h2>Not Found</h2>
+  {% else %}
+  <vault-files-view app-path="/meta/files2"
+                    path='{{ path | tojson }}'
+                    node='{{ node | tojson }}'
+                    child-nodes='{{ childNodes | tojson2 }}'
+  >
+  </vault-files-view>
+  {% endif %}
+
+{% endblock content %}

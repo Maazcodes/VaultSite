@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import BadRequest
 from django.db.models import Count, Sum, Max
 from django.db.models.functions import Coalesce
+from django.forms import model_to_dict
 from django.http import (
     Http404,
     JsonResponse,
@@ -18,6 +19,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
 
 from fs.osfs import OSFS
 
@@ -114,19 +116,19 @@ def org_collection_sizes(org_node_id):
     org_root = str(org_node_id)
     return models.TreeNode.objects.raw(
         """
-    select coll.id as collection_id, 
-           stats.* 
+    select coll.id as collection_id,
+           stats.*
     from vault_collection coll
         join (
-            select colln.*, 
-                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+            select colln.*,
+                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
                    -- subtract 1 from file_count as nodes are own descendants
                    -- could also filter on node_type to disallow FOLDER
                    count(descn.id) - 1 as file_count,
-                   max(descn.modified_at) as last_modified 
+                   max(descn.modified_at) as last_modified
             from vault_treenode colln, vault_treenode descn
-            where colln.node_type = 'COLLECTION' 
-                  and descn.path <@ colln.path 
+            where colln.node_type = 'COLLECTION'
+                  and descn.path <@ colln.path
                   and colln.path <@ Cast(%s as ltree)
             group by colln.id
         ) stats on coll.tree_node_id = stats.id""",
@@ -536,3 +538,24 @@ def hashed_status(request):
             "file_queue": file_queue,
         }
     )
+
+
+@require_GET
+@login_required
+def path_listing(request):
+    path = request.GET.get('path', '').lstrip('/')
+
+    parent = request.user.organization.tree_node
+    for node in path.split("/") if path else ():
+        child = get_object_or_404(models.TreeNode, name=node, parent=parent)
+        parent = child
+
+    # Don't return the organization node.
+    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" \
+        else None
+    child_nodes = parent.children.all().annotate(Max('uploaded_by__username'))
+    return JsonResponse({
+        'node': node,
+        'childNodes': list(child_nodes.values()),
+        'path': f'/{path}'
+    })

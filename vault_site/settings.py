@@ -50,6 +50,7 @@ DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 IA_CONFIG_PATH = conf.get("IA_CONFIG_PATH")
 
 ALLOWED_HOSTS = [
+    "vault-site-local",
     "localhost",
     "127.0.0.1",
     "wbgrp-svc600.us.archive.org",

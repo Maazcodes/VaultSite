@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Max, Sum, Count
 from django.db.models.functions import Coalesce
+from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
@@ -85,20 +86,20 @@ def collections(request):
         org_root = str(org.tree_node_id)
         collections = models.TreeNode.objects.raw(
             """
-        select coll.id as collection_id, 
+        select coll.id as collection_id,
                NULL as last_fixity_report,
-               stats.* 
+               stats.*
         from vault_collection coll
             join (
-                select colln.*, 
-                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+                select colln.*,
+                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
                        -- subtract 1 from file_count as nodes are own descendants
                        -- could also filter on node_type to disallow FOLDER
                        count(descn.id) - 1 as file_count,
                        max(descn.modified_at) as last_modified
                 from vault_treenode colln, vault_treenode descn
-                where colln.node_type = 'COLLECTION' 
-                      and descn.path <@ colln.path 
+                where colln.node_type = 'COLLECTION'
+                      and descn.path <@ colln.path
                       and colln.path <@ Cast(%s as ltree)
                 group by colln.id
             ) stats on coll.tree_node_id = stats.id""",
@@ -535,3 +536,25 @@ def render_file_view(request, path):
         "vault/files_view.html",
         {"items": children, "path": output_path},
     )
+
+@login_required
+def render_web_components_file_view(request, path):
+    path = path.lstrip('/')
+    parent = request.user.organization.tree_node
+    for node in path.split("/") if path else ():
+        child = get_object_or_404(
+            models.TreeNode,
+            name=node,
+            parent=parent
+        )
+        parent = child
+
+    # Don't return the organization node.
+    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" \
+        else None
+    child_nodes = parent.children.all().annotate(Max('uploaded_by__username'))
+    return TemplateResponse(request, "vault/web_components_files_view.html", {
+        "node": node,
+        "childNodes": child_nodes,
+        'path': f'/{path}'
+    })
