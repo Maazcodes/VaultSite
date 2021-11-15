@@ -11,9 +11,6 @@ import os
 import yaml
 from pathlib import Path
 
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,6 +27,7 @@ EMAIL_HOST = "mail.archive.org"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
+conf = {}
 with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
     conf = yaml.safe_load(f)
 
@@ -58,12 +56,8 @@ ALLOWED_HOSTS = [
     "wbgrp-vault-site-qa.us.archive.org",
 ]
 
-# Allow registration of large Deposits in single request
-# TODO: chunk deposit registration so we can cap POST size
-DATA_UPLOAD_MAX_MEMORY_SIZE = None  # Defaults to 2.5MB
-
 FILE_UPLOAD_HANDLERS = [
-    # 'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    #'django.core.files.uploadhandler.MemoryFileUploadHandler',
     "django.core.files.uploadhandler.TemporaryFileUploadHandler",
 ]
 
@@ -144,11 +138,11 @@ DATABASES = {
     # }
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "test",
-        "USER": "tabish",
-        "PASSWORD": "123",
+        "NAME": "test2",
+        "USER": "tabish2",
+        "PASSWORD": "tabish",
         "HOST": "localhost",
-        "PORT": "",
+        "PORT": "5433",
     }
 }
 
@@ -194,7 +188,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "vault/static/",
 ]
 
-STATIC_ROOT = "/opt/DPS/html/django-admin-static-hack"
+# STATIC_ROOT = BASE_DIR / 'vault/static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -205,59 +199,48 @@ AUTH_USER_MODEL = "vault.User"
 
 LOGIN_URL = "/vault/accounts/login/"
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
 SENTRY_DSN = conf.get("SENTRY_DSN", "")
-
-
-SAMPLED_PATHS = {"/api/flow_chunk", "/api/deposit_status"}
-
-
-def traces_sampler(sampling_context):
-    env = sampling_context.get("wsgi_environ", {})
-    path = env.get("PATH_INFO")
-    if path and path in SAMPLED_PATHS:
-        return 0.001
-    else:
-        return 0.1
-
 
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[DjangoIntegration()],
-    traces_sampler=traces_sampler,
+    traces_sample_rate=1.0,
     send_default_pii=True,
     environment=DEPLOYMENT_ENVIRONMENT,
 )
 
 
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
-#     "formatters": {
-#         "plain": {
-#             "format": "{levelname} {asctime} {module} {message}",
-#             "style": "{",
-#         },
-#     },
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             "filename": "/opt/DPS/vault-site/django-debug.log",
-#             # 'maxBytes': 1024*1024*100,
-#             # 'backupCount': 100,
-#             "formatter": "plain",
-#         },
-#     },
-#     "root": {
-#         "handlers": ["file"],
-#         "level": "INFO",
-#     },
-#     "loggers": {
-#         "vault": {
-#             "handlers": ["file"],
-#             "level": "INFO",
-#             "propagate": False,
-#         },
-#     },
-# }
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": "/opt/DPS/vault-site/django-debug.log",
+            # 'maxBytes': 1024*1024*100,
+            # 'backupCount': 100,
+            "formatter": "plain",
+        },
+    },
+    "root": {
+        "handlers": ["file"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "vault": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
