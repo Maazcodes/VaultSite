@@ -27,31 +27,61 @@
         height: 24px;
         display: none;
         padding: 0;
-        margin-top: 3px;
-        margin-left: 10px;
+        margin-top: 0.3rem;
+        margin-left: 15px;
     }
     #flow-stats {
-        margin-top: -3px;
-        margin-left: 5px;
+        margin: 0;
         padding: 0;
+        display: flex;
         padding-top: 0.5rem;
-        display: inline;
-        margin-right: 1px;
     }
     #span_stats {
         display: flex;
     }
     .loader {
-        margin-left: 15px;
-        border: 4px solid white; /* Light grey */
+        margin-left: 5px;
+        border: 4px solid #f3f3f3; /* Light grey */
         border-top: 4px solid #3498db; /* Blue */
         border-radius: 50%;
         width: 18px;
         height: 18px;
         animation: spin 1.1s linear infinite;
-        display: inline-block;
-        vertical-align: middle;        
     }
+
+    #warningModal_id {
+
+        
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto;
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        
+    }
+
+    .skipBtn {
+        background-color: darkgreen;
+    }
+
+    .rewriteBtn{
+        background-color: red;
+        
+    }
+
+    .warningModalContent{
+        width: 900px; 
+        height: 400px; 
+        overflow: auto; 
+        box-shadow: 0px 0px 15px #348fc6; 
+        border-radius: 8px;
+    }
+    
 
     @keyframes spin {
         0% { transform: rotate(0deg); }
@@ -73,9 +103,12 @@
         <input id="organization_quota" name="organization_quota" type="hidden" value="{{ request.user.organization.quota_bytes }}">
         <input id="total_used_quota" name="total_used_quota" type="hidden" value="{{ total_used_quota }}">
         <div>
-           
-            <button class="button small padding-top padding-bottom half left margin-right half"  id="flowPost" onclick="start_deposit(flow, files)">Upload</button>
-           
+            <div id="warning"></div>
+        </div>
+        <div>
+            <div>
+                <button class="button small padding-top padding-bottom half left margin-right half" id="flowPost" onclick="start_deposit(flow, files)">Upload</button>
+            </div>
             <div id="span_stats">
                 <div id="flow-stats"></div>
                 <progress id="progress_bar_flow" value="0" max="100" disabled="true"> 0% </progress>
@@ -85,11 +118,12 @@
             <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
         {% endif %}
     </div>
-    <div class="small-4 columns" style=" display: inline;" id="collections-chart">
+    <div class="small-4 columns" id="collections-chart">
         <span class="spinner small"></span>
     </div>
 </div>
-<!-- The Modal -->
+
+<!-- Create Collection Modal -->
 <div id="myModal" class="modal">
     <!-- Modal content -->
     <div class="modal-content">
@@ -109,19 +143,28 @@
         </form>
     </div>
 </div>
-<script>
+
+<!-- Warning Modal -->
+<div id="warningModal_id" class="modal">
+    <!-- Modal content -->
+    <div class="modal-content warningModalContent">
+        <div class="modal-header" >
+            <div style="text-align: center;"><strong>WARNING!</strong> You are over writing these files: </div><br>
+            <div id="warningHeader" style="text-align: center;">
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+
 
 var flow = new Flow({
   target:'{{ url("api_flow_chunk") }}',
   query:{upload_token:'my_token'},
   simultaneousUploads: 3,
-  speedSmoothingFactor: 0.005,
-  progressCallbacksInterval: 1000,
-  maxChunkRetries: undefined,
-  chunkRetryInterval: 5000,
-  permanentErrors: [],
+  speedSmoothingFactor: 0.0001,
+  progressCallbacksInterval: 150,
 });
-
 
 flow.assignBrowse(document.getElementById('browseFilesButton'));
 flow.assignBrowse(document.getElementById('browseDirectoriesButton'), true);
@@ -130,7 +173,15 @@ flow.assignDrop(document.getElementById('dropTarget'));
 let files = [];
 let upload_size = 0;
 let currentDepositId = undefined;
+let files_dict = {};
+let flowfile_objects_dict = {};
 
+function hashCode(str) {
+    return str.split('').reduce((prevHash, currVal) =>
+        (((prevHash << 5) - prevHash) + currVal.charCodeAt(0))|0, 0);
+}
+
+let flow_object_array = [];
 flow.on('fileAdded', function(file, event){
     let new_file = {
         "flow_identifier": file.uniqueIdentifier,
@@ -141,16 +192,14 @@ flow.on('fileAdded', function(file, event){
         "pre_deposit_modified_at": new Date(file.file.lastModified).toISOString(),
     };
     files.push(new_file);
+    flowfile_objects_dict[String(file["relativePath"])] = file;
+    // dictionary with relative path as key
+    files_dict[String(new_file["relative_path"])] = new_file;
     upload_size += new_file["size"];
-    document.querySelector('#flow-stats').innerHTML = '<div>' + files.length + pluralizeWord(' file ', ' files ', files.length) + ' selected. Total Upload Size: ' + formatBytes(upload_size) + '</div>';
+    document.querySelector('#flow-stats').innerHTML = files.length + ' files selected. Total Upload Size: ' + formatBytes(upload_size);
 });
 
 flow.on('fileSuccess', function(file,message){});
-
-function pluralizeWord(singularWord, pluralWord, count) {
-
-    return count != 1 ? pluralWord : singularWord;
-}
 
 flow.on('fileError', function(file, message){
     console.log(file, message);
@@ -162,14 +211,13 @@ flow.on('fileError', function(file, message){
 
 function changeStats() {
     if($('#id_collection').find(":selected").val() != ""){
-        document.querySelector('#flow-stats').innerHTML = '<div>' + files.length + pluralizeWord(' file ', ' files ', files.length) + ' selected. Total Upload Size: ' + formatBytes(upload_size) + '</div>';
+        document.querySelector('#flow-stats').innerHTML = files.length + ' files selected. Total Upload Size: ' + formatBytes(upload_size);
     }
 }
 
 document.getElementById('id_collection').addEventListener("change", changeStats);
 
 function deposit_status(time) {
-
     if (currentDepositId == undefined) {
         console.error("Deposit Id not defined");
     }
@@ -180,7 +228,7 @@ function deposit_status(time) {
     xhr.onloadend = function() {
         if (xhr.status == 200) {
 		    res = JSON.parse(xhr.response);
-            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + ", Processing Queue: " + res["file_queue"] +  '<div class="loader"></div>';
+            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
             // if (time > 60) { // Processing files taking longer than 60 seconds
             //     console.error("Timeout: Processing files taking longer than 60 seconds");
@@ -188,26 +236,17 @@ function deposit_status(time) {
             //     return;
             // }
             if (res["hashed_files"] < res["total_files"]) {
-                setTimeout(function(){ 
+                setTimeout(function(){;
                 deposit_status(time + 1) }, 1000);
             }
             else {
-                document.getElementById("progress_bar_flow").innerHTML = "";
                 document.querySelector('#flow-stats').innerHTML = "Upload Complete";
             }
         }
-        else if (xhr.status == 400) {
-           console.error("Deposit Error: No Deposit ID");
-           document.querySelector('#flow-stats').innerHTML = "Deposit Error: No Deposit ID";
-        }
-        else if (xhr.status == 404) {
-            console.error("Deposit Error: No Deposit for ID");
-            document.querySelector('#flow-stats').innerHTML = "Deposit Error: No Deposit for ID"
-        }
         else {
             console.error("API Error: Cannot Fetch Status of API");
-            setTimeout(function(){console.log("Calling deposit_status again");
-                deposit_status(time + 1) }, 1000);
+            document.querySelector('#flow-stats').innerHTML = "API Error: Cannot Fetch Deposit Status";
+            return;
         }
     }
 }
@@ -223,46 +262,32 @@ flow.on('complete', function(){
     deposit_status(0);
 });
 
-function secondsToString(seconds) {
-    var remaining_min = Math.floor(seconds / 60);
-    var remaining_sec = seconds - remaining_min * 60;
-
-    // For hours
-    var remaining_hours = Math.floor(seconds / 3600);
-    var total_remaining_sec_hr = seconds - remaining_hours * 3600; // Total remaining seconds after hours
-    var remaining_seconds_after_mins = Math.floor(total_remaining_sec_hr / 60); // Converting remaining seconds into minutes to get remaining minutes
-    var actual_remaining_sec = seconds - remaining_seconds_after_mins * 60; // Getting remaining seconds after minutes
-
-    if (seconds <= 60){
-        return seconds + " s ";
-    } else if (seconds > 60 && seconds <= 3600){
-        return remaining_min + " m " + remaining_sec + " s ";
-    } else if (seconds > 3600){
-        return remaining_hours + " h " + remaining_seconds_after_mins + " m " + actual_remaining_sec + " s ";
-    }
-
-}
-
 let initial_time = 0;
 let sum_speed = 0;
 let counter = 0;
 flow.on('progress', function() {
-    if (counter == 0) {
-        initial_time = Date.now()
-        counter ++;
+    if (flow.progress() == 0) {
+        initial_time = new Date().getSeconds()
         return
     }
     counter ++;
-    let uploaded_size = flow.sizeUploaded();
-    let passed_time = Date.now() - initial_time;
+    let uploaded_size = flow.sizeUploaded()
+    let passed_time = new Date().getSeconds() - initial_time
     let speed = uploaded_size / passed_time
     sum_speed += speed
     avg_speed = sum_speed / counter
     let total_file_size = flow.getSize()
     let time_remaining = (total_file_size - uploaded_size) / avg_speed
-    document.querySelector('#flow-stats').innerHTML = "Uploading Files (" + " Time left: " + secondsToString(Math.floor(time_remaining / 1000)) + ") ";
+    document.querySelector('#flow-stats').innerHTML = "Uploading Files (Time Remaining: " + parseInt(time_remaining) + "s )";
     document.querySelector('#progress_bar_flow').value = flow.progress()*100;
 });
+    
+let total_overlapping_paths = 0; // total count of overlapping paths
+let total_overlapping_files = 0; // total count of overlapping files
+
+let warning_tag = document.getElementById("warning");
+            
+let warningheader = document.getElementById("warningHeader");
 
 function start_deposit(flow, files) {
 
@@ -276,7 +301,171 @@ function start_deposit(flow, files) {
         return;
     }
 
-    document.querySelector('#progress_bar_flow').value = flow.progress()*0;
+    let coll_input = document.getElementById("id_collection");
+    let collection_id = coll_input.options[coll_input.selectedIndex].value;
+
+    let xhr = new XMLHttpRequest();
+
+    xhr.open("POST", "{{ url("api_warning_deposit") }}", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    let payload = {
+        "collection_id": collection_id,
+        "files": files,
+        "total_size": upload_size
+    }
+    xhr.send(JSON.stringify(payload));
+    xhr.onloadend = function() {
+        
+        if (xhr.status == 200) {
+            response = JSON.parse(xhr.response);
+            let objects_list = response["objects"] // All matched files
+            let path_list = response["relative_path"]
+
+            const files_list = []
+            const paths = []
+            
+            for (let index = 0; index < objects_list.length; index++) {
+                let element = objects_list[index];
+                let file_name = element["name"];
+                files_list.push(file_name);
+            }
+
+            for (let index = 0; index < path_list.length; index++) {
+                let path_element = path_list[index];
+                paths.push(path_element);
+
+            }
+
+            total_overlapping_paths = paths.length;
+
+            total_overlapping_files = files_list.length;
+            
+            if (files_list.length > 0){
+
+                overlappedFiles(files_list, total_overlapping_files);
+                
+            } else if (paths.length > 0){
+
+                overlappedFiles(paths, total_overlapping_paths);
+            }
+            else {
+                registerDeposit(files)
+            }
+
+        }
+
+    }
+}
+
+function overlappedFiles(overlapped_files_list, overlapped_files_count){
+    
+    // Get the modal
+    let warning_modal = document.getElementById("warningModal_id");
+
+    // When the user clicks on the button, open the modal
+    warning_modal.style.display = "block";
+
+    // Skip All and Rewrite All Buttons
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + '<br><br>';
+    
+    for (let index = 0; index < overlapped_files_list.length; index++) {
+
+        let file_element = overlapped_files_list[index];
+
+        // Adding Skip and Rewrite buttons after every matched path
+        warningheader.innerHTML += '<div id="' + String(index) + '" style = "margin-bottom: 0px; height: 25px;">' + '<div style="margin-top: 12px; display:inline-block; width: 500px; left: 0px; text-align: left;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skipBtn" style = "border-radius: 20px; right: -190px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button rewriteBtn" style = "border-radius: 20px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 200px"> Rewrite </button></div><hr>';
+    }
+    
+    SkipAllBtn = document.getElementById('skipall');
+    SkipAllBtn.onclick = function(){
+        // removing all the skipped files from the files_dict dictionary
+        for (let file_index = 0; file_index < overlapped_files_list.length; file_index++) {
+            let file_name = overlapped_files_list[file_index];
+
+            // Removing the skipped file from upload queue by relative path
+            flow.removeFile(flowfile_objects_dict[file_name]);
+
+            // Deleting elements from dictionary by relative path
+            delete files_dict[file_name];
+        }
+
+        // Converting values of files_dict dictionary into list
+        let final_deposit_list = Object.values(files_dict);
+        warning_modal.style.display = "none";
+        registerDeposit(final_deposit_list);
+    }
+
+    RewriteAllBtn = document.getElementById('rewriteall');
+    RewriteAllBtn.onclick = function(){
+        warning_modal.style.display = "none";
+        registerDeposit(files);
+    }
+
+    // Rewrite Button
+    document.querySelectorAll('.rewrite-button').forEach(function(el) {
+        el.addEventListener('click', function() {
+
+            rewrite_id = $(this).parent()[0].id
+
+            document.getElementById(String(rewrite_id)).innerHTML = "";
+
+            overlapped_files_count --;
+
+            if (overlapped_files_count == 0) {
+                warning_modal.style.display = "none";
+                let final_deposit_list = Object.values(files_dict);
+                registerDeposit(final_deposit_list)
+            }
+        });
+    });
+
+    // Skip Button
+    skip_list = [];
+    document.querySelectorAll('.skip-button').forEach(function(el) {
+        el.addEventListener('click', function() {
+
+            skip_id = $(this).parent()[0].id
+
+            file_path = $(this).prev()[0].innerText;
+            
+            document.getElementById(String(skip_id)).innerHTML = "";
+
+            // Removing the skipped file from upload queue by relative path
+            flow.removeFile(flowfile_objects_dict[file_path]);
+
+            // Deleting elements from dictionary by relative path
+            delete files_dict[file_path]
+
+            overlapped_files_count --;
+
+            if (overlapped_files_count == 0) {
+                warning_modal.style.display = "none";
+                // Converting dictionary into list and passing as an argument to registerDeposit function
+                let final_deposit_list = Object.values(files_dict);
+                registerDeposit(final_deposit_list)
+            }
+
+        });
+    });
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function(event) {
+        if (event.target == warning_modal) {
+            warning_modal.style.display = "none";
+        }
+    }
+}
+
+function start(response) {
+    let res = JSON.parse(response);
+    flow.opts.query.depositId = res.deposit_id;
+    currentDepositId = flow.opts.query.depositId;
+    
+    flow.upload();
+}
+
+function registerDeposit(remaining_files){
+
     btn = document.getElementById("flowPost");
     btn.innerHTML = "Uploading...";
     btn.disabled = true;
@@ -288,35 +477,31 @@ function start_deposit(flow, files) {
     let coll_input = document.getElementById("id_collection");
     let collection_id = coll_input.options[coll_input.selectedIndex].value;
 
-    function start(response) {
-        let res = JSON.parse(response);
-        flow.opts.query.depositId = res.deposit_id;
-        currentDepositId = flow.opts.query.depositId;
-        flow.upload();
+    let xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            start(xhr.response);
+        }
     }
 
-    let xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-        // In local files, status is 0 upon success in Mozilla Firefox
-        if(xhr.readyState === XMLHttpRequest.DONE) {
-            let status = xhr.status;
-            if (status === 0 || (status >= 200 && status < 400)) {
-                // The request has been completed successfully
-                start(xhr.response);
-            } else {
-                console.error("Error on deposit registration", xhr.response);
-            }
-        }
-    };
-    let payload = {
-        "collection_id": collection_id,
-        "files": files,
-        "total_size": upload_size
-    }
     xhr.open("POST", "{{ url("api_register_deposit") }}", true);
     xhr.setRequestHeader("Content-Type", "application/json");
+    let payload = {
+        "collection_id": collection_id,
+        "files": remaining_files,
+        "total_size": upload_size
+    }
     xhr.send(JSON.stringify(payload));
+    xhr.onloadend = function() {    
+
+        if (xhr.status == 200) {
+
+            response = JSON.parse(xhr.response);
+            let deposit_id = response["deposit_id"]
+        }
+    }
 }
+
 
 /// HELPER FUNCTIONS /// 
 const formatBytes = (bytes, decimals = 2) => {
@@ -324,7 +509,7 @@ const formatBytes = (bytes, decimals = 2) => {
 
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -346,6 +531,7 @@ const createQuotaDonut = () => {
 window.onload = function () {
     $("label[for='id_collection']").html("Collections:  <a href='javascript:void(0);' onclick='show_modal();'>Create a new Collection</a>")
     createQuotaDonut();
+
 }
 
 </script>
@@ -374,7 +560,7 @@ window.onload = function () {
                     legend: {display: false},
                     title: {
                         display: true,
-                        text: 'Quota (in GiB)'
+                        text: 'Quota (in GB)'
                     }
                 }
             });

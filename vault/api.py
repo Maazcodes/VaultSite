@@ -372,6 +372,7 @@ def _chunk_filename(file_identifier: str, chunk_number: int) -> str:
 @csrf_exempt
 @login_required
 def register_deposit(request):
+
     if request.method != "POST":
         return HttpResponseNotAllowed(permitted_methods=["POST"])
 
@@ -385,6 +386,7 @@ def register_deposit(request):
 
     org_id = request.user.organization_id
     collection_id = body.get("collection_id")
+
     # Include organization_id in filter to ensure we have permission
     collection = get_object_or_404(
         models.Collection, pk=collection_id, organization_id=org_id
@@ -407,13 +409,104 @@ def register_deposit(request):
                 **deposit_file_form.cleaned_data,
             )
         )
+
     models.DepositFile.objects.bulk_create(deposit_files)
-    return JsonResponse({"deposit_id": deposit.pk})
+    
+    return JsonResponse(
+        {
+            "deposit_id": deposit.pk,
+            # "deposit_files":deposit_files,
+            
+        })
 
 
 @csrf_exempt
 @login_required
+def warning_deposit(request):
+    try:
+        body = json.loads(request.body)
+    except (AttributeError, TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+
+    collection_id = body.get("collection_id")
+
+    org_id = request.user.organization_id
+
+    collection = get_object_or_404(
+        models.Collection, pk=collection_id, organization_id=org_id
+    )
+    
+    list_of_files = []
+
+    relative_path_list = [i['relative_path'] for i in body.get("files")]
+
+    files_list = []
+    for file_path in relative_path_list:
+        path_list = file_path.split("/")
+        if len(path_list) == 1 and path_list[0][-1] != "/":
+            # this means that it is a file or image and it contains directly in collection
+            files_list.append(path_list[0])
+
+    if len(files_list) > 0: 
+        for file in files_list:
+            matched_file = models.TreeNode.objects.filter(name = file, parent = collection_id).first()
+            if matched_file:
+                list_of_files.append(matched_file)
+
+    unique_path_list = sorted(
+            list(
+                set(
+                    map(
+                        lambda x: "/".join(x.split("/")[:-1]) + "/" if not x.endswith("/") else x, relative_path_list,
+                    )
+                )
+            )
+        )
+
+    full_path_dict = {x:False for x in unique_path_list}
+
+    parent_id = collection_id
+
+    for path in unique_path_list:
+        # check the parent child relation and if the child exists in the database, if yes assign True else False
+        match_object = models.TreeNode.objects.filter(name = ''.join(path.split("/")[-2]), parent = parent_id).first()
+        if match_object:
+            full_path_dict[path] = [True, match_object.id]
+            parent_id = match_object.id
+
+        elif models.TreeNode.objects.filter(name = ''.join(path.split("/")[-2]), parent = collection_id).exists():
+            match_object = models.TreeNode.objects.filter(name = ''.join(path.split("/")[-2]), parent = collection_id).first()
+            full_path_dict[path] = [True, match_object.id]
+            parent_id = match_object.id
+
+        else:
+            full_path_dict[path] = [False]
+
+    list_of_path = []
+    for path in relative_path_list:
+        file_name = path.split("/")[-1]
+        parent_relative_path = '/'.join(path.split("/")[:-1]) + "/"
+        
+        if full_path_dict[parent_relative_path][0]:
+            matched_file = models.TreeNode.objects.filter(name = file_name, parent = int(full_path_dict[parent_relative_path][1])).first()
+            if matched_file:
+                list_of_path.append(parent_relative_path + file_name)
+        else:
+            continue
+    return JsonResponse(
+        {
+            "objects": [{
+                "id": obj.pk, "name": obj.name, "parent": obj.parent.id if obj.parent else 0 , "parent_name": obj.parent.name if obj.parent else None
+                } for obj in list_of_files 
+                ], 
+            "relative_path":sorted(list(set(list_of_path))),
+        }
+    )
+
+@csrf_exempt
+@login_required
 def flow_chunk(request):
+    
     if request.method not in ["GET", "POST"]:
         return HttpResponseNotAllowed(permitted_methods=["GET", "POST"])
 
@@ -558,14 +651,25 @@ def hashed_status(request):
         state[deposit_file["state"]] = deposit_file["files"]
         total_files += deposit_file["files"]
 
-    file_queue = models.DepositFile.objects.filter(
-        state=models.DepositFile.State.UPLOADED
-    ).aggregate(file_count=Coalesce(Count("*"), 0))["file_count"]
-
     return JsonResponse(
         {
             "hashed_files": state["HASHED"],
             "total_files": total_files,
-            "file_queue": file_queue,
         }
     )
+
+def render_tree_file_view(request):
+    # child = get_object_or_404(models.TreeNode, parent=request.user.organization)
+    user_org = models.TreeNode.objects.get(name = request.user.organization)
+
+    all_obj = models.TreeNode.objects.filter(path__startswith = user_org.id) 
+    return JsonResponse(
+        {
+            "objects": [
+                {"id": obj.pk, 
+                "name": obj.name, 
+                "parent": obj.parent.id if obj.parent else 0, 
+                "type" : obj.node_type } 
+                for obj in all_obj 
+                ]
+        })

@@ -1,5 +1,4 @@
 """vault_site URL Configuration
-
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.2/topics/http/urls/
 Examples:
@@ -71,5 +70,6 @@ urlpatterns = [
     ),
     path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
     path("api/deposit_status", api.hashed_status, name="api_deposit_status"),
+    path("api/warning_deposit", api.warning_deposit, name="api_warning_deposit"),
     path("admin/", admin.site.urls),
 ]
