@@ -439,7 +439,7 @@ def warning_deposit(request):
     # collection_object = models.TreeNode.objects.filter(name = collection.name).first()
 
     # collection_id = collection_object.id
-    
+
     list_of_files = []
 
     relative_path_list = [i["relative_path"] for i in body.get("files")]
@@ -476,25 +476,24 @@ def warning_deposit(request):
     full_path_dict = {x: False for x in unique_path_list}
 
     # ['Parent/', 'Parent/Child 2/', 'Parent/Child 3/', 'Parent/Child/', 'Parent/Child/GrandChild/']
-    # x =  {'Parent/': t, 'Parent/Child 2/': t, 'Parent/Child 2/GChild1': f, 'Parent/Child 3/':f , 'Parent/Child/': f, 'Parent/Child/GrandChild/': f}
-    
+    # x (full_path_dict) =  {'Parent/': t, 'Parent/Child 2/': t, 'Parent/Child 2/GChild1': f, 'Parent/Child 3/':f , 'Parent/Child/': f, 'Parent/Child/GrandChild/': f}
+
     # y =  {'Parent/': [image3.png, image125.png], 'Parent/Child 2/': [image124.png], 'Parent/Child 3/':f , 'Parent/Child/': f, 'Parent/Child/GrandChild/': f}
 
     # prev_node = empty make it a stack and push the node always and when on new iteration check if stack.top is parent if no pop till the stack is empty and if it matches good continue ...
     # stack push and pop []
     # for node in x:
     #   if prev_node then check ki jo current node(node) path starts with previous node path and it is true
-    #   # check if node exists in tree node database make x[node] = true
+    #   check if node exists in tree node database make x[node] = true
     #   if last of node exists in db then make it true and if it is true mark check its files in y
     #   then move on to next node
 
-    
     # x = ["Parent/", "Parent/Child 2/", "Parent/Child 2/GrandChild1of2/", "Parent/Child 2/GrandChild2of2/", "Parent/Child 3/", "Parent/Child/", "Parent/Child/GrandChild 2/", "Parent/Child/GrandChild 3/", "Parent/Child/GrandChild 3/Child/",  "Parent/Child/GrandChild/"]
 
     stack_list = []
-    for node in unique_path_list:
-        # Parent/
-        match_object = models.TreeNode.objects.filter(name = node.split("/")[-2], parent = collection_id).first()
+    for node, value in full_path_dict.items():
+
+        match_object = models.TreeNode.objects.filter(name=node.split("/")[-2], parent=collection_id).first()
 
         if match_object:
             stack_list.append(node)
@@ -504,14 +503,14 @@ def warning_deposit(request):
                 if node.startswith(stack_list[-1]):
                     stack_list.append(node)
 
-                    if models.TreeNode.objects.filter(name = node.split("/")[-2]).first():
-                        match_object = models.TreeNode.objects.filter(name = node.split("/")[-2]).first()
+                    if models.TreeNode.objects.filter(name=node.split("/")[-2]).first():
+                        match_object = models.TreeNode.objects.filter(name=node.split("/")[-2]).first()
                         full_path_dict[node] = [True, match_object.id]
                         break
                     else:
                         full_path_dict[node] = [False]
                         break
-            
+
                 else:
                     stack_list.pop()
 
@@ -520,7 +519,7 @@ def warning_deposit(request):
     for path in relative_path_list:
         file_name = path.split("/")[-1]
         parent_relative_path = "/".join(path.split("/")[:-1]) + "/"
-        
+
         if full_path_dict[parent_relative_path][0]:
             matched_file = models.TreeNode.objects.filter(
                 name=file_name, parent=int(full_path_dict[parent_relative_path][1])
@@ -544,8 +543,8 @@ def warning_deposit(request):
             "relative_path": sorted(list(set(list_of_path))),
             "full_path_dict": full_path_dict,
             "body": body,
-            "unique_path_list":unique_path_list,
-            "relative_path_list":relative_path_list,
+            "unique_path_list": unique_path_list,
+            "relative_path_list": relative_path_list,
         }
     )
 
