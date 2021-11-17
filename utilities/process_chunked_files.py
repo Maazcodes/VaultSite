@@ -10,7 +10,9 @@ import shutil
 import signal
 import sys
 import hashlib
+import math
 import threading
+import time
 from fs.errors import ResourceNotFound
 from fs.osfs import OSFS
 
@@ -74,6 +76,7 @@ def process_uploaded_deposit_files(args):
                 if chunk_count == 0:
                     continue
 
+                logger.debug(f"Calculating chunk size.")
                 combined_chunk_size = sum(
                     org_fs.getsize("/chunks/" + c.name) for c in chunk_list
                 )
@@ -87,11 +90,18 @@ def process_uploaded_deposit_files(args):
                     )
                     continue
 
+                logger.debug(f"Chunk sizes match. Merging...")
                 merged_filename = deposit_file.flow_identifier + ".merged.tmp"
                 md5_hash = hashlib.md5()
                 sha1_hash = hashlib.sha1()
                 sha256_hash = hashlib.sha256()
 
+                file_start_time = time.perf_counter()
+                file_read_time = 0
+                file_merge_time = 0
+                file_md5_time = 0
+                file_sha1_time = 0
+                file_sha256_time = 0
                 for i in range(1, chunk_count + 1):
                     chunk_filename = (
                         "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
@@ -103,14 +113,24 @@ def process_uploaded_deposit_files(args):
                     try:
                         with open(chunk_path, "rb") as f:
                             while True:
+                                read_start = time.perf_counter()
                                 bytes = f.read(READ_BUFFER_SIZE)
+                                file_read_time += time.perf_counter() - read_start
                                 if bytes:
+                                    merge_start = time.perf_counter()
                                     org_fs.appendbytes(
                                         "/chunks/" + merged_filename, bytes
                                     )
+                                    file_merge_time += time.perf_counter() - merge_start
+                                    hash_start = time.perf_counter()
                                     md5_hash.update(bytes)
+                                    file_md5_time += time.perf_counter() - hash_start
+                                    hash_start = time.perf_counter()
                                     sha1_hash.update(bytes)
+                                    file_sha1_time += time.perf_counter() - hash_start
+                                    hash_start = time.perf_counter()
                                     sha256_hash.update(bytes)
+                                    file_sha256_time += time.perf_counter() - hash_start
                                 elif 0 == deposit_file.size:
                                     with open(merged_chunk_path, mode="a"):
                                         pass
@@ -127,6 +147,24 @@ def process_uploaded_deposit_files(args):
                         )
                         break
                 else:  # if chunk loop did not break
+                    file_time_delta = time.perf_counter() - file_start_time
+                    rate = deposit_file.size / file_time_delta
+                    pretty_rate = convert_size(rate) + "/s"
+                    logger.info(f"{merged_filename} read time: {file_read_time:.2f}s")
+                    logger.info(f"{merged_filename} write time: {file_merge_time:.2f}s")
+                    logger.info(
+                        f"{merged_filename} hash time (md5): {file_md5_time:.2f}s"
+                    )
+                    logger.info(
+                        f"{merged_filename} hash time (sha1): {file_sha1_time:.2f}s"
+                    )
+                    logger.info(
+                        f"{merged_filename} hash time (sha256): {file_sha256_time:.2f}s"
+                    )
+                    logger.info(
+                        f"Processed file {merged_filename}. {deposit_file.size} bytes in {file_time_delta:.2f} seconds - {pretty_rate}"
+                    )
+
                     deposit_file.md5_sum = md5_hash.hexdigest()
                     deposit_file.sha1_sum = sha1_hash.hexdigest()
                     deposit_file.sha256_sum = sha256_hash.hexdigest()
@@ -142,9 +180,19 @@ def process_uploaded_deposit_files(args):
                         # todo Set a DepositFile error status when that exists
                         continue
 
+                    db_time = time.perf_counter()
                     parent_node = make_or_find_parent_node(deposit_file)
+                    parent_lookup_time = time.perf_counter() - db_time
+                    logger.info(
+                        f"{merged_filename} TREENODE Parent lookup time: {parent_lookup_time:.2f}s"
+                    )
+                    db_time = time.perf_counter()
                     file_node, file_node_created = make_or_find_file_node(
                         deposit_file, parent_node
+                    )
+                    treenode_insert_time = time.perf_counter() - db_time
+                    logger.info(
+                        f"{merged_filename} TREENODE insert time: {treenode_insert_time:.2f}s"
                     )
 
                     if not file_node_created:
@@ -287,6 +335,17 @@ def make_or_find_parent_node(deposit_file):
     return parent_segment
 
 
+# via https://stackoverflow.com/questions/5194057/better-way-to-convert-file-sizes-in-python
+def convert_size(size_bytes):
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
+
+
 def main(argv=None):
     argv = argv or sys.argv
     arg_parser = argparse.ArgumentParser(
@@ -314,7 +373,12 @@ def main(argv=None):
     args = arg_parser.parse_args(args=sys.argv[1:])
 
     logging.root.setLevel(level=args.log_level)
-    logger.addHandler(logging.StreamHandler())
+    logging_handler = logging.StreamHandler()
+    logging_formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s(%(filename)s:%(lineno)d) %(message)s"
+    )
+    logging_handler.setFormatter(logging_formatter)
+    logger.addHandler(logging_handler)
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGHUP, sig_handler)
