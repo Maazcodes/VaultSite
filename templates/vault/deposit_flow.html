@@ -317,18 +317,7 @@ function start_deposit(flow, files) {
             response = JSON.parse(xhr.response);
             let objects_list = response["objects"] // All matched files
             let path_list = response["relative_path"]
-            let full_path_dict = response["full_path_dict"]
-            let body = response["body"]
-            let unique_path_list = response["unique_path_list"]
-            let relative_path_list = response["relative_path_list"]
-            
-            let parent_id_list = response["parent_id_list"]
                
-            console.log('unique_path_list', unique_path_list)
-            console.log('relative_path_list', relative_path_list)
-            console.log('full_path_dict', full_path_dict)
-            console.log('body', body)
-
             const files_list = []
             const paths = []
             
@@ -374,7 +363,7 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
     warning_modal.style.display = "block";
 
     // Skip All and Rewrite All Buttons
-    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip Remaining </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite Remaining</button>' + '<br><br>';
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + '<br><br>';
     
     for (let index = 0; index < overlapped_files_list.length; index++) {
 
@@ -413,6 +402,8 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
     document.querySelectorAll('.rewrite-button').forEach(function(el) {
         el.addEventListener('click', function() {
 
+            SkipAllBtn.innerHTML = 'Skip Remaining';
+            RewriteAllBtn.innerHTML = 'Rewrite Remaining';
             rewrite_id = $(this).parent()[0].id
 
             document.getElementById(String(rewrite_id)).innerHTML = "";
@@ -431,6 +422,9 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
     skip_list = [];
     document.querySelectorAll('.skip-button').forEach(function(el) {
         el.addEventListener('click', function() {
+
+            SkipAllBtn.innerHTML = 'Skip Remaining';
+            RewriteAllBtn.innerHTML = 'Rewrite Remaining';
 
             skip_id = $(this).parent()[0].id
 
