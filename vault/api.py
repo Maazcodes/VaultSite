@@ -418,6 +418,7 @@ def register_deposit(request):
         }
     )
 
+
 @csrf_exempt
 @login_required
 def warning_deposit(request):
@@ -426,7 +427,17 @@ def warning_deposit(request):
     except (AttributeError, TypeError, json.JSONDecodeError):
         return HttpResponseBadRequest()
 
-    collection_id = body.get("collection_id")
+    coll_table_collection_id = body.get("collection_id")
+
+    org_id = request.user.organization_id
+
+    collection = get_object_or_404(
+        models.Collection, pk=coll_table_collection_id, organization_id=org_id
+    )
+
+    collection_object = models.TreeNode.objects.filter(name = collection.name).first()
+
+    collection_id = collection_object.id
 
     list_of_files = []
 
@@ -463,8 +474,8 @@ def warning_deposit(request):
 
     full_path_dict = {x: False for x in unique_path_list}
 
-    img_path_dict = {} # value will be array
-                
+    img_path_dict = {}  # value will be array
+
     for i in range(len(relative_path_list)):
 
         file_name = relative_path_list[i].split("/")[-1]
@@ -486,44 +497,56 @@ def warning_deposit(request):
         else:
             node_name = node.split("/")[-2]
 
-        match_object = models.TreeNode.objects.filter(name=node_name, parent=collection_id).first()
+        match_object = models.TreeNode.objects.filter(
+            name=node_name, parent=collection_id
+        ).first()
 
         if match_object:
             stack_list.append(node)
             full_path_dict[node] = [True, match_object.id]
             if img_path_dict[node]:
                 for img in img_path_dict[node]:
-                    file_match = models.TreeNode.objects.filter(name=img, parent = int(full_path_dict[node][1])).first()
+                    file_match = models.TreeNode.objects.filter(
+                        name=img, parent=int(full_path_dict[node][1])
+                    ).first()
 
                     if file_match:
                         list_of_path.append(node + img)
-            
+
         else:
             while len(stack_list) > 0:
-         
+
                 if node.startswith(stack_list[-1]):
 
-                    if models.TreeNode.objects.filter(name=node.split("/")[-2], parent = int(full_path_dict[stack_list[-1]][1])).first():
-                        match_folder = models.TreeNode.objects.filter(name=node.split("/")[-2], parent = int(full_path_dict[stack_list[-1]][1])).first()
+                    if models.TreeNode.objects.filter(
+                        name=node.split("/")[-2],
+                        parent=int(full_path_dict[stack_list[-1]][1]),
+                    ).first():
+                        match_folder = models.TreeNode.objects.filter(
+                            name=node.split("/")[-2],
+                            parent=int(full_path_dict[stack_list[-1]][1]),
+                        ).first()
                         full_path_dict[node] = [True, match_folder.id]
 
                         stack_list.append(node)
 
                         if img_path_dict[node]:
                             for img in img_path_dict[node]:
-                                file_match = models.TreeNode.objects.filter(name=img, parent = int(full_path_dict[node][1])).first()
+                                file_match = models.TreeNode.objects.filter(
+                                    name=img, parent=int(full_path_dict[node][1])
+                                ).first()
 
                                 if file_match:
                                     list_of_path.append(node + img)
 
                             break
-                    
+
                     else:
                         full_path_dict[node] = [False]
                         break
-                    
+
                 else:
-                    stack_list.pop()     
+                    stack_list.pop()
 
     return JsonResponse(
         {
