@@ -8,6 +8,9 @@ Prototype Django UI for the Vault digital preservation service.
 - Python 3.8
 - Optionally pip-tools
 - Create **/etc/vault.yml** for all config referenced in vault_site/settings.py
+- Set environment variable REMOTE_USER to your username of choice
+  - Until we complete de-apachefication we are using Apache REMOTE_USER authentication.
+  - Django inspects the REMOTE_USER env var and looks up that username in its vault_user table.
 - Run Postgres, install into virtual environment, and start the app:
 ```
 cd path/to/project
