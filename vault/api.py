@@ -418,11 +418,12 @@ def register_deposit(request):
         }
     )
 
+
 def save_file_in_db(img_path_dict, node, full_path_dict, list_of_path):
     """ To check if the file exists in database. If it exists, append and show it to the user. """
     try:
         for img in img_path_dict[node]:
-            
+
             file_match = models.TreeNode.objects.filter(
                 name=img, parent=int(full_path_dict[node][1])
             ).first()
@@ -432,6 +433,7 @@ def save_file_in_db(img_path_dict, node, full_path_dict, list_of_path):
     except:
         img_path_dict[node] = []
 
+
 @csrf_exempt
 @login_required
 def warning_deposit(request):
@@ -440,7 +442,17 @@ def warning_deposit(request):
     except (AttributeError, TypeError, json.JSONDecodeError):
         return HttpResponseBadRequest()
 
-    collection_id = body.get("collection_id")
+    collection_table_coll_id = body.get("collection_id")
+
+    org_id = request.user.organization_id
+
+    collection = get_object_or_404(
+    models.Collection, pk=collection_table_coll_id, organization_id=org_id
+    )
+
+    collection_object = models.TreeNode.objects.filter(name = collection.name).first()
+
+    collection_id = collection_object.id
 
     list_of_files = []
 
@@ -462,7 +474,6 @@ def warning_deposit(request):
             if matched_file:
                 list_of_files.append(matched_file)
 
-
     unique_path_list = sorted(
         list(
             set(
@@ -474,7 +485,7 @@ def warning_deposit(request):
                 )
             )
         )
-    )   
+    )
 
     allPathsList = []
 
@@ -529,7 +540,7 @@ def warning_deposit(request):
                 save_file_in_db(img_path_dict, node, full_path_dict, list_of_path)
 
         else:
-   
+
             while len(stack_list) > 0:
 
                 if node.startswith(stack_list[-1]):
@@ -547,8 +558,10 @@ def warning_deposit(request):
                         stack_list.append(
                             node
                         )  # to get the parent element in next iteration
-                      
-                        save_file_in_db(img_path_dict, node, full_path_dict, list_of_path)
+
+                        save_file_in_db(
+                            img_path_dict, node, full_path_dict, list_of_path
+                        )
 
                         break
 
