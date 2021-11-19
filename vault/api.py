@@ -447,10 +447,10 @@ def warning_deposit(request):
     org_id = request.user.organization_id
 
     collection = get_object_or_404(
-    models.Collection, pk=collection_table_coll_id, organization_id=org_id
+        models.Collection, pk=collection_table_coll_id, organization_id=org_id
     )
 
-    collection_object = models.TreeNode.objects.filter(name = collection.name).first()
+    collection_object = models.TreeNode.objects.filter(name=collection.name).first()
 
     collection_id = collection_object.id
 
