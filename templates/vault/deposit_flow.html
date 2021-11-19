@@ -364,7 +364,7 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
     warning_modal.style.display = "block";
 
     // Skip All and Rewrite All Buttons
-    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + '<br><br>';
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + '<br><br>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files left: </b>${overlapped_files_count} </div>`;
     
     for (let index = 0; index < overlapped_files_list.length; index++) {
 
@@ -411,6 +411,8 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
 
             overlapped_files_count --;
 
+            document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + overlapped_files_count;
+
             if (overlapped_files_count == 0) {
                 warning_modal.style.display = "none";
                 let final_deposit_list = Object.values(files_dict);
@@ -440,6 +442,8 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
             delete files_dict[file_path]
 
             overlapped_files_count --;
+
+            document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + overlapped_files_count;
 
             if (overlapped_files_count == 0) {
                 warning_modal.style.display = "none";

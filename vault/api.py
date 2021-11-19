@@ -427,17 +427,7 @@ def warning_deposit(request):
     except (AttributeError, TypeError, json.JSONDecodeError):
         return HttpResponseBadRequest()
 
-    coll_table_collection_id = body.get("collection_id")
-
-    org_id = request.user.organization_id
-
-    collection = get_object_or_404(
-        models.Collection, pk=coll_table_collection_id, organization_id=org_id
-    )
-
-    collection_object = models.TreeNode.objects.filter(name = collection.name).first()
-
-    collection_id = collection_object.id
+    collection_id = body.get("collection_id")
 
     list_of_files = []
 
@@ -474,6 +464,8 @@ def warning_deposit(request):
 
     full_path_dict = {x: False for x in unique_path_list}
 
+    # full path dict {'newsproject/': False, 'newsproject/newsapp/': False, 'newsproject/newsapp/__pycache__/': False, 'newsproject/newsapp/migrations/': False, 'newsproject/newsapp/migrations/__pycache__/': False, 'newsproject/newsapp/static/newsapp/': False, 'newsproject/newsproject/': False, 'newsproject/newsproject/__pycache__/': False, 'newsproject/templates/': False}
+
     img_path_dict = {}  # value will be array
 
     for i in range(len(relative_path_list)):
@@ -486,6 +478,7 @@ def warning_deposit(request):
 
         img_path_dict[parent_relative_path].append(file_name)
 
+    print('img path dict', img_path_dict)
     list_of_path = []
 
     stack_list = []
@@ -493,30 +486,36 @@ def warning_deposit(request):
 
         node_list = node.split("/")
         if len(node_list) > 2 and len(stack_list) == 0:
+            # to access first element(folder) of path in the beginning
             node_name = node.split("/")[0]
         else:
+            # to access last element(folder) of path after first iteration
             node_name = node.split("/")[-2]
 
-        match_object = models.TreeNode.objects.filter(
-            name=node_name, parent=collection_id
-        ).first()
+        if len(stack_list) == 0:
 
-        if match_object:
-            stack_list.append(node)
-            full_path_dict[node] = [True, match_object.id]
-            if img_path_dict[node]:
-                for img in img_path_dict[node]:
-                    file_match = models.TreeNode.objects.filter(
-                        name=img, parent=int(full_path_dict[node][1])
-                    ).first()
+            # check if the first folder is a child of collection
+            match_object = models.TreeNode.objects.filter(
+                name=node_name, parent=collection_id
+            ).first()
 
-                    if file_match:
-                        list_of_path.append(node + img)
+            if match_object:
+                stack_list.append(node)
+                full_path_dict[node] = [True, match_object.id]
+                if img_path_dict[node]:
+                    for img in img_path_dict[node]:
+                        file_match = models.TreeNode.objects.filter(
+                            name=img, parent=int(full_path_dict[node][1])
+                        ).first()
+
+                        if file_match:
+                            list_of_path.append(node + img)
 
         else:
             while len(stack_list) > 0:
 
                 if node.startswith(stack_list[-1]):
+                    # stack_list.append(node)
 
                     if models.TreeNode.objects.filter(
                         name=node.split("/")[-2],
@@ -528,7 +527,7 @@ def warning_deposit(request):
                         ).first()
                         full_path_dict[node] = [True, match_folder.id]
 
-                        stack_list.append(node)
+                        stack_list.append(node) # to get the parent element in next iteration
 
                         if img_path_dict[node]:
                             for img in img_path_dict[node]:
