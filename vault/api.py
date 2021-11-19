@@ -418,6 +418,19 @@ def register_deposit(request):
         }
     )
 
+def save_file_in_db(img_path_dict, node, full_path_dict, list_of_path):
+    """ To check if the file exists in database. If it exists, append and show it to the user. """
+    try:
+        for img in img_path_dict[node]:
+            
+            file_match = models.TreeNode.objects.filter(
+                name=img, parent=int(full_path_dict[node][1])
+            ).first()
+
+            if file_match:
+                list_of_path.append(node + img)
+    except:
+        img_path_dict[node] = []
 
 @csrf_exempt
 @login_required
@@ -449,6 +462,7 @@ def warning_deposit(request):
             if matched_file:
                 list_of_files.append(matched_file)
 
+
     unique_path_list = sorted(
         list(
             set(
@@ -460,11 +474,20 @@ def warning_deposit(request):
                 )
             )
         )
-    )
+    )   
 
-    full_path_dict = {x: False for x in unique_path_list}
+    allPathsList = []
 
-    # full path dict {'newsproject/': False, 'newsproject/newsapp/': False, 'newsproject/newsapp/__pycache__/': False, 'newsproject/newsapp/migrations/': False, 'newsproject/newsapp/migrations/__pycache__/': False, 'newsproject/newsapp/static/newsapp/': False, 'newsproject/newsproject/': False, 'newsproject/newsproject/__pycache__/': False, 'newsproject/templates/': False}
+    for path in unique_path_list:
+        pathList = path.split("/")[:-1]
+        prev_path_element = ""
+        for current_path_element in pathList:
+            allPathsList.append(prev_path_element + current_path_element + "/")
+            prev_path_element += current_path_element + "/"
+
+    sorted_path_list = sorted(list(set(allPathsList)))
+
+    full_path_dict = {x: False for x in sorted_path_list}
 
     img_path_dict = {}  # value will be array
 
@@ -478,10 +501,10 @@ def warning_deposit(request):
 
         img_path_dict[parent_relative_path].append(file_name)
 
-    print('img path dict', img_path_dict)
     list_of_path = []
 
     stack_list = []
+
     for node in full_path_dict.keys():
 
         node_list = node.split("/")
@@ -502,20 +525,14 @@ def warning_deposit(request):
             if match_object:
                 stack_list.append(node)
                 full_path_dict[node] = [True, match_object.id]
-                if img_path_dict[node]:
-                    for img in img_path_dict[node]:
-                        file_match = models.TreeNode.objects.filter(
-                            name=img, parent=int(full_path_dict[node][1])
-                        ).first()
 
-                        if file_match:
-                            list_of_path.append(node + img)
+                save_file_in_db(img_path_dict, node, full_path_dict, list_of_path)
 
         else:
+   
             while len(stack_list) > 0:
 
                 if node.startswith(stack_list[-1]):
-                    # stack_list.append(node)
 
                     if models.TreeNode.objects.filter(
                         name=node.split("/")[-2],
@@ -527,18 +544,13 @@ def warning_deposit(request):
                         ).first()
                         full_path_dict[node] = [True, match_folder.id]
 
-                        stack_list.append(node) # to get the parent element in next iteration
+                        stack_list.append(
+                            node
+                        )  # to get the parent element in next iteration
+                      
+                        save_file_in_db(img_path_dict, node, full_path_dict, list_of_path)
 
-                        if img_path_dict[node]:
-                            for img in img_path_dict[node]:
-                                file_match = models.TreeNode.objects.filter(
-                                    name=img, parent=int(full_path_dict[node][1])
-                                ).first()
-
-                                if file_match:
-                                    list_of_path.append(node + img)
-
-                            break
+                        break
 
                     else:
                         full_path_dict[node] = [False]
