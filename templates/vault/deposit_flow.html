@@ -165,7 +165,7 @@
     <!-- Modal content -->
     <div class="modal-content warningModalContent">
         <div class="modal-header" >
-            <div style="text-align: center;"><strong>WARNING!</strong> You are over writing these files: </div><br>
+            <div style="text-align: center; margin-bottom: -12px;"><strong>WARNING!</strong> You are over writing these files: </div><br>
             <div id="warningHeader" style="text-align: center;">
             </div>
         </div>
@@ -325,7 +325,6 @@ function start_deposit(flow, files) {
     btn.innerHTML = "Uploading...";
     btn.disabled = true;
     document.querySelector('#flow-stats').innerHTML = "";
-    document.getElementById('progress_bar_flow').style.display = 'inline-block';
     
     let xhr = new XMLHttpRequest();
 
@@ -390,7 +389,7 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
     warning_modal.style.display = "block";
 
     // Skip All and Rewrite All Buttons
-    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + '<br><br>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files left: </b>${overlapped_files_count} </div>`;
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files left: </b>${overlapped_files_count} </div>`;
 
     
     for (let index = 0; index < overlapped_files_list.length; index++) {
@@ -399,7 +398,7 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
 
     
         // Adding Skip and Rewrite buttons after every matched path
-        warningheader.innerHTML += '<div id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 26px; vertical-align: middle;">' + '<div style="margin-top: 5px; height: 42px; overflow: auto; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button rewriteBtn" style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Rewrite </button></div><hr>';
+        warningheader.innerHTML += '<div id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 32px; vertical-align: middle;">' + '<div style="margin-top: 7px; height: 42px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button rewriteBtn" style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Rewrite </button></div><hr>';
     }
     
     SkipAllBtn = document.getElementById('skipall');
