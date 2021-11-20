@@ -80,6 +80,22 @@
         border-radius: 8px;
     }
 
+    .skip-button:hover {
+        box-shadow: 0 5px 5px 0 lightgreen;
+    }
+
+    #skipall:hover {
+        box-shadow: 0 5px 5px 0 lightgreen;
+    }
+
+    .rewrite-button:hover {
+        box-shadow: 0 5px 5px 0 lightcoral;
+    }
+
+    #rewriteall:hover {
+        box-shadow: 0 5px 5px 0 lightcoral;
+    }
+
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
@@ -305,6 +321,12 @@ function start_deposit(flow, files) {
     let coll_input = document.getElementById("id_collection");
     let collection_id = coll_input.options[coll_input.selectedIndex].value;
 
+    btn = document.getElementById("flowPost");
+    btn.innerHTML = "Uploading...";
+    btn.disabled = true;
+    document.querySelector('#flow-stats').innerHTML = "";
+    document.getElementById('progress_bar_flow').style.display = 'inline-block';
+    
     let xhr = new XMLHttpRequest();
 
     xhr.open("POST", "{{ url("api_warning_deposit") }}", true);
@@ -377,7 +399,7 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
 
     
         // Adding Skip and Rewrite buttons after every matched path
-        warningheader.innerHTML += '<div id="' + String(index) + '" style = "margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 37px; vertical-align: middle;">' + '<div style="margin-top: 0px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button rewriteBtn" style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Rewrite </button></div><hr>';
+        warningheader.innerHTML += '<div id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 26px; vertical-align: middle;">' + '<div style="margin-top: 5px; height: 42px; overflow: auto; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button rewriteBtn" style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Rewrite </button></div><hr>';
     }
     
     SkipAllBtn = document.getElementById('skipall');
@@ -401,8 +423,10 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
 
     RewriteAllBtn = document.getElementById('rewriteall');
     RewriteAllBtn.onclick = function(){
+
+        let final_deposit_list = Object.values(files_dict);
         warning_modal.style.display = "none";
-        registerDeposit(files);
+        registerDeposit(final_deposit_list);
     }
 
     // Rewrite Button
@@ -412,8 +436,15 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
             SkipAllBtn.innerHTML = 'Skip Remaining';
             RewriteAllBtn.innerHTML = 'Rewrite Remaining';
             rewrite_id = $(this).parent()[0].id
-
+            file_path = $(this).prev().prev()[0].innerText;
             document.getElementById(String(rewrite_id)).innerHTML = "";
+
+            var index = overlapped_files_list.indexOf(file_path);
+
+            if (index !== -1) {
+
+                overlapped_files_list.splice(index, 1);
+            }
 
             overlapped_files_count --;
 
@@ -447,6 +478,13 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
             // Deleting elements from dictionary by relative path
             delete files_dict[file_path]
 
+            var index = overlapped_files_list.indexOf(file_path);
+
+            if (index !== -1) {
+
+                overlapped_files_list.splice(index, 1);
+            }
+
             overlapped_files_count --;
 
             document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + overlapped_files_count;
@@ -465,6 +503,11 @@ function overlappedFiles(overlapped_files_list, overlapped_files_count){
     window.onclick = function(event) {
         if (event.target == warning_modal) {
             warning_modal.style.display = "none";
+            btn = document.getElementById("flowPost");
+            btn.innerHTML = "Upload";
+            btn.disabled = false;
+            document.getElementById('progress_bar_flow').style.display = 'none';
+            
         }
     }
 }
