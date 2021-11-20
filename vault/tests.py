@@ -5,12 +5,12 @@ from django.conf import settings
 from vault.models import User, Organization, Plan, Geolocation
 
 
-@pytest.fixture()
+@pytest.fixture
 def super_user(db):
-    geo = Geolocation.objects.create(name="SF")
-    plan = Plan.objects.create(name="Pilot", price_per_terabyte=0)
+    geo = Geolocation.objects.create(name="Test Geo")
+    plan = Plan.objects.create(name="Test Plan", price_per_terabyte=0)
     plan.default_geolocations.set([geo])
-    org = Organization.objects.create(name="Archive", plan=plan)
+    org = Organization.objects.create(name="Test Org", plan=plan)
     su = User.objects.create_superuser(
         username=settings.TEST_FIXTURE_USER, password="test1234", organization=org
     )
