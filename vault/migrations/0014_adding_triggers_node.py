@@ -2,13 +2,14 @@
 from __future__ import unicode_literals
 
 from django.db import migrations
+from django.conf import settings
 from django.contrib.postgres.operations import CreateExtension
 
 import vault.ltree
 
 
 def get_sql(filename):
-    with open("vault/sql/" + filename) as f:
+    with open(settings.BASE_DIR / "vault/sql/" / filename) as f:
         return f.read()
 
 
