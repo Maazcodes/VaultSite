@@ -416,65 +416,42 @@ def register_deposit(request):
 def flow_chunk(request):
     if request.method not in ["GET", "POST"]:
         return HttpResponseNotAllowed(permitted_methods=["GET", "POST"])
-
-    org_id = request.user.organization_id
-    org_tmp_path = str(org_id)
-    org_chunk_tmp_path = os.path.join(org_tmp_path, "chunks")
-
     if request.method == "GET":
         form = FlowChunkGetForm(request.GET)
-        if not form.is_valid():
-            return JsonResponse(status=400, data=form.errors)
-        chunk = form.flow_chunk_get()
+    else:
+        form = FlowChunkPostForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse(status=400, data=form.errors)
+    # auth - check the org matches the chunk deposit
+    chunk = form.flow_chunk()
+    org_id = request.user.organization_id
+    deposit = get_object_or_404(
+        models.Deposit, pk=chunk.deposit_id, organization_id=org_id
+    )
+    deposit_file = get_object_or_404(
+        models.DepositFile,
+        deposit=deposit,
+        flow_identifier=chunk.file_identifier,
+    )
+    if deposit_file.state != models.DepositFile.State.REGISTERED:
+        logger.warning("chunk request for already uploaded file")
+        return HttpResponse()  # this DepositFile is already uploaded
 
-        # check the org matches the deposit
-        deposit = get_object_or_404(
-            models.Deposit, pk=chunk.deposit_id, organization_id=org_id
-        )
+    org_tmp_path = str(org_id)
+    org_chunk_tmp_path = os.path.join(org_tmp_path, "chunks")
+    chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
+    chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
 
-        chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
-        chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
-
+    if request.method == "GET":
         # do we need this chunk?
         with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
-            have_tmp = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_filename}")
-            have_out = tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_out_filename}")
-        if have_tmp or have_out:
-            if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
-                return HttpResponse()
-            else:
-                logger.info(f"all chunks saved for {chunk.file_identifier}")
-                deposit_file = get_object_or_404(
-                    models.DepositFile,
-                    deposit=deposit,
-                    flow_identifier=chunk.file_identifier,
-                )
-                deposit_file.state = models.DepositFile.State.UPLOADED
-                deposit_file.uploaded_at = timezone.now()
-                deposit_file.save()
-
-            return HttpResponse(status=200)  # we have the chunk don't send it again
-        else:
+            no_tmp = not tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_filename}")
+            no_out = not tmp_fs.exists(f"{org_chunk_tmp_path}/{chunk_out_filename}")
+        if no_tmp and no_out:
             return HttpResponse(status=204)  # please send us this chunk
 
     if request.method == "POST":
-        form = FlowChunkPostForm(request.POST, request.FILES)
-        if not form.is_valid():
-            return JsonResponse(status=400, data=form.errors)
-        chunk = form.flow_chunk_post()
-        deposit = get_object_or_404(
-            models.Deposit, id=chunk.deposit_id, organization_id=org_id
-        )
-        deposit_file = get_object_or_404(
-            models.DepositFile, deposit=deposit, flow_identifier=chunk.file_identifier
-        )
-        if deposit_file.state != models.DepositFile.State.REGISTERED:
-            logger.warning("chunk posted for already uploaded file")
-            return HttpResponse()
-
         # Save the chunk to the org's tmp chunks dir
-        chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
-        chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
         logger.info(f"saving chunk to tmp: {chunk_filename}")
         with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
             with tmp_fs.makedirs(org_chunk_tmp_path, recreate=True) as org_fs:
@@ -489,18 +466,15 @@ def flow_chunk(request):
                 chunk_out.close()
                 org_fs.move(chunk_out_filename, chunk_filename, overwrite=True)
 
-        if not all_chunks_uploaded(chunk, org_chunk_tmp_path):
-            return HttpResponse()
-        else:
-            logger.info(f"all chunks saved for {chunk.file_identifier}")
-            deposit_file.state = models.DepositFile.State.UPLOADED
-            deposit_file.uploaded_at = timezone.now()
-            deposit_file.save()
-
-        return HttpResponse()
+    if all_chunks_uploaded(chunk, org_chunk_tmp_path):
+        logger.info(f"all chunks saved for {chunk.file_identifier}")
+        deposit_file.state = models.DepositFile.State.UPLOADED
+        deposit_file.uploaded_at = timezone.now()
+        deposit_file.save()
+    return HttpResponse()
 
 
-def all_chunks_uploaded(chunk, org_chunk_tmp_path):
+def all_chunks_uploaded(chunk, org_chunk_tmp_path) -> bool:
     # Check if we have all chunks for the file
     with OSFS(
         os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_chunk_tmp_path)
@@ -530,18 +504,11 @@ class DepositException(Exception):
 def hashed_status(request):
     if request.method != "GET":
         return HttpResponseNotAllowed(permitted_methods=["GET"])
+    org_id = request.user.organization_id
     deposit_id = request.GET.get("deposit_id")
     if not deposit_id:
         return HttpResponseBadRequest()
-    deposit = get_object_or_404(
-        models.Deposit,
-        pk=deposit_id,
-        organization=get_object_or_404(
-            models.Organization, pk=request.user.organization_id
-        ),
-    )
-
-    from functools import reduce
+    deposit = get_object_or_404(models.Deposit, pk=deposit_id, organization_id=org_id)
 
     state = {"REGISTERED": 0, "UPLOADED": 0, "HASHED": 0, "REPLICATED": 0}
 
