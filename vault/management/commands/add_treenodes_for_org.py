@@ -14,7 +14,7 @@ class Command(BaseCommand):
         add_treenodes_for_org(org)
 
 
-def add_treenodes_for_org(org):
+def add_treenodes_for_org(org: Organization):
     if not org.tree_node:
         org_node, created = TreeNode.objects.get_or_create(
             node_type=TreeNode.Type.ORGANIZATION, name=org.name
