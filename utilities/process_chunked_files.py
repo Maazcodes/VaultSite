@@ -11,6 +11,8 @@ import signal
 import sys
 import hashlib
 import threading
+
+from django.db.models import Max
 from fs.errors import ResourceNotFound
 from fs.osfs import OSFS
 
@@ -203,7 +205,12 @@ def process_uploaded_deposit_files(args):
                         ),
                     )
                 ):
+                    last_upload_at = DepositFile.objects.filter(
+                        deposit=deposit
+                    ).aggregate(last_upload_at=Max("uploaded_at"))
                     deposit.state = Deposit.State.HASHED
+                    deposit.uploaded_at = last_upload_at["last_upload_at"]
+                    deposit.hashed_at = timezone.now()
                     deposit.save()
                     if not args.no_deposit_report:
                         deposit.make_deposit_report()
