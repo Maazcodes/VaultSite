@@ -428,14 +428,6 @@ def flow_chunk(request):
     deposit = get_object_or_404(
         models.Deposit, pk=chunk.deposit_id, organization_id=org_id
     )
-    deposit_file = get_object_or_404(
-        models.DepositFile,
-        deposit=deposit,
-        flow_identifier=chunk.file_identifier,
-    )
-    if deposit_file.state != models.DepositFile.State.REGISTERED:
-        logger.warning("chunk request for already uploaded file")
-        return HttpResponse()  # this DepositFile is already uploaded
 
     org_tmp_path = str(org_id)
     org_chunk_tmp_path = os.path.join(org_tmp_path, "chunks")
@@ -468,6 +460,14 @@ def flow_chunk(request):
 
     if all_chunks_uploaded(chunk, org_chunk_tmp_path):
         logger.info(f"all chunks saved for {chunk.file_identifier}")
+        deposit_file = get_object_or_404(
+            models.DepositFile,
+            deposit=deposit,
+            flow_identifier=chunk.file_identifier,
+        )
+        if deposit_file.state != models.DepositFile.State.REGISTERED:
+            logger.warning("chunk request for already uploaded file")
+            return HttpResponse()  # this DepositFile is already uploaded
         deposit_file.state = models.DepositFile.State.UPLOADED
         deposit_file.uploaded_at = timezone.now()
         deposit_file.save()
