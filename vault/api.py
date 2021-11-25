@@ -419,19 +419,19 @@ def register_deposit(request):
     )
 
 
-def save_file_in_db(img_path_dict, node, full_path_dict, list_of_path):
-    """ To check if the file exists in database. If it exists, append and show it to the user. """
+def check_file_in_db(file_path_dict, node, full_path_dict, list_of_path):
+    """To check if the file exists in database. If it exists, append and show it to the user."""
     try:
-        for img in img_path_dict[node]:
+        for file in file_path_dict[node]:
 
             file_match = models.TreeNode.objects.filter(
-                name=img, parent=int(full_path_dict[node][1])
+                name=file, parent=int(full_path_dict[node][1])
             ).first()
 
             if file_match:
-                list_of_path.append(node + img)
+                list_of_path.append(node + file)
     except:
-        img_path_dict[node] = []
+        file_path_dict[node] = []
 
 
 @csrf_exempt
@@ -447,13 +447,14 @@ def warning_deposit(request):
     org_id = request.user.organization_id
 
     collection = get_object_or_404(
-    models.Collection, pk=collection_table_coll_id, organization_id=org_id)
+        models.Collection, pk=collection_table_coll_id, organization_id=org_id
+    )
 
-    collection_object = models.TreeNode.objects.filter(name = collection.name).first()
+    collection_node = models.TreeNode.objects.filter(name=collection.name).first()
 
-    collection_id = collection_object.id
+    collection_id = collection_node.id
 
-    list_of_files = []
+    list_of_matched_files = []
 
     relative_path_list = [i["relative_path"] for i in body.get("files")]
 
@@ -461,17 +462,17 @@ def warning_deposit(request):
     files_list = []
     for file_path in relative_path_list:
         path_list = file_path.split("/")
-        if len(path_list) == 1 and path_list[0][-1] != "/":
-            # this means that it is a file or image and it contains directly in collection
+        if len(path_list) == 1 and not path_list[0].endswith("/"):
+            # If it is a file and it contains directly in collection, append it to files_list
             files_list.append(path_list[0])
 
-    if len(files_list) > 0:
-        for file in files_list:
-            matched_file = models.TreeNode.objects.filter(
-                name=file, parent=collection_id
-            ).first()
-            if matched_file:
-                list_of_files.append(matched_file)
+    for file in files_list:
+        # Check if the file exists in database. If yes, append to list_of_matched_files
+        matched_file = models.TreeNode.objects.filter(
+            name=file, parent=collection_id
+        ).first()
+        if matched_file:
+            list_of_matched_files.append(matched_file)
 
     unique_path_list = sorted(
         list(
@@ -487,63 +488,56 @@ def warning_deposit(request):
     )
 
     allPathsList = []
-
     for path in unique_path_list:
-        pathList = path.split("/")[:-1]
+        paths_without_file = path.split("/")[:-1]
         prev_path_element = ""
-        for current_path_element in pathList:
+        for current_path_element in paths_without_file:
             allPathsList.append(prev_path_element + current_path_element + "/")
             prev_path_element += current_path_element + "/"
 
     sorted_path_list = sorted(list(set(allPathsList)))
 
+    # Making all the values of paths as False initially in full_path_dict
     full_path_dict = {x: False for x in sorted_path_list}
 
-    img_path_dict = {}  # value will be array
+    file_path_dict = {}
+    # Keeping a key as path and its value as list of files
+    for rel_path in relative_path_list:
+        file_name = rel_path.split("/")[-1]
+        parent_relative_path = "/".join(rel_path.split("/")[:-1]) + "/"
 
-    for i in range(len(relative_path_list)):
+        if not parent_relative_path in file_path_dict:
+            # Assigning empty list to all keys initially
+            file_path_dict[parent_relative_path] = []
 
-        file_name = relative_path_list[i].split("/")[-1]
-        parent_relative_path = "/".join(relative_path_list[i].split("/")[:-1]) + "/"
-
-        if not parent_relative_path in img_path_dict.keys():
-            img_path_dict[parent_relative_path] = []
-
-        img_path_dict[parent_relative_path].append(file_name)
+        file_path_dict[parent_relative_path].append(file_name)
 
     list_of_path = []
-
     stack_list = []
 
-    for node in full_path_dict.keys():
-
+    for node in full_path_dict:
         node_list = node.split("/")
         if len(node_list) > 2 and len(stack_list) == 0:
             # to access first element(folder) of path in the beginning
+            # eg. "Parent/Child/GrandChild" - get only the word "Parent"
             node_name = node.split("/")[0]
         else:
             # to access last element(folder) of path after first iteration
+            # eg. "Parent/Child/GrandChild" - get only the word "GrandChild"
             node_name = node.split("/")[-2]
 
         if len(stack_list) == 0:
-
             # check if the first folder is a child of collection
-            match_object = models.TreeNode.objects.filter(
+            match_node = models.TreeNode.objects.filter(
                 name=node_name, parent=collection_id
             ).first()
-
-            if match_object:
+            if match_node:
                 stack_list.append(node)
-                full_path_dict[node] = [True, match_object.id]
-
-                save_file_in_db(img_path_dict, node, full_path_dict, list_of_path)
-
+                full_path_dict[node] = [True, match_node.id]
+                check_file_in_db(file_path_dict, node, full_path_dict, list_of_path)
         else:
-
             while len(stack_list) > 0:
-
                 if node.startswith(stack_list[-1]):
-
                     if models.TreeNode.objects.filter(
                         name=node.split("/")[-2],
                         parent=int(full_path_dict[stack_list[-1]][1]),
@@ -558,29 +552,30 @@ def warning_deposit(request):
                             node
                         )  # to get the parent element in next iteration
 
-                        save_file_in_db(
-                            img_path_dict, node, full_path_dict, list_of_path
+                        check_file_in_db(
+                            file_path_dict, node, full_path_dict, list_of_path
                         )
-
                         break
-
                     else:
                         full_path_dict[node] = [False]
                         break
-
                 else:
+                    # if the last element of path does not match with the last element of stack_list, remove the last element
+                    # And keep on removing until it matches with the one in stack_list
                     stack_list.pop()
 
     return JsonResponse(
         {
             "objects": [
                 {
-                    "id": obj.pk,
-                    "name": obj.name,
-                    "parent": obj.parent.id if obj.parent else 0,
-                    "parent_name": obj.parent.name if obj.parent else None,
+                    "id": matched_file.pk,
+                    "name": matched_file.name,
+                    "parent": matched_file.parent.id if matched_file.parent else 0,
+                    "parent_name": matched_file.parent.name
+                    if matched_file.parent
+                    else None,
                 }
-                for obj in list_of_files
+                for matched_file in list_of_matched_files
             ],
             "relative_path": sorted(list(set(list_of_path))),
         }
@@ -744,10 +739,11 @@ def hashed_status(request):
 
 
 def render_tree_file_view(request):
-    # child = get_object_or_404(models.TreeNode, parent=request.user.organization)
-    user_org = models.TreeNode.objects.get(name=request.user.organization)
+    user_org = request.user.organization.tree_node
+    all_obj = models.TreeNode.objects.filter(path__descendant=user_org.path).exclude(
+        path=user_org.path
+    )
 
-    all_obj = models.TreeNode.objects.filter(path__startswith=user_org.id)
     return JsonResponse(
         {
             "objects": [
