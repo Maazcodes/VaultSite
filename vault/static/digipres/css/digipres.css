@@ -310,6 +310,18 @@ div.report-card-success {
     border-left: 4px solid #3cba9f;
 }
 
+div.report-card-processing {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-left: 4px solid #26547c;
+}
+
+div.report-card-uploading {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-left: 4px solid #ffd166;
+}
+
 div.report-card-error {
     border-top-left-radius: 5px;
     border-bottom-left-radius: 5px;

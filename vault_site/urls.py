@@ -30,6 +30,7 @@ urlpatterns = [
     path("deposit/cli", views.deposit_cli, name="deposit_cli"),
     path("deposit/mail", views.deposit_mail, name="deposit_mail"),
     path("deposit/flow", views.deposit_flow, name="deposit_flow"),
+    path("deposit/<int:deposit_id>", views.deposit_report, name="deposit_report"),
     # path('deposit/debug', views.deposit_debug, name='deposit_debug'),
     path("deposit/ait", views.deposit_ait, name="deposit_ait"),
     re_path(r"^meta/files/(?P<path>.*)", views.render_file_view, name="files"),

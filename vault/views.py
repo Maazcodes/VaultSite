@@ -1,3 +1,4 @@
+from collections import Counter
 import datetime
 import json
 import logging
@@ -189,6 +190,48 @@ def report(request, report_id):
             "collection": report.collection,
             "report": report,
             "page_number": 1,
+        },
+    )
+
+
+@login_required
+def deposit_report(request, deposit_id):
+    org_id = request.user.organization_id
+    deposit = get_object_or_404(models.Deposit, pk=deposit_id, organization_id=org_id)
+    collection = deposit.collection
+    deposit_files = deposit.files.all()
+    file_count = len(deposit_files)
+    total_size = sum(df.size for df in deposit_files)
+    state_count = Counter(df.state for df in deposit.files.all())
+    processed_count = state_count.get(
+        models.DepositFile.State.REPLICATED, 0
+    ) + state_count.get(models.DepositFile.State.HASHED, 0)
+    awaiting_processing_count = state_count.get(models.DepositFile.State.UPLOADED, 0)
+    awaiting_upload_count = state_count.get(models.DepositFile.State.REGISTERED, 0)
+    error_count = 0
+    if deposit.state in (models.Deposit.State.REPLICATED, models.Deposit.State.HASHED):
+        display_state = "Complete"
+    elif deposit.state == models.Deposit.State.UPLOADED:
+        display_state = "Processing"
+    elif deposit.state == models.Deposit.State.REGISTERED:
+        display_state = "Registered"
+    else:
+        display_state = "Error"
+    return TemplateResponse(
+        request,
+        "vault/deposit_report.html",
+        {
+            "collection": collection,
+            "deposit": deposit,
+            "deposit_files": deposit_files,
+            "file_count": file_count,
+            "total_size": total_size,
+            "state_count": state_count,
+            "processed_count": processed_count,
+            "awaiting_processing_count": awaiting_processing_count,
+            "awaiting_upload_count": awaiting_upload_count,
+            "error_count": error_count,
+            "display_state": display_state,
         },
     )
 
