@@ -416,7 +416,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
     warning_modal.style.display = "block";
 
     // Skip All and Rewrite All Buttons
-    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files left: </b>${overlapped_files_list.length} </div>`;
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to select: </b>${overlapped_files_list.length} </div>`;
 
     // Adding Confirm button before all rows
     warningheader.innerHTML += `<br><button class="confirm-button"> Confirm </button><div id="confirmBtn1text"></div><br><br>` 
@@ -463,7 +463,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
         }
 
         not_selected_paths = document.querySelectorAll(".path-not-selected")
-        document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + not_selected_paths.length;
+        document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + not_selected_paths.length;
     }
 
     // collecting both the confirm buttons to add event listeners
@@ -513,7 +513,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
             $(parent_element).addClass('path-selected');
         }
 
-        document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + 0;
+        document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + 0;
     }
 
     // Rewrite All Button
@@ -530,7 +530,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
             $(parent_element).addClass('path-selected');
         }
 
-        document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + 0;
+        document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + 0;
     }
 
     // Rewrite Button
@@ -569,7 +569,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
             }
 
             not_selected_paths = document.querySelectorAll(".path-not-selected")
-            document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + not_selected_paths.length;
+            document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + not_selected_paths.length;
 
         });
     });
@@ -608,7 +608,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
 
             not_selected_paths = document.querySelectorAll(".path-not-selected")
 
-            document.getElementById('files_count').innerHTML = '<b>Remaining files left: </b>' + not_selected_paths.length;
+            document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + not_selected_paths.length;
 
         });
     });
