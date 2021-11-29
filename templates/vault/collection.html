@@ -20,28 +20,43 @@
             {% endif %}
 
             <h2>Collection Events</h2>
-            {% if reports %}
+            {% if deposits %}
                 {% set headers = ("Event Type", "Started", "Completed", "Total Size", "File Count", "Error Count", "View Details") %}
                 <table class="small-12 columns">
-                <thead>
-                {% for header in headers %}
-                    <th>{{ header }}</th>
-                {% endfor %}
-                <tr></tr>
-                </thead>
-                {% for report in reports %}
-                    <tbody>
-                    <tr>
-                        <td>{{ report.get_report_type_display() }}</td>
-                        <td>{{ report.started_at.strftime('%B %-d, %Y') }}</td>
-                        <td>{{ report.ended_at.strftime('%B %-d, %Y') }}</td>
-                        <td>{{ report.total_size|filesizeformat(binary=True) }}</td>
-                        <td>{{ report.file_count }}</td>
-                        <td>{{ report.error_count }}</td>
-                        <td><a href="{{ url('report', args=(report.pk,)) }}">View Details</a></td>
-                    </tr>
-                    </tbody>
-                {% endfor %}
+                    <thead>
+                    {% for header in headers %}
+                        <th>{{ header }}</th>
+                    {% endfor %}
+                    <tr></tr>
+                    </thead>
+                    {% for deposit in deposits %}
+                        <tbody>
+                        <tr>
+                            <td>{% if 15 <= deposit.id <= 96 %}Migration{% else %}Deposit{% endif %}</td>
+                            <td>{{ deposit.registered_at.strftime('%B %-d, %Y') }}</td>
+                            <td>{% if deposit.hashed_at %}{{ deposit.hashed_at.strftime('%B %-d, %Y') }}{% else %}-{% endif %}</td>
+                            <td>{{ deposit.total_size|filesizeformat(binary=True) }}</td>
+                            <td>{{ deposit.file_count }}</td>
+                            <td>0</td>
+                            <td><a href="{{ url('deposit_report', args=(deposit.pk,)) }}">View Details</a></td>
+                        </tr>
+                        </tbody>
+                    {% endfor %}
+                    {% if reports %}
+                        {% for report in reports %}
+                            <tbody>
+                            <tr>
+                                <td>{{ report.get_report_type_display() }}</td>
+                                <td>{{ report.started_at.strftime('%B %-d, %Y') }}</td>
+                                <td>{{ report.ended_at.strftime('%B %-d, %Y') }}</td>
+                                <td>{{ report.total_size|filesizeformat(binary=True) }}</td>
+                                <td>{{ report.file_count }}</td>
+                                <td>{{ report.error_count }}</td>
+                                <td><a href="{{ url('report', args=(report.pk,)) }}">View Details</a></td>
+                            </tr>
+                            </tbody>
+                        {% endfor %}
+                    {% endif %}
                 </table>
             {% else %}
                 <p>No reports yet.</p>

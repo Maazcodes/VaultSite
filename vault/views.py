@@ -122,20 +122,19 @@ def collections(request):
 
 @login_required
 def collection(request, collection_id):
-    org = request.user.organization
+    org_id = request.user.organization_id
+    collection = get_object_or_404(
+        models.Collection, organization_id=org_id, pk=collection_id
+    )
     if request.method == "POST":
         form = forms.EditCollectionSettingsForm(request.POST)
-        collection = models.Collection.objects.get(pk=collection_id)
-        if form.is_valid() and collection.organization == org:
+        if form.is_valid():
             collection.target_replication = form.cleaned_data["target_replication"]
             collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
             collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
             collection.save()
             messages.success(request, "Collection settings updated.")
 
-    collection = get_object_or_404(
-        models.Collection, organization=org, pk=collection_id
-    )
     collection_stats = models.TreeNode.objects.filter(
         path__descendant=collection.tree_node.path
     ).aggregate(
@@ -143,16 +142,7 @@ def collection(request, collection_id):
         total_size=Coalesce(Sum("size"), 0),
         last_modified=Max("modified_at"),
     )
-    collection_stats["file_count"] -= 1
-    # collection = (
-    #     models.Collection.objects.filter(organization=org, pk=collection_id)
-    #     .annotate(
-    #         file_count=Count("file"),
-    #         total_size=Sum("file__size"),
-    #         last_modified=Max("file__modified_date"),
-    #     )
-    #     .first()
-    # )
+    collection_stats["file_count"] -= 1  # Collection's TreeNode included in count
     form = forms.EditCollectionSettingsForm(
         initial=(
             {
@@ -165,6 +155,11 @@ def collection(request, collection_id):
     reports = models.Report.objects.filter(collection=collection.pk).order_by(
         "-ended_at"
     )
+    deposits = models.Deposit.objects.filter(collection=collection).annotate(
+        file_count=Coalesce(Count("files"), 0),
+        total_size=Coalesce(Sum("files__size"), 0),
+    )
+
     return TemplateResponse(
         request,
         "vault/collection.html",
@@ -173,6 +168,7 @@ def collection(request, collection_id):
             "collection_stats": collection_stats,
             "form": form,
             "reports": reports,
+            "deposits": deposits,
         },
     )
 
