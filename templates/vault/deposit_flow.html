@@ -171,7 +171,7 @@
     <!-- Modal content -->
     <div class="modal-content warningModalContent">
         <div class="modal-header" >
-            <div style="text-align: center; margin-bottom: -12px;"><strong>WARNING!</strong> You are over writing these files: </div><br>
+            <div style="text-align: center; margin-bottom: -12px;"><strong>WARNING:</strong> Some file names already exist in this collection. Do you want to skip uploading or replace files with <div><br> duplicated names? (listed below):</div> </div><br>
             <div id="warningHeader" style="text-align: center;">
             </div>
         </div>
@@ -415,8 +415,8 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
     // When the user clicks on the button, open the modal
     warning_modal.style.display = "block";
 
-    // Skip All and Rewrite All Buttons
-    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Rewrite All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to select: </b>${overlapped_files_list.length} </div>`;
+    // Skip All and Replace All Buttons
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Replace All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to make skip/replace selection: </b>${overlapped_files_list.length} </div>`;
 
     // Adding Confirm button before all rows
     warningheader.innerHTML += `<br><button class="confirm-button"> Confirm </button><div id="confirmBtn1text"></div><br><br>` 
@@ -426,8 +426,8 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
 
         let file_element = overlapped_files_list[index];
     
-        // Adding Skip and Rewrite buttons after every matched path
-        warningheader.innerHTML += '<div class="path-not-selected" id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 32px; vertical-align: middle;">' + '<div style="margin-top: 7px; height: 42px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skiprewrite skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button skiprewrite rewriteBtn " style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Rewrite </button></div><hr>';
+        // Adding Skip and Replace buttons after every matched path
+        warningheader.innerHTML += '<div class="path-not-selected" id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 32px; vertical-align: middle;">' + '<div style="margin-top: 7px; height: 42px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skiprewrite skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button skiprewrite rewriteBtn " style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Replace </button></div><hr>';
     }
     
     // Adding another Confirm button after all rows
@@ -441,7 +441,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
         
         // Changing the text after clicking on confirm button
         document.getElementById('skipall').innerHTML = 'Skip Remaining';
-        document.getElementById('rewriteall').innerHTML = 'Rewrite Remaining';
+        document.getElementById('rewriteall').innerHTML = 'Replace Remaining';
 
         // maintaining all the previous actions after clicking on confirm button
         for (var key in skip_rewrite_id_dict){
@@ -463,7 +463,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
         }
 
         not_selected_paths = document.querySelectorAll(".path-not-selected")
-        document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + not_selected_paths.length;
+        document.getElementById('files_count').innerHTML = '<b>Remaining files to make skip/replace selection: </b>' + not_selected_paths.length;
     }
 
     // collecting both the confirm buttons to add event listeners
@@ -513,32 +513,32 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
             $(parent_element).addClass('path-selected');
         }
 
-        document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + 0;
+        document.getElementById('files_count').innerHTML = '<b>Remaining files to make skip/replace selection: </b>' + 0;
     }
 
-    // Rewrite All Button
+    // Replace All Button
     RewriteAllBtn.onclick = function(){
         RewriteAllBtn.style.backgroundColor = 'red';
-        // Disable all rewrite buttons after clicking on Rewrite All button
+        // Disable all rewrite buttons after clicking on Replace All button
         not_selected_elements = $('.path-not-selected')
         for (let index = 0; index < not_selected_elements.length; index++) {
             let parent_element = not_selected_elements[index];
-            // Disable all not selected rewrite buttons after clicking on Rewrite All/Rewrite remaining button
+            // Disable all not selected rewrite buttons after clicking on Replace All/Replace remaining button
             parent_element.childNodes[2].disabled = true;
             // Replacing the class by path-selected
             $(parent_element).removeClass('path-not-selected');
             $(parent_element).addClass('path-selected');
         }
 
-        document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + 0;
+        document.getElementById('files_count').innerHTML = '<b>Remaining files to make skip/replace selection: </b>' + 0;
     }
 
-    // Rewrite Button
+    // Replace Button
     document.querySelectorAll('.rewrite-button').forEach(function(el) {
         el.addEventListener('click', function() {
 
             SkipAllBtn.innerHTML = 'Skip Remaining';
-            RewriteAllBtn.innerHTML = 'Rewrite Remaining';
+            RewriteAllBtn.innerHTML = 'Replace Remaining';
 
             // disable the button after a click
             el.disabled = true;
@@ -569,7 +569,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
             }
 
             not_selected_paths = document.querySelectorAll(".path-not-selected")
-            document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + not_selected_paths.length;
+            document.getElementById('files_count').innerHTML = '<b>Remaining files to make skip/replace selection: </b>' + not_selected_paths.length;
 
         });
     });
@@ -580,7 +580,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
         el.addEventListener('click', function() {
 
             SkipAllBtn.innerHTML = 'Skip Remaining';
-            RewriteAllBtn.innerHTML = 'Rewrite Remaining';
+            RewriteAllBtn.innerHTML = 'Replace Remaining';
             
             el.disabled = true;
 
@@ -608,7 +608,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
 
             not_selected_paths = document.querySelectorAll(".path-not-selected")
 
-            document.getElementById('files_count').innerHTML = '<b>Remaining files to select: </b>' + not_selected_paths.length;
+            document.getElementById('files_count').innerHTML = '<b>Remaining files to make skip/replace selection: </b>' + not_selected_paths.length;
 
         });
     });
