@@ -6,12 +6,29 @@ Prototype Django UI for the Vault digital preservation service.
 ## Requirements and Installation
 
 - Python 3.8
-- Create a virtual env
-- Install requirements.txt (Django 3.2 and Jinja2)
-- Set a secret key in `/etc/_django_secret_key_vault_` (or app will fail to start)
-- Set `DJANGO_SETTINGS_MODULE` to one of vault_site.settings.{local, production} 
-- Create a local sqlite with `manage.py migrate`
-- Create initial user with `manage.py createsuperuser`
+- Optionally pip-tools
+- Create **/etc/vault.yml** for all config referenced in vault_site/settings.py
+- Set environment variable REMOTE_USER to your username of choice
+  - Until we complete de-apachefication we are using Apache REMOTE_USER authentication.
+  - Django inspects the REMOTE_USER env var and looks up that username in its vault_user table.
+- Run Postgres, install into virtual environment, and start the app:
+```
+cd path/to/project
+mkdir postgres-data
+docker run --name vault-postgres -v postgres-data:/var/lib/postgresql/data \
+    -p 5432:5432 \
+    -e POSTGRES_USER=vault -e POSTGRES_PASSWORD=vault \
+    -d postgres:10
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+# or if you have pip-tools
+# pip-sync requirements.txt requirements.test.txt requirements.dev.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+- Run tests: pytest
   
 ### If under Apache
 - Collect static files (css and js) with 'python3 manage.py collectstatic'
@@ -22,15 +39,3 @@ Prototype Django UI for the Vault digital preservation service.
 ### Finally
 - Log in to admin
 - Create a plan, an organization and associate your user with that org
-
-## Todo
-
-- Login page with REMOTE_USER support
-- All production configuration
-- Should wsgi.py and asgi.py pick a different value for `os.environ.setdefault['DJANGO_SETTINGS_MODULE']`?
-
-## Deploying Production Vault using Ansible
-ansible-playbook -i ansible/prod --vault-id @prompt ansible/setup-prod-vault.yml -vvv
-
-## Deploying QA Vault using Ansible
-ansible-playbook -i ansible/qa --vault-id vault-qa@prompt ansible/setup-qa-vault.yml -vvv

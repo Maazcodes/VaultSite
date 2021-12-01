@@ -1,4 +1,3 @@
-import datetime
 import re
 
 from django.contrib.auth.models import AbstractUser
@@ -225,9 +224,7 @@ class Deposit(models.Model):
             collection=self.collection,
             report_type=Report.ReportType.DEPOSIT,
             started_at=self.registered_at,
-            ended_at=datetime.datetime.now(
-                datetime.timezone.utc
-            ),  # TODO: should this be replicated_at?
+            ended_at=self.hashed_at,  # TODO: should this be replicated_at?
             total_size=deposit_stats["total_size"],
             file_count=deposit_stats["file_count"],
             collection_total_size=collection_stats["collection_total_size"],

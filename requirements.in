@@ -1,0 +1,11 @@
+django
+fs
+internetarchive
+Jinja2
+psycopg2-binary
+requests
+sentry-sdk
+
+# remove with old File code
+filetype
+sanitize-filename
