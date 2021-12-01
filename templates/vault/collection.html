@@ -10,7 +10,7 @@
             <br>
             <h2>Collection Stats</h2>
             <ul>
-                <li>Total Size: {% if collection_stats.total_size is none %}-{% else %}{{ collection_stats.total_size|filesizeformat }}{% endif %}</li>
+                <li>Total Size: {% if collection_stats.total_size is none %}-{% else %}{{ collection_stats.total_size|filesizeformat(binary=True) }}{% endif %}</li>
                 <li>File Count: {{ collection_stats.file_count if collection_stats.file_count is gt 0 else "-" }}</li>
                 <li>Most Recent Deposit: {% if collection_stats.last_modified is none %}-{% else %}{{ collection_stats.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
             </ul>
@@ -35,7 +35,7 @@
                         <td>{{ report.get_report_type_display() }}</td>
                         <td>{{ report.started_at.strftime('%B %-d, %Y') }}</td>
                         <td>{{ report.ended_at.strftime('%B %-d, %Y') }}</td>
-                        <td>{{ report.total_size|filesizeformat }}</td>
+                        <td>{{ report.total_size|filesizeformat(binary=True) }}</td>
                         <td>{{ report.file_count }}</td>
                         <td>{{ report.error_count }}</td>
                         <td><a href="{{ url('report', args=(report.pk,)) }}">View Details</a></td>
