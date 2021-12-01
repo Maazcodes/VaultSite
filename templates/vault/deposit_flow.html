@@ -285,28 +285,46 @@ flow.on('complete', function(){
     deposit_status(0);
 });
 
+function secondsToString(seconds) {
+    var remaining_min = Math.floor(seconds / 60);
+    var remaining_sec = seconds - remaining_min * 60;
+
+    // For hours
+    var remaining_hours = Math.floor(seconds / 3600);
+    var total_remaining_sec_hr = seconds - remaining_hours * 3600; // Total remaining seconds after hours
+    var remaining_seconds_after_mins = Math.floor(total_remaining_sec_hr / 60); // Converting remaining seconds into minutes to get remaining minutes
+    var actual_remaining_sec = seconds - remaining_seconds_after_mins * 60; // Getting remaining seconds after minutes
+
+    if (seconds <= 60){
+        return seconds + " s ";
+    } else if (seconds > 60 && seconds <= 3600){
+        return remaining_min + " m " + remaining_sec + " s ";
+    } else if (seconds > 3600){
+        return remaining_hours + " h " + remaining_seconds_after_mins + " m " + actual_remaining_sec + " s ";
+    }
+
+}
+
 let initial_time = 0;
 let sum_speed = 0;
 let counter = 0;
 flow.on('progress', function() {
-    if (flow.progress() == 0) {
-        initial_time = new Date().getSeconds()
+    if (counter == 0) {
+        initial_time = Date.now()
+        counter ++;
         return
     }
     counter ++;
-    let uploaded_size = flow.sizeUploaded()
-    let passed_time = new Date().getSeconds() - initial_time
+    let uploaded_size = flow.sizeUploaded();
+    let passed_time = Date.now() - initial_time;
     let speed = uploaded_size / passed_time
     sum_speed += speed
     avg_speed = sum_speed / counter
     let total_file_size = flow.getSize()
     let time_remaining = (total_file_size - uploaded_size) / avg_speed
-    document.querySelector('#flow-stats').innerHTML = "Uploading Files (Time Remaining: " + parseInt(time_remaining) + "s )";
+    document.querySelector('#flow-stats').innerHTML = "Uploading Files (" + " Time left: " + secondsToString(Math.floor(time_remaining / 1000)) + ") ";
     document.querySelector('#progress_bar_flow').value = flow.progress()*100;
 });
-    
-let total_overlapping_paths = 0; // total count of overlapping paths
-let total_overlapping_files = 0; // total count of overlapping files
 
 let warning_tag = document.getElementById("warning");
             
