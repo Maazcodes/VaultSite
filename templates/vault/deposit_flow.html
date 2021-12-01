@@ -27,26 +27,31 @@
         height: 24px;
         display: none;
         padding: 0;
-        margin-top: 0.3rem;
-        margin-left: 15px;
+        margin-top: 3px;
+        margin-left: 10px;
+
     }
     #flow-stats {
-        margin: 0;
-        padding: 0;
-        display: flex;
-        padding-top: 0.5rem;
+       margin-top: -3px;
+       margin-left: 5px;
+       padding: 0;
+       padding-top: 0.5rem;
+       display: inline;
+       margin-right: 1px;
     }
     #span_stats {
         display: flex;
     }
     .loader {
-        margin-left: 5px;
-        border: 4px solid #f3f3f3; /* Light grey */
+        margin-left: 15px;
+        border: 4px solid white; /* Light grey */
         border-top: 4px solid #3498db; /* Blue */
         border-radius: 50%;
         width: 18px;
         height: 18px;
         animation: spin 1.1s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
     }
 
     #warningModal_id {
@@ -68,7 +73,7 @@
         background-color: darkgreen;
     }
 
-    .rewriteBtn{
+    .replaceBtn{
         background-color: red;
     }
 
@@ -88,11 +93,11 @@
         box-shadow: 0 5px 5px 0 lightgreen;
     }
 
-    .rewrite-button:hover {
+    .replace-button:hover {
         box-shadow: 0 5px 5px 0 lightcoral;
     }
 
-    #rewriteall:hover {
+    #replaceall:hover {
         box-shadow: 0 5px 5px 0 lightcoral;
     }
 
@@ -138,7 +143,7 @@
             <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
         {% endif %}
     </div>
-    <div class="small-4 columns" id="collections-chart">
+    <div class="small-4 columns" style=" display: inline;" id="collections-chart">
         <span class="spinner small"></span>
     </div>
 </div>
@@ -184,8 +189,11 @@ var flow = new Flow({
   target:'{{ url("api_flow_chunk") }}',
   query:{upload_token:'my_token'},
   simultaneousUploads: 3,
-  speedSmoothingFactor: 0.0001,
-  progressCallbacksInterval: 150,
+  speedSmoothingFactor: 0.005,
+  progressCallbacksInterval: 1000,
+  maxChunkRetries: undefined,
+  permanentErrors: [],
+  chunkRetryInterval: 5000,
   allowDuplicateUploads: true
 });
 
@@ -198,11 +206,6 @@ let upload_size = 0;
 let currentDepositId = undefined;
 let files_dict = {};
 let flowfile_objects_dict = {};
-
-function hashCode(str) {
-    return str.split('').reduce((prevHash, currVal) =>
-        (((prevHash << 5) - prevHash) + currVal.charCodeAt(0))|0, 0);
-}
 
 let flow_object_array = [];
 flow.on('fileAdded', function(file, event){
@@ -219,10 +222,16 @@ flow.on('fileAdded', function(file, event){
     // dictionary with relative path as key
     files_dict[String(new_file["relative_path"])] = new_file;
     upload_size += new_file["size"];
-    document.querySelector('#flow-stats').innerHTML = files.length + ' files selected. Total Upload Size: ' + formatBytes(upload_size);
+    document.querySelector('#flow-stats').innerHTML = '<div>' + files.length + pluralizeWord(' file ', ' files ', files.length) + ' selected. Total Upload Size: ' + formatBytes(upload_size) + '</div>';
+    
 });
 
 flow.on('fileSuccess', function(file,message){});
+
+function pluralizeWord(singularWord, pluralWord, count) {
+
+    return count != 1 ? pluralWord : singularWord;
+}
 
 flow.on('fileError', function(file, message){
     console.log(file, message);
@@ -234,7 +243,7 @@ flow.on('fileError', function(file, message){
 
 function changeStats() {
     if($('#id_collection').find(":selected").val() != ""){
-        document.querySelector('#flow-stats').innerHTML = files.length + ' files selected. Total Upload Size: ' + formatBytes(upload_size);
+        document.querySelector('#flow-stats').innerHTML = '<div>' + files.length + pluralizeWord(' file ', ' files ', files.length) + ' selected. Total Upload Size: ' + formatBytes(upload_size) + '</div>';
     }
 }
 
@@ -253,21 +262,28 @@ function deposit_status(time) {
 		    res = JSON.parse(xhr.response);
             let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
-            // if (time > 60) { // Processing files taking longer than 60 seconds
-            //     console.error("Timeout: Processing files taking longer than 60 seconds");
-            //     document.querySelector('#flow-stats').innerHTML = "Error Processing Files";
-            //     return;
-            // }
             if (res["hashed_files"] < res["total_files"]) {
                 setTimeout(function(){;
                 deposit_status(time + 1) }, 1000);
             }
             else {
+                document.getElementById("progress_bar_flow").innerHTML = "";
                 document.querySelector('#flow-stats').innerHTML = "Upload Complete";
             }
         }
+        else if (xhr.status == 400) {
+           console.error("Deposit Error: No Deposit ID");
+           document.querySelector('#flow-stats').innerHTML = "Deposit Error: No Deposit ID";
+        }
+        else if (xhr.status == 404) {
+            console.error("Deposit Error: No Deposit for ID");
+            document.querySelector('#flow-stats').innerHTML = "Deposit Error: No Deposit for ID"
+        }
+
         else {
             console.error("API Error: Cannot Fetch Status of API");
+            setTimeout(function(){console.log("Calling deposit_status again");
+            deposit_status(time + 1) }, 1000);
             document.querySelector('#flow-stats').innerHTML = "API Error: Cannot Fetch Deposit Status";
             return;
         }
@@ -342,6 +358,7 @@ function start_deposit(flow, files) {
         return;
     }
 
+    document.querySelector('#progress_bar_flow').value = flow.progress()*0;
     let coll_input = document.getElementById("id_collection");
     let collection_id = coll_input.options[coll_input.selectedIndex].value;
 
@@ -395,9 +412,9 @@ function start_deposit(flow, files) {
             }
 
             // reversing all the actions after clicking outside the window and again on upload button
-            SkipRewriteBtns = $(".skiprewrite")
-            for (let index = 0; index < SkipRewriteBtns.length; index++) {
-                const button = SkipRewriteBtns[index];
+            SkipreplaceBtns = $(".skipreplace")
+            for (let index = 0; index < SkipreplaceBtns.length; index++) {
+                const button = SkipreplaceBtns[index];
                 if (button.disabled){
                     button.disabled = false;
                 }
@@ -412,16 +429,16 @@ function start_deposit(flow, files) {
     }
 }
 
-function replaceClass(skip_or_rewrite_element){
-    if (skip_or_rewrite_element.hasClass('path-not-selected')) {
-        skip_or_rewrite_element.removeClass('path-not-selected')
-        skip_or_rewrite_element.addClass('path-selected')
+function replaceClass(skip_or_replace_element){
+    if (skip_or_replace_element.hasClass('path-not-selected')) {
+        skip_or_replace_element.removeClass('path-not-selected')
+        skip_or_replace_element.addClass('path-selected')
     }
 }
 
 skip_path_array = [];
 
-skip_rewrite_id_dict = {};
+skip_replace_id_dict = {};
 
 // Start of warning function
     
@@ -434,7 +451,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
     warning_modal.style.display = "block";
 
     // Skip All and Replace All Buttons
-    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small rewriteBtn" id="rewriteall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Replace All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to make skip/replace selection: </b>${overlapped_files_list.length} </div>`;
+    warningheader.innerHTML = '<br>' + '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small replaceBtn" id="replaceall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Replace All</button>' + `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to make skip/replace selection: </b>${overlapped_files_list.length} </div>`;
 
     // Adding Confirm button before all rows
     warningheader.innerHTML += `<br><button class="confirm-button"> Confirm </button><div id="confirmBtn1text"></div><br><br>` 
@@ -445,7 +462,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
         let file_element = overlapped_files_list[index];
     
         // Adding Skip and Replace buttons after every matched path
-        warningheader.innerHTML += '<div class="path-not-selected" id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 32px; vertical-align: middle;">' + '<div style="margin-top: 7px; height: 42px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skiprewrite skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small rewrite-button skiprewrite rewriteBtn " style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Replace </button></div><hr>';
+        warningheader.innerHTML += '<div class="path-not-selected" id="' + String(index) + '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 32px; vertical-align: middle;">' + '<div style="margin-top: 7px; height: 42px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >'+ file_element + '</div>' + '<button class="button small skip-button skipreplace skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small replace-button skipreplace replaceBtn " style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Replace </button></div><hr>';
     }
     
     // Adding another Confirm button after all rows
@@ -454,26 +471,26 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
     if (confirm_button_status) {
 
         // displaying the message if no action is performed on all the paths
-        document.getElementById('confirmBtn1text').innerHTML = '<b>Please select skip or rewrite on all files</b>'
-        warningheader.innerHTML += '<div><b>Please select skip or rewrite on all files</b></div>'
+        document.getElementById('confirmBtn1text').innerHTML = '<b>Please select skip or replace on all files</b>'
+        warningheader.innerHTML += '<div><b>Please select skip or replace on all files</b></div>'
         
         // Changing the text after clicking on confirm button
         document.getElementById('skipall').innerHTML = 'Skip Remaining';
-        document.getElementById('rewriteall').innerHTML = 'Replace Remaining';
+        document.getElementById('replaceall').innerHTML = 'Replace Remaining';
 
         // maintaining all the previous actions after clicking on confirm button
-        for (var key in skip_rewrite_id_dict){
+        for (var key in skip_replace_id_dict){
 
-            // here key is id and value is skip or rewrite
-            // getting skip and rewrite elements from the same id
+            // here key is id and value is skip or replace
+            // getting skip and replace elements from the same id
             skip_element = $('#' + key)[0].childNodes[1]
-            rewriteElement = $('#' + key)[0].childNodes[2]
+            replaceElement = $('#' + key)[0].childNodes[2]
             
-            value = skip_rewrite_id_dict[key]
+            value = skip_replace_id_dict[key]
             if (value == "skip") {
                 skip_element.disabled = true;
             } else {
-                rewriteElement.disabled = true;
+                replaceElement.disabled = true;
             }
 
             // removing this class to remove the element from path-not-selected list
@@ -515,7 +532,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
 
     // Skip All Button
     SkipAllBtn = document.getElementById('skipall');
-    RewriteAllBtn = document.getElementById('rewriteall');
+    ReplaceAllBtn = document.getElementById('replaceall');
     SkipAllBtn.onclick = function(){
         SkipAllBtn.style.backgroundColor = 'darkgreen';
         not_selected_elements = $('.path-not-selected')
@@ -535,13 +552,13 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
     }
 
     // Replace All Button
-    RewriteAllBtn.onclick = function(){
-        RewriteAllBtn.style.backgroundColor = 'red';
-        // Disable all rewrite buttons after clicking on Replace All button
+    ReplaceAllBtn.onclick = function(){
+        ReplaceAllBtn.style.backgroundColor = 'red';
+        // Disable all replace buttons after clicking on Replace All button
         not_selected_elements = $('.path-not-selected')
         for (let index = 0; index < not_selected_elements.length; index++) {
             let parent_element = not_selected_elements[index];
-            // Disable all not selected rewrite buttons after clicking on Replace All/Replace remaining button
+            // Disable all not selected replace buttons after clicking on Replace All/Replace remaining button
             parent_element.childNodes[2].disabled = true;
             // Replacing the class by path-selected
             $(parent_element).removeClass('path-not-selected');
@@ -552,35 +569,35 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
     }
 
     // Replace Button
-    document.querySelectorAll('.rewrite-button').forEach(function(el) {
+    document.querySelectorAll('.replace-button').forEach(function(el) {
         el.addEventListener('click', function() {
 
             SkipAllBtn.innerHTML = 'Skip Remaining';
-            RewriteAllBtn.innerHTML = 'Replace Remaining';
+            ReplaceAllBtn.innerHTML = 'Replace Remaining';
 
             // disable the button after a click
             el.disabled = true;
 
-            rewrite_id = $(this).parent()[0].id
-            rewrite_parent_element = $(this).parent()
+            replace_id = $(this).parent()[0].id
+            replace_parent_element = $(this).parent()
 
             file_path = $(this).prev().prev()[0].innerText;
 
             skip_button = $(this).prev()[0]
 
             // Storing the ids of path in dictionary with respect to specific action
-            skip_rewrite_id_dict[parseInt(rewrite_id)] = "rewrite"
-            // e.g. - skip_rewrite_id_dict = {0: rewrite}
+            skip_replace_id_dict[parseInt(replace_id)] = "replace"
+            // e.g. - skip_replace_id_dict = {0: replace}
 
-            // Replacing the class by 'path-selected' after clicking on rewrite button
+            // Replacing the class by 'path-selected' after clicking on replace button
 
-            replaceClass(rewrite_parent_element)
+            replaceClass(replace_parent_element)
 
-            // if the user clicks first on skip button, and then clicks on rewrite button, skip button should get enabled
+            // if the user clicks first on skip button, and then clicks on replace button, skip button should get enabled
             if (skip_button.disabled == true) {
                 skip_button.disabled = false;
 
-                // Remove the path from skip path array after clicking on rewrite button
+                // Remove the path from skip path array after clicking on replace button
                 var path_index = skip_path_array.indexOf(file_path);
                 skip_path_array.splice(path_index, 1);
                 
@@ -598,7 +615,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
         el.addEventListener('click', function() {
 
             SkipAllBtn.innerHTML = 'Skip Remaining';
-            RewriteAllBtn.innerHTML = 'Replace Remaining';
+            ReplaceAllBtn.innerHTML = 'Replace Remaining';
             
             el.disabled = true;
 
@@ -608,18 +625,18 @@ function overlappedFiles(overlapped_files_list, confirm_button_status){
 
             file_path = $(this).prev()[0].innerText;
             
-            rewrite_button = $(this).next()[0]
+            replace_button = $(this).next()[0]
 
             // Storing the ids of path in dictionary with respect to specific action
-            skip_rewrite_id_dict[parseInt(skip_id)] = "skip"
-            // e.g. - skip_rewrite_id_dict = {0: skip}
+            skip_replace_id_dict[parseInt(skip_id)] = "skip"
+            // e.g. - skip_replace_id_dict = {0: skip}
 
             // Replacing the class by 'path-selected' after clicking on skip button
             replaceClass(skip_parent_element)
 
-            // if the user clicks first on rewrite button, and then clicks on skip button, rewrite button should get enabled
-            if (rewrite_button.disabled == true) {
-                rewrite_button.disabled = false;
+            // if the user clicks first on replace button, and then clicks on skip button, replace button should get enabled
+            if (replace_button.disabled == true) {
+                replace_button.disabled = false;
             }
 
             skip_path_array.push(file_path)
@@ -699,7 +716,7 @@ const formatBytes = (bytes, decimals = 2) => {
 
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -721,7 +738,6 @@ const createQuotaDonut = () => {
 window.onload = function () {
     $("label[for='id_collection']").html("Collections:  <a href='javascript:void(0);' onclick='show_modal();'>Create a new Collection</a>")
     createQuotaDonut();
-
 }
 
 </script>
@@ -750,7 +766,7 @@ window.onload = function () {
                     legend: {display: false},
                     title: {
                         display: true,
-                        text: 'Quota (in GB)'
+                        text: 'Quota (in GiB)'
                     }
                 }
             });
