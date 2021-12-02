@@ -3,6 +3,8 @@ import datetime
 import json
 import logging
 from functools import reduce
+from itertools import chain
+from typing import Union
 
 from django.conf import settings
 from django.contrib import messages
@@ -152,13 +154,19 @@ def collection(request, collection_id):
             }
         )
     )
-    reports = models.Report.objects.filter(collection=collection.pk).order_by(
-        "-ended_at"
-    )
+    reports = models.Report.objects.filter(collection=collection.pk)
     deposits = models.Deposit.objects.filter(collection=collection).annotate(
         file_count=Coalesce(Count("files"), 0),
         total_size=Coalesce(Sum("files__size"), 0),
     )
+
+    def event_sort(event: Union[models.Deposit, models.Report]):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
 
     return TemplateResponse(
         request,
@@ -167,8 +175,7 @@ def collection(request, collection_id):
             "collection": collection,
             "collection_stats": collection_stats,
             "form": form,
-            "reports": reports,
-            "deposits": deposits,
+            "events": events,
         },
     )
 

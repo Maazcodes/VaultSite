@@ -12,7 +12,7 @@
             <ul>
                 <li>Total Size: {% if collection_stats.total_size is none %}-{% else %}{{ collection_stats.total_size|filesizeformat(binary=True) }}{% endif %}</li>
                 <li>File Count: {{ collection_stats.file_count if collection_stats.file_count is gt 0 else "-" }}</li>
-                <li>Most Recent Deposit: {% if collection_stats.last_modified is none %}-{% else %}{{ collection_stats.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
+                <li>Last Modified: {% if collection_stats.last_modified is none %}-{% else %}{{ collection_stats.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
             </ul>
 
             {% if collection_stats.file_count is gt 0 %}
@@ -20,7 +20,7 @@
             {% endif %}
 
             <h2>Collection Events</h2>
-            {% if deposits %}
+            {% if events %}
                 {% set headers = ("Event Type", "Started", "Completed", "Total Size", "File Count", "Error Count", "View Details") %}
                 <table class="small-12 columns">
                     <thead>
@@ -29,37 +29,36 @@
                     {% endfor %}
                     <tr></tr>
                     </thead>
-                    {% for deposit in deposits %}
-                        <tbody>
-                        <tr>
-                            <td>{% if 15 <= deposit.id <= 96 %}Migration{% else %}Deposit{% endif %}</td>
-                            <td>{{ deposit.registered_at.strftime('%B %-d, %Y') }}</td>
-                            <td>{% if deposit.hashed_at %}{{ deposit.hashed_at.strftime('%B %-d, %Y') }}{% else %}-{% endif %}</td>
-                            <td>{{ deposit.total_size|filesizeformat(binary=True) }}</td>
-                            <td>{{ deposit.file_count }}</td>
-                            <td>0</td>
-                            <td><a href="{{ url('deposit_report', args=(deposit.pk,)) }}">View Details</a></td>
-                        </tr>
-                        </tbody>
-                    {% endfor %}
-                    {% if reports %}
-                        {% for report in reports %}
+                    {% for event in events %}
+                        {%  if "Deposit" in event.__class__.__name__ %}
                             <tbody>
                             <tr>
-                                <td>{{ report.get_report_type_display() }}</td>
-                                <td>{{ report.started_at.strftime('%B %-d, %Y') }}</td>
-                                <td>{{ report.ended_at.strftime('%B %-d, %Y') }}</td>
-                                <td>{{ report.total_size|filesizeformat(binary=True) }}</td>
-                                <td>{{ report.file_count }}</td>
-                                <td>{{ report.error_count }}</td>
-                                <td><a href="{{ url('report', args=(report.pk,)) }}">View Details</a></td>
+                                <td>{% if 15 <= event.id <= 96 %}Migration{% else %}Deposit{% endif %}</td>
+                                <td>{{ event.registered_at.strftime('%B %-d, %Y') }}</td>
+                                <td>{% if event.hashed_at %}{{ event.hashed_at.strftime('%B %-d, %Y') }}{% else %}-{% endif %}</td>
+                                <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
+                                <td>{{ event.file_count }}</td>
+                                <td>0</td>
+                                <td><a href="{{ url('deposit_report', args=(event.pk,)) }}">View Details</a></td>
                             </tr>
                             </tbody>
-                        {% endfor %}
-                    {% endif %}
+                        {% else %}
+                            <tbody>
+                            <tr>
+                                <td>{{ event.get_report_type_display() }}</td>
+                                <td>{{ event.started_at.strftime('%B %-d, %Y') }}</td>
+                                <td>{{ event.ended_at.strftime('%B %-d, %Y') }}</td>
+                                <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
+                                <td>{{ event.file_count }}</td>
+                                <td>{{ event.error_count }}</td>
+                                <td><a href="{{ url('report', args=(event.pk,)) }}">View Details</a></td>
+                            </tr>
+                            </tbody>
+                        {% endif %}
+                    {% endfor %}
                 </table>
             {% else %}
-                <p>No reports yet.</p>
+                <p>No events yet.</p>
             {% endif %}
         </div>
         <div class="large-4 columns">
