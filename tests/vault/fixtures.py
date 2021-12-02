@@ -15,8 +15,3 @@ def super_user(db):
         username=settings.TEST_FIXTURE_USER, password="test1234", organization=org
     )
     return su
-
-
-def test_my_user(db, super_user):
-    me = User.objects.get(username=settings.TEST_FIXTURE_USER)
-    assert me.is_superuser
