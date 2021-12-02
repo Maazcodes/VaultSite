@@ -260,8 +260,6 @@ def process_uploaded_deposit_files(args):
                     deposit.uploaded_at = last_upload_at["last_upload_at"]
                     deposit.hashed_at = timezone.now()
                     deposit.save()
-                    if not args.no_deposit_report:
-                        deposit.make_deposit_report()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
@@ -368,14 +366,6 @@ def main(argv=None):
         default=logging.INFO,
         const=logging.DEBUG,
         help="verbose logging",
-    )
-    arg_parser.add_argument(
-        "--no-deposit-report",
-        dest="no_deposit_report",
-        action="store_const",
-        default=False,
-        const=True,
-        help="Don't run deposit Deposit.make_deposit_report() when a Deposit is finalized.",
     )
     args = arg_parser.parse_args(args=sys.argv[1:])
 
