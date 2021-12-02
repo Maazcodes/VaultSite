@@ -144,7 +144,7 @@ def get_pbox_item_name(deposit_file):
         )
         return None
     org_id = deposit_file.deposit.organization_id
-    datestamp = dateformat.format(timezone.now(), "Ymd")
+    datestamp = dateformat.format(deposit_file.deposit.registered_at, "Ymd")
     environment = (
         "-" + settings.DEPLOYMENT_ENVIRONMENT
         if settings.DEPLOYMENT_ENVIRONMENT != "PROD"

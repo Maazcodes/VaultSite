@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vault', '0026_remove_treenode_auto_uploaded_at'),
+        ("vault", "0026_remove_treenode_auto_uploaded_at"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='treenode',
-            old_name='pbox_item',
-            new_name='pbox_path',
+            model_name="treenode",
+            old_name="pbox_item",
+            new_name="pbox_path",
         ),
     ]
