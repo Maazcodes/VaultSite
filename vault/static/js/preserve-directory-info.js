@@ -18,7 +18,7 @@ window.onload = function () {
 
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
 
         const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -359,7 +359,7 @@ window.onload = function () {
 
 
     async function doSomeSums(files) {
-        let tooBig = 1024*1024*1024; // 1GB
+        let tooBig = 1024*1024*1024; // 1GiB
         promises   = []; //GLOBAL
         let idx    = 0;
         shasumsList = [];

@@ -1,0 +1,7 @@
+-c requirements.txt
+playwright
+pytest
+pytest-django
+pytest-docker
+pytest-playwright
+tox

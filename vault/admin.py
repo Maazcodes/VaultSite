@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.db.models import Count, Sum, Max
 from django.db.models.functions import Coalesce
-from django.template.defaultfilters import filesizeformat
+
+from jinja2.filters import do_filesizeformat as filesizeformat
 
 from vault import models
 
@@ -26,7 +27,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
     @admin.display(description="Quota", ordering="quota_bytes")
     def get_quota(self, organization):
-        return filesizeformat(organization.quota_bytes)
+        return filesizeformat(organization.quota_bytes, binary=True)
 
 
 @admin.register(models.Plan)
@@ -71,7 +72,7 @@ class CollectionAdmin(admin.ModelAdmin):
 
     @admin.display(description="Total Size", ordering="-total_size")
     def total_size(self, collection):
-        return filesizeformat(collection.total_size)
+        return filesizeformat(collection.total_size, binary=True)
 
     @admin.display(ordering="-last_modified")
     def last_modified(self, collection):
@@ -98,7 +99,7 @@ class ReportAdmin(admin.ModelAdmin):
 
     @admin.display(description="Total Size", ordering="-total_size")
     def get_total_size(self, report):
-        return filesizeformat(report.total_size)
+        return filesizeformat(report.total_size, binary=True)
 
 
 @admin.register(models.Geolocation)
@@ -123,7 +124,7 @@ class FileAdmin(admin.ModelAdmin):
 
     @admin.display(description="Size", ordering="-size")
     def get_size(self, file):
-        return filesizeformat(file.size)
+        return filesizeformat(file.size, binary=True)
 
 
 @admin.register(models.Deposit)

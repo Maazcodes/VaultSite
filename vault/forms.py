@@ -98,7 +98,7 @@ class FlowChunkGetForm(forms.Form):
     flowTotalSize = forms.IntegerField()
     flowTotalChunks = forms.IntegerField()
 
-    def flow_chunk_get(self) -> FlowChunkGet:
+    def flow_chunk(self) -> FlowChunkGet:
         return FlowChunkGet(
             deposit_id=self.cleaned_data["depositId"],
             file_identifier=self.cleaned_data["flowIdentifier"],
@@ -115,7 +115,7 @@ class FlowChunkGetForm(forms.Form):
 class FlowChunkPostForm(FlowChunkGetForm):
     file = forms.FileField(allow_empty_file=True)
 
-    def flow_chunk_post(self) -> FlowChunkPost:
+    def flow_chunk(self) -> FlowChunkPost:
         return FlowChunkPost(
             deposit_id=self.cleaned_data["depositId"],
             file=self.cleaned_data["file"],
