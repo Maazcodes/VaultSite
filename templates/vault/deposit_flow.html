@@ -260,10 +260,10 @@ function deposit_status(time) {
     xhr.onloadend = function() {
         if (xhr.status == 200) {
 		    res = JSON.parse(xhr.response);
-            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + '<div class="loader"></div>';
+            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + ", Processing Queue: " + res["file_queue"] +  '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
             if (res["hashed_files"] < res["total_files"]) {
-                setTimeout(function(){;
+                setTimeout(function(){
                 deposit_status(time + 1) }, 1000);
             }
             else {
@@ -365,7 +365,6 @@ function start_deposit(flow, files) {
     btn = document.getElementById("flowPost");
     btn.innerHTML = "Uploading...";
     btn.disabled = true;
-    document.querySelector('#flow-stats').innerHTML = "";
     
     let xhr = new XMLHttpRequest();
 
@@ -676,7 +675,6 @@ function registerDeposit(remaining_files){
     btn = document.getElementById("flowPost");
     btn.innerHTML = "Uploading...";
     btn.disabled = true;
-    document.querySelector('#flow-stats').innerHTML = "";
 
     //Showing progress bar
     document.getElementById('progress_bar_flow').style.display = 'inline-block';

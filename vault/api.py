@@ -450,9 +450,7 @@ def warning_deposit(request):
         models.Collection, pk=collection_table_coll_id, organization_id=org_id
     )
 
-    collection_node = models.TreeNode.objects.filter(name=collection.name).first()
-
-    collection_id = collection_node.id
+    collection_id = collection.tree_node.id
 
     list_of_matched_files = []
 
@@ -730,10 +728,15 @@ def hashed_status(request):
         state[deposit_file["state"]] = deposit_file["files"]
         total_files += deposit_file["files"]
 
+    file_queue = models.DepositFile.objects.filter(
+        state=models.DepositFile.State.UPLOADED
+    ).aggregate(file_count=Coalesce(Count("*"), 0))["file_count"]
+
     return JsonResponse(
         {
             "hashed_files": state["HASHED"],
             "total_files": total_files,
+            "file_queue": file_queue,
         }
     )
 
