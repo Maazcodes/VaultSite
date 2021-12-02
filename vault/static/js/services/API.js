@@ -6,12 +6,16 @@ const ENDPOINTS = Object.freeze({
 })
 
 export default class API {
-  static async GET (endpoint, params) {
+  constructor (basePath = '') {
+    this.basePath = basePath
+  }
+
+  async GET (endpoint, params) {
     const paramsStr = params
                     ? `?${new URLSearchParams(params).toString()}`
                     : ''
     return await fetch(
-      `/api${endpoint}${paramsStr}`, {
+      `${this.basePath}/api${endpoint}${paramsStr}`, {
         credentials: "same-origin",
         headers: {
           "accept": "application/json"
@@ -20,8 +24,8 @@ export default class API {
     )
   }
 
-  static async pathListing (path) {
-    return await API.GET(ENDPOINTS.PATH_LISTING, { path })
+  async pathListing (path) {
+    return await this.GET(ENDPOINTS.PATH_LISTING, { path })
   }
 }
 

@@ -17,8 +17,11 @@ import FilesList from "./FilesList.js"
    Conductor
  *****************************************************************************/
 class Conductor {
-  constructor () {
-    this.appPath = undefined
+  constructor (basePath, appPath, path) {
+    this.basePath = basePath
+    this.appPath = appPath
+    this.path = path
+    this.api = new API(basePath)
 
     subscribe(
       "CHANGE_DIRECTORY_REQUEST",
@@ -61,7 +64,7 @@ class Conductor {
        CHANGE_DIRECTORY command message.
      */
     // Get the directory listing for the specified path.
-    const response = await API.pathListing(path)
+    const response = await this.api.pathListing(path)
     const data = await response.json()
     // Publish a CHANGE_DIRECTORY command with the requested path listing.
     // data comprises: { node, childNodes, path }
@@ -89,20 +92,23 @@ class Conductor {
 export default class FilesView extends HTMLElement {
   constructor () {
     super()
-    this.conductor = new Conductor()
+    this.conductor = null
   }
 
   connectedCallback () {
     this.props = {
+      basePath: this.getAttribute("base-path"),
       appPath: this.getAttribute("app-path"),
       path: JSON.parse(this.getAttribute("path")),
       node: JSON.parse(this.getAttribute("node")),
       childNodes: JSON.parse(this.getAttribute("child-nodes")),
     }
+    // Prepend the internal representation of appPath with basePath.
+    this.props.appPath = `${this.props.basePath}${this.props.appPath}`
 
-    // Update the Conductor with the current paths.
-    this.conductor.appPath = this.props.appPath
-    this.conductor.path = this.props.path
+    // Instantiate the Conductor with the current paths.
+    const { basePath, appPath, path } = this.props
+    this.conductor = new Conductor(basePath, appPath, path)
 
     this.innerHTML = `
       <div class="left-panel">
