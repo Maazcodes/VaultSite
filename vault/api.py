@@ -73,8 +73,7 @@ def reports(request):
                     "reportType": "Migration" if 15 <= event.id <= 96 else "Deposit",
                     "model": "Deposit",
                     "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection_name": event.collection.name,
-                    "collection_id": event.collection.pk,
+                    "collection_id": event.collection_id,
                 }
             )
         elif isinstance(event, models.Report):
@@ -84,8 +83,7 @@ def reports(request):
                     "reportType": event.get_report_type_display(),
                     "model": "Report",
                     "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection_name": event.collection.name,
-                    "collection_id": event.collection.pk,
+                    "collection_id": event.collection_id,
                 }
             )
     return JsonResponse(
@@ -123,9 +121,6 @@ def collections_stats(request):
                     "time": collection.last_modified,
                     "fileCount": collection.file_count,
                     "totalSize": collection.total_size,
-                    "latestReport": reports.filter(collection__pk=collection.pk)
-                    .values("pk", "file_count", "total_size", "error_count", "ended_at")
-                    .first(),
                 }
                 for collection in collections
             ],
