@@ -1,6 +1,7 @@
 import re
 
 from django.contrib.auth.models import AbstractUser
+from django.core.mail import send_mail
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import UniqueConstraint, IntegerChoices, Sum, Count
@@ -235,6 +236,36 @@ class Deposit(models.Model):
             avg_replication=self.collection.target_replication,
         )
         report.save()
+        self.send_deposit_report_email()
+
+    def send_deposit_report_email(self):
+        deposit_report_link = f"https://{settings.CURRENT_HOST}/vault/deposit/{self.id}"
+        collections_link = f"https://{settings.CURRENT_HOST}/vault/collections"
+        message = """
+Hello {}
+
+Your deposit to {} is now complete: 
+View deposit report {}
+View all collections {}
+
+Please feel free to contact our product team at vault@archive.org if you are experiencing any issues.
+
+All the best,
+
+Vault team
+        """.format(
+            self.user.username,
+            self.collection.name,
+            deposit_report_link,
+            collections_link,
+        )
+        send_mail(
+            "Vault - Deposit Complete",
+            message,
+            f"donotreply@{settings.CURRENT_HOST}",
+            [self.user.email],
+            fail_silently=False,
+        )
 
 
 class DepositFile(models.Model):

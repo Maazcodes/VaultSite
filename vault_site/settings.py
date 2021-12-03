@@ -26,9 +26,21 @@ SHADIR_ROOT = Path("/opt/DPS/SHA_DIR/")
 
 FILE_UPLOAD_TEMP_DIR = Path("/opt/DPS/tmp/")
 
+DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
+
 # LOGIN_REDIRECT_URL = '/dashboard'
 
-EMAIL_HOST = "mail.archive.org"
+# configure email settings
+EMAIL_HOST = conf.get('EMAIL_HOST', 'mail.archive.org')
+if DEPLOYMENT_ENVIRONMENT == 'DEV':
+    # in development, always send emails to the console rather than sending
+    # actual emails.
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    CURRENT_HOST = conf.get('HOSTNAME', 'localhost')
+if DEPLOYMENT_ENVIRONMENT == 'QA':
+    CURRENT_HOST = conf.get('HOSTNAME', 'wbgrp-vault-site-qa.us.archive.org')
+if DEPLOYMENT_ENVIRONMENT == 'PROD':
+    CURRENT_HOST = conf.get('HOSTNAME', 'wbgrp-svc600.us.archive.org')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -44,8 +56,6 @@ SECRET_KEY = conf.get(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = conf.get("DEBUG", True)
-
-DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
 IA_CONFIG_PATH = conf.get("IA_CONFIG_PATH")
 
