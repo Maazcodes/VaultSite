@@ -52,7 +52,7 @@ urlpatterns = [
     ),
     path(
         "api/reports_files/<collection_id>",
-        api.reports_files_by_collection,
+        api.reports_files,
         name="api_reports_files_by_collection",
     ),
     path(

@@ -39,12 +39,12 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def collections(request):
-    org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org)
+    org_id = request.user.organization_id
+    collections = models.Collection.objects.filter(organization_id=org_id)
     return JsonResponse(
         {
             "collections": [
-                {"id": collection.pk, "name": collection.name}
+                {"id": collection.id, "name": collection.name}
                 for collection in collections
             ]
         }
@@ -159,23 +159,59 @@ def org_collection_sizes(org_node_id):
 
 
 @login_required
-def reports_files(request):
-    org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by(
-        "ended_at"
-    )
+def reports_files(request, collection_id=None):
+    org_id = request.user.organization_id
+    if collection_id:
+        collection = get_object_or_404(
+            models.Collection, pk=collection_id, organization_id=org_id
+        )
+        reports = models.Report.objects.filter(collection=collection)
+        deposits = models.Deposit.objects.filter(collection=collection).annotate(
+            file_count=Coalesce(Count("files"), 0),
+        )
+    else:
+        reports = models.Report.objects.filter(collection__organization_id=org_id)
+        deposits = models.Deposit.objects.filter(organization_id=org_id).annotate(
+            file_count=Coalesce(Count("files"), 0),
+        )
+
+    def event_sort(event: Union[models.Deposit, models.Report]):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
+
+    formatted_events = []
+    for event in events:
+        if isinstance(event, models.Deposit):
+            # filter out the "Migration" deposits
+            if 15 <= event.id <= 96:
+                continue
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": "Deposit",
+                    "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": event.collection_id,
+                    "fileCount": event.file_count,
+                }
+            )
+        elif isinstance(event, models.Report):
+            formatted_events.append(
+                {
+                    "id": event.pk,
+                    "reportType": event.get_report_type_display(),
+                    "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": event.collection_id,
+                    "fileCount": event.file_count,
+                }
+            )
+
     return JsonResponse(
         {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection": report.collection.pk,
-                    "fileCount": report.collection_file_count,
-                }
-                for report in reports
-            ]
+            "reports": formatted_events,
         }
     )
 
@@ -209,29 +245,6 @@ def collections_summary(request):
         )
 
     return JsonResponse({"collections": collection_output})
-
-
-@login_required
-def reports_files_by_collection(request, collection_id):
-    org = request.user.organization
-    collection = get_object_or_404(models.Collection, pk=collection_id)
-    if collection.organization != org:
-        raise Http404
-    reports = models.Report.objects.filter(collection=collection)
-    return JsonResponse(
-        {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection": report.collection.pk,
-                    "fileCount": report.collection_file_count,
-                }
-                for report in reports
-            ]
-        }
-    )
 
 
 @login_required

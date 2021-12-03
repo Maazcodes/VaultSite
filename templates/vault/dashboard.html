@@ -420,7 +420,13 @@
                     datasets: [
                         {
                             label: "Collections",
-                            backgroundColor: ["#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850"],
+                            backgroundColor: [
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850"
+                            ],
                             data: fileCounts
                         }
                     ]
@@ -429,7 +435,7 @@
                     legend: {display: false},
                     title: {
                         display: true,
-                        text: 'Collections Distribution (%)'
+                        text: 'Collections Distribution (Files)'
                     }
                 }
             });
@@ -476,6 +482,7 @@
                 $('#all-collections').addClass('selected');
                 showReports();
                 showStats();
+                fetchFilesEvolutions();
                 showFilesEvolutions();
                 showSummary();
             } else {
@@ -730,13 +737,12 @@
                 labels.push(labels[0]);
                 dataPoints.push(dataPoints[0]);
             }
-            if (!collectionId) {
-                accountFilesEvolution.labels = labels;
-                for (let i=1;i< dataPoints.length;i++) {
-                    dataPoints[i] += dataPoints[i-1];
-                }
-                accountFilesEvolution.dataPoints = dataPoints;
+
+            accountFilesEvolution.labels = labels;
+            for (let i=1;i< dataPoints.length;i++) {
+                dataPoints[i] += dataPoints[i-1];
             }
+            accountFilesEvolution.dataPoints = dataPoints;
 
             $filesEvolutionChartSpinner.hide();
             $filesEvolutionChart.show();
