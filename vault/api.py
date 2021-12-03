@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+from itertools import chain
+from typing import Union
 
 import fs.errors
 from django.conf import settings
@@ -51,22 +53,44 @@ def collections(request):
 
 @login_required
 def reports(request):
-    org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by(
-        "-ended_at"
-    )
+    org_id = request.user.organization_id
+    reports = models.Report.objects.filter(collection__organization_id=org_id)
+    deposits = models.Deposit.objects.filter(organization_id=org_id)
+
+    def event_sort(event: Union[models.Deposit, models.Report]):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
+    formatted_events = []
+    for event in events:
+        if isinstance(event, models.Deposit):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": "Migration" if 15 <= event.id <= 96 else "Deposit",
+                    "model": "Deposit",
+                    "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_name": event.collection.name,
+                    "collection_id": event.collection.pk,
+                }
+            )
+        elif isinstance(event, models.Report):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": event.get_report_type_display(),
+                    "model": "Report",
+                    "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_name": event.collection.name,
+                    "collection_id": event.collection.pk,
+                }
+            )
     return JsonResponse(
         {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection_name": report.collection.name,
-                    "collection_id": report.collection.pk,
-                }
-                for report in reports
-            ]
+            "reports": formatted_events,
         }
     )
 

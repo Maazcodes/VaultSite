@@ -568,7 +568,12 @@
                 $("<span>").text(label),
                 {#$("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),#}
             ]).click(function () {
-                let report_url = "{{ url("report", args=(0,)) }}";
+                let report_url;
+                if (report.model === "Report") {
+                    report_url = "{{ url("report", args=(0,)) }}";
+                } else {
+                    report_url = "{{ url("deposit_report", args=(0,)) }}";
+                }
                 report_url = report_url.replace("/0", "/" + String(report.id));
                 window.open(report_url, '_blank');
                 {#selectReport(report.collection_id, report.id, $item);#}
