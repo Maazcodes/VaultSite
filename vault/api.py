@@ -181,7 +181,7 @@ def reports_files(request, collection_id=None):
         else:
             return event.started_at
 
-    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
+    events = sorted(chain(deposits, reports), key=event_sort, reverse=False)
 
     formatted_events = []
     for event in events:
@@ -201,7 +201,7 @@ def reports_files(request, collection_id=None):
         elif isinstance(event, models.Report):
             formatted_events.append(
                 {
-                    "id": event.pk,
+                    "id": event.id,
                     "reportType": event.get_report_type_display(),
                     "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
                     "collection": event.collection_id,
