@@ -39,9 +39,11 @@
                     <br />
                     {% if deposit.uploaded_at %}
                     <strong>Finished Uploading At</strong>: {{ deposit.uploaded_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                    <br />
                     {% endif %}
                     {% if deposit.hashed_at %}
-                        <strong>Finished Processing At</strong>: {{ deposit.hashed_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                    <strong>Finished Processing At</strong>: {{ deposit.hashed_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                    <br />
                     {% endif %}
                     <strong>Total Size To Deposit</strong>: {{ total_size|filesizeformat(binary=True) }}
                     <br />
