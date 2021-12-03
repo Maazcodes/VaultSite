@@ -518,7 +518,7 @@
 
     function fetchCollections() {
         var $spinner = $("#dashboard-collections .spinner");
-        var url = "{{ url("api_collection") }}" + (demoMode ? "?demo=true" : "");
+        var url = "{{ url("api_collections") }}" + (demoMode ? "?demo=true" : "");
         fetching += 1;
         activeRequests[url] = $.getJSON(url, function (json) {
             $spinner.hide();

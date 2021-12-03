@@ -41,7 +41,7 @@ urlpatterns = [
     ),
     path("administration/help", views.administration_help, name="administration_help"),
     # path('accounts/', include('django.contrib.auth.urls')),
-    path("api/collections", api.collections, name="api_collection"),
+    path("api/collections", api.collections, name="api_collections"),
     path("api/reports", api.reports, name="api_reports"),
     path("api/collections_stats", api.collections_stats, name="api_collections_stats"),
     path("api/reports_files", api.reports_files, name="api_reports_files"),
