@@ -1,5 +1,5 @@
 {% extends "vault/base.html" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, ("collection", collection.pk))) %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/"+ collection_id)) %}
 {% block header_title %}{{ collection.name }}{% endblock header_title %}
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}

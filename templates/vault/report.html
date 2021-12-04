@@ -1,5 +1,5 @@
 {% extends "vault/base.html" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, ("collection", collection.pk)), ("Report " + report.ended_at.strftime('%B %-d, %Y'), ("report", report.pk))) %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/" + collection_id), ("Report " + report.ended_at.strftime('%B %-d, %Y'), "reports/" + report_id)) %}
 
 {% block head %}
 {{ super() }}

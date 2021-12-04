@@ -170,6 +170,7 @@ def collection(request, collection_id):
         {
             "collection": collection,
             "collection_stats": collection_stats,
+            "collection_id": str(collection.id),
             "form": form,
             "reports": reports,
         },
@@ -187,6 +188,8 @@ def report(request, report_id):
         "vault/report.html",
         {
             "collection": report.collection,
+            "collection_id": str(report.collection.id),
+            "report_id":str(report.id),
             "report": report,
             "page_number": 1,
         },

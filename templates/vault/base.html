@@ -38,6 +38,7 @@
 	<script src="/vault/static/js/jquery.min.js"></script>
 	<script src="/vault/static/js/sentry/bundle.js"></script>
 	<script src="/vault/static/js/sentry/captureconsole.min.js"></script>
+	<script src="/vault/static/js/components/Breadcrumbs.js" type="module"></script>
 	<script type="text/javascript">
 
 		if (typeof Sentry == "undefined") {
@@ -125,22 +126,21 @@
 
 {% block header %}
 <header>
-	<div class="row">
-		<div class="small-12 columns">
-            {% if breadcrumbs is defined %}
-                <ul class="breadcrumbs">
-                    {% for level, link in breadcrumbs %}
-                        {% if link is string %}
-                            <li><a href="{{ url(link) }}">{{ level }}</a></li>
-                        {% else %}
-                            {# if link isn't string, it should be a tuple (link_name, (arg1, ...)) #}
-                            <li><a href="{{ url(link[0], args=link[1:]) }}">{{ level }}</a></li>
-                        {% endif %}
-                    {% endfor %}
-                </ul>
+	<div class="row" style="font-size: 0.6875rem; color: #888;">
+		<div class="small-12 columns" style="margin-top: 18px;
+    margin-left: -7px;">
+          {% if breadcrumbs is defined %}
+			<template id="general-breadcrumbs" >
+				<div><slot name="web-components"></slot></div>
+			</template>
+			<general-breadcrumbs data-breadcrumbs='{{ breadcrumbs | tojson }}' >
+				<ul slot="web-components" style="font-size: 0.6875rem;">
+				</ul>
+			</general-breadcrumbs>
             {% endif %}
 		</div>
 	</div>
+
 	<div class="row">
 		<div class="large-12 columns">
 			<div class="bottom medium-8">
