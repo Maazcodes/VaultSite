@@ -2,13 +2,13 @@ import json
 import logging
 import os
 from itertools import chain
-from typing import Union
 
 import fs.errors
+from fs.osfs import OSFS
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import BadRequest
-from django.db.models import Count, Sum, Max
+from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.http import (
     Http404,
@@ -21,15 +21,11 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from fs.osfs import OSFS
 
 from vault import models
 from vault.forms import (
-    FlowChunkGet,
-    FlowChunkPost,
     FlowChunkGetForm,
     FlowChunkPostForm,
-    RegisterDepositForm,
     RegisterDepositFileForm,
 )
 
@@ -57,13 +53,13 @@ def reports(request):
     reports = models.Report.objects.filter(collection__organization_id=org_id)
     deposits = models.Deposit.objects.filter(organization_id=org_id)
 
-    def event_sort(event: Union[models.Deposit, models.Report]):
+    def event_time(event):
         if isinstance(event, models.Deposit):
             return event.registered_at
         else:
             return event.started_at
 
-    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
+    events = sorted(chain(deposits, reports), key=event_time, reverse=True)
     formatted_events = []
     for event in events:
         if isinstance(event, models.Deposit):
@@ -136,7 +132,7 @@ def org_collection_sizes(org_node_id):
     select coll.id as collection_id, 
            stats.* 
     from vault_collection coll
-        join (
+        left join (
             select colln.*, 
                    Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
                    -- subtract 1 from file_count as nodes are own descendants
@@ -170,13 +166,13 @@ def reports_files(request, collection_id=None):
             file_count=Coalesce(Count("files"), 0),
         )
 
-    def event_sort(event: Union[models.Deposit, models.Report]):
+    def event_time(event):
         if isinstance(event, models.Deposit):
             return event.registered_at
         else:
             return event.started_at
 
-    events = sorted(chain(deposits, reports), key=event_sort, reverse=False)
+    events = sorted(chain(deposits, reports), key=event_time, reverse=False)
 
     formatted_events = []
     for event in events:
