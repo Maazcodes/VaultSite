@@ -164,7 +164,10 @@ pytz==2021.3
     #   django
     #   fs
 pyyaml==5.4.1
-    # via docker-compose
+    # via
+    #   -c requirements.txt
+    #   -r requirements.in
+    #   docker-compose
 requests==2.26.0
     # via
     #   -c requirements.txt
