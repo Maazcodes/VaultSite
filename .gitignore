@@ -3,3 +3,4 @@ db.sqlite3
 .python-version
 /django-debug.log
 *.pyc
+.DS_Store
