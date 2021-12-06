@@ -316,7 +316,7 @@ class TreeNode(models.Model):
 
     size = models.PositiveBigIntegerField(blank=True, null=True)
     file_type = models.CharField(max_length=255, blank=True, null=True)
-    pbox_item = models.CharField(max_length=255, blank=True, null=True)
+    pbox_path = models.CharField(max_length=255, blank=True, null=True)
 
     uploaded_at = models.DateTimeField(
         blank=True, null=True

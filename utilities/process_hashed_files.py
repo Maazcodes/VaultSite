@@ -52,17 +52,29 @@ def process_hashed_deposit_files():
             if not os.path.isfile(path=sha_file_path):
                 continue
 
-            if deposit_file.tree_node and not deposit_file.tree_node.pbox_item:
-                status_code, item_name = try_upload_to_pbox(deposit_file, sha_file_path)
+            if deposit_file.tree_node and not deposit_file.tree_node.pbox_path:
+                status_code, item_file_path = try_upload_to_pbox(
+                    deposit_file, sha_file_path
+                )
                 if status_code == 200:
-                    deposit_file.tree_node.pbox_item = item_name
+                    deposit_file.tree_node.pbox_path = item_file_path
                     deposit_file.tree_node.save()
+                    logger.info(
+                        f"Upload success. Status:{status_code} - item {item_file_path}"
+                    )
                 else:
                     logger.error(
-                        f"Error uploading to petabox. Status:{status_code} - item {item_name}/{deposit_file.sha256_sum}"
+                        f"Error uploading to petabox. Status:{status_code} - item {item_file_path}"
                     )
+                    if status_code == 503:
+                        logger.error(
+                            f"Petabox returning 503 Slow Down. Taking a break."
+                        )
+                        if shutdown.wait(2 * SLEEP_TIME):
+                            return
+                        continue
 
-            if deposit_file.tree_node and deposit_file.tree_node.pbox_item:
+            if deposit_file.tree_node and deposit_file.tree_node.pbox_path:
                 deposit_file.state = DepositFile.State.REPLICATED
                 deposit_file.save()
 
@@ -80,9 +92,13 @@ def process_hashed_deposit_files():
                 ):
                     deposit_file.deposit.state = Deposit.State.REPLICATED
                     deposit_file.deposit.save()
+            if shutdown.is_set():
+                logger.debug(f"Shutdown signal received. Stopping.")
+                return
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
+            logger.debug(f"Shutdown signal received. Stopping.")
             return
 
 
@@ -96,31 +112,48 @@ def get_shafs_folder(deposit_file):
 def try_upload_to_pbox(deposit_file, file_path):
     org_id = deposit_file.deposit.organization_id
     col_id = deposit_file.deposit.collection_id
+    deposit_id = deposit_file.deposit.id
 
     item_name = get_pbox_item_name(deposit_file)
+    logger.info(
+        f"Uploading file to petabox: {item_name}/{deposit_file.sha256_sum} - {deposit_file.size} bytes"
+    )
     if item_name is not None:
         if not os.path.isfile(settings.IA_CONFIG_PATH):
             logger.error(f"IA config path not found: {settings.IA_CONFIG_PATH}")
             return 0, None
         ia_session = get_session(config_file=settings.IA_CONFIG_PATH)
         item = ia_session.get_item(item_name)
+        pbox_file_path = os.path.join(
+            "Deposit:" + str(deposit_id), deposit_file.relative_path
+        )
+        item_file_path = os.path.join(item_name, pbox_file_path)
 
         metadata = dict(
             collection=deposit_file.deposit.organization.pbox_collection,
             mediatype="data",
+            noindex="true",
             creator="Vault",
             description=f"Data files for Vault digital preservation service - {org_id}",
         )
+        headers = {"x-archive-check-file": "0"}
+        responses = []
         try:
-            responses = item.upload(
-                file_path, queue_derive=False, verify=True, metadata=metadata
-            )
+            with open(file_path, mode="rb") as deposit_file_handle:
+                responses = item.upload(
+                    {pbox_file_path: deposit_file_handle},
+                    queue_derive=False,
+                    verify=True,
+                    metadata=metadata,
+                    headers=headers,
+                )
         except Exception as e:
             logger.error(f"Error uploading to petabox: {e}")
+
         if responses and len(responses) == 1:
-            return responses[0].status_code, item_name
+            return responses[0].status_code, item_file_path
         else:
-            return 0, item_name
+            return 0, item_file_path
     else:
         return 0, None
 
@@ -133,7 +166,7 @@ def get_pbox_item_name(deposit_file):
         )
         return None
     org_id = deposit_file.deposit.organization_id
-    datestamp = dateformat.format(timezone.now(), "Ymd")
+    datestamp = dateformat.format(deposit_file.deposit.registered_at, "Ymd")
     environment = (
         "-" + settings.DEPLOYMENT_ENVIRONMENT
         if settings.DEPLOYMENT_ENVIRONMENT != "PROD"
@@ -150,7 +183,7 @@ def get_pbox_item_name(deposit_file):
         if not item.exists:
             return item_name
         else:
-            if (
+            if (item.item_size is not None and item.files_count is not None) and (
                 item.item_size > MAX_PBOX_ITEM_BYTES
                 or item.files_count > MAX_PBOX_ITEM_FILES
             ):
@@ -179,7 +212,10 @@ def main(argv=None):
     args = arg_parser.parse_args(args=sys.argv[1:])
 
     logging.root.setLevel(level=args.log_level)
-    logger.addHandler(logging.StreamHandler())
+    logging_handler = logging.StreamHandler()
+    logging_formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    logging_handler.setFormatter(logging_formatter)
+    logger.addHandler(logging_handler)
     signal.signal(signal.SIGTERM, sig_handler)
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGHUP, sig_handler)

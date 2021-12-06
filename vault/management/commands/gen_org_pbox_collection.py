@@ -13,7 +13,7 @@ class Command(BaseCommand):
     help = "Create a petabox collection for a vault Organization and sets the Organization.pbox_collection in the database"
 
     def add_arguments(self, parser):
-        parser.add_argument("collection_id", type=int, help="The Organization ID")
+        parser.add_argument("organization_id", type=int, help="The Organization ID")
         parser.add_argument(
             "pbox_collection_name", type=str, help="The desired Petabox collection name"
         )
@@ -27,19 +27,33 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         print(
-            options["collection_id"], options["pbox_collection_name"], options["force"]
+            options["organization_id"],
+            options["pbox_collection_name"],
+            options["force"],
         )
 
         try:
-            organization = Organization.objects.get(id=options["collection_id"])
+            organization = Organization.objects.get(id=options["organization_id"])
         except Organization.DoesNotExist:
             organization = None
             print("Organization not found")
 
+        vault_parent_pbox_collection = "IA-DPS-Vault"
+        if settings.DEPLOYMENT_ENVIRONMENT != "PROD":
+            vault_parent_pbox_collection = (
+                "IA-DPS-Vault-" + settings.DEPLOYMENT_ENVIRONMENT
+            )
+        if (
+            settings.DEPLOYMENT_ENVIRONMENT is None
+            or settings.DEPLOYMENT_ENVIRONMENT == ""
+        ):
+            print("DEPLOYMENT_ENVIRONMENT not set")
+            return
+
         if organization:
             logo_path = "vault/static/vault-logo-3.png"
             metadata = {
-                "collection": "web-group-internal",
+                "collection": vault_parent_pbox_collection,
                 "mediatype": "collection",
                 "creator": "Vault",
                 "noindex": "true",
