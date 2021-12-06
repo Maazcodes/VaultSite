@@ -438,7 +438,173 @@ def register_deposit(request):
             )
         )
     models.DepositFile.objects.bulk_create(deposit_files)
-    return JsonResponse({"deposit_id": deposit.pk})
+
+    return JsonResponse(
+        {
+            "deposit_id": deposit.pk,
+        }
+    )
+
+
+def check_file_in_db(file_path_dict, node, full_path_dict, list_of_path):
+    """To check if the file exists in database. If it exists, append and show it to the user."""
+    try:
+        for file in file_path_dict[node]:
+
+            file_match = models.TreeNode.objects.filter(
+                name=file, parent=int(full_path_dict[node][1])
+            ).first()
+
+            if file_match:
+                list_of_path.append(node + file)
+    except:
+        file_path_dict[node] = []
+
+
+@csrf_exempt
+@login_required
+def warning_deposit(request):
+    try:
+        body = json.loads(request.body)
+    except (AttributeError, TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+
+    collection_table_coll_id = body.get("collection_id")
+
+    org_id = request.user.organization_id
+
+    collection = get_object_or_404(
+        models.Collection, pk=collection_table_coll_id, organization_id=org_id
+    )
+
+    collection_id = collection.tree_node.id
+
+    list_of_matched_files = []
+
+    relative_path_list = [i["relative_path"] for i in body.get("files")]
+
+    # Only for files
+    files_list = []
+    for file_path in relative_path_list:
+        path_list = file_path.split("/")
+        if len(path_list) == 1 and not path_list[0].endswith("/"):
+            # If it is a file and it contains directly in collection, append it to files_list
+            files_list.append(path_list[0])
+
+    for file in files_list:
+        # Check if the file exists in database. If yes, append to list_of_matched_files
+        matched_file = models.TreeNode.objects.filter(
+            name=file, parent=collection_id
+        ).first()
+        if matched_file:
+            list_of_matched_files.append(matched_file)
+
+    unique_path_list = sorted(
+        list(
+            set(
+                map(
+                    lambda x: "/".join(x.split("/")[:-1]) + "/"
+                    if not x.endswith("/")
+                    else x,
+                    relative_path_list,
+                )
+            )
+        )
+    )
+
+    allPathsList = []
+    for path in unique_path_list:
+        paths_without_file = path.split("/")[:-1]
+        prev_path_element = ""
+        for current_path_element in paths_without_file:
+            allPathsList.append(prev_path_element + current_path_element + "/")
+            prev_path_element += current_path_element + "/"
+
+    sorted_path_list = sorted(list(set(allPathsList)))
+
+    # Making all the values of paths as False initially in full_path_dict
+    full_path_dict = {x: False for x in sorted_path_list}
+
+    file_path_dict = {}
+    # Keeping a key as path and its value as list of files
+    for rel_path in relative_path_list:
+        file_name = rel_path.split("/")[-1]
+        parent_relative_path = "/".join(rel_path.split("/")[:-1]) + "/"
+
+        if not parent_relative_path in file_path_dict:
+            # Assigning empty list to all keys initially
+            file_path_dict[parent_relative_path] = []
+
+        file_path_dict[parent_relative_path].append(file_name)
+
+    list_of_path = []
+    stack_list = []
+
+    for node in full_path_dict:
+        node_list = node.split("/")
+        if len(node_list) > 2 and len(stack_list) == 0:
+            # to access first element(folder) of path in the beginning
+            # eg. "Parent/Child/GrandChild" - get only the word "Parent"
+            node_name = node.split("/")[0]
+        else:
+            # to access last element(folder) of path after first iteration
+            # eg. "Parent/Child/GrandChild" - get only the word "GrandChild"
+            node_name = node.split("/")[-2]
+
+        if len(stack_list) == 0:
+            # check if the first folder is a child of collection
+            match_node = models.TreeNode.objects.filter(
+                name=node_name, parent=collection_id
+            ).first()
+            if match_node:
+                stack_list.append(node)
+                full_path_dict[node] = [True, match_node.id]
+                check_file_in_db(file_path_dict, node, full_path_dict, list_of_path)
+        else:
+            while len(stack_list) > 0:
+                if node.startswith(stack_list[-1]):
+                    if models.TreeNode.objects.filter(
+                        name=node.split("/")[-2],
+                        parent=int(full_path_dict[stack_list[-1]][1]),
+                    ).first():
+                        match_folder = models.TreeNode.objects.filter(
+                            name=node.split("/")[-2],
+                            parent=int(full_path_dict[stack_list[-1]][1]),
+                        ).first()
+                        full_path_dict[node] = [True, match_folder.id]
+
+                        stack_list.append(
+                            node
+                        )  # to get the parent element in next iteration
+
+                        check_file_in_db(
+                            file_path_dict, node, full_path_dict, list_of_path
+                        )
+                        break
+                    else:
+                        full_path_dict[node] = [False]
+                        break
+                else:
+                    # if the last element of path does not match with the last element of stack_list, remove the last element
+                    # And keep on removing until it matches with the one in stack_list
+                    stack_list.pop()
+
+    return JsonResponse(
+        {
+            "objects": [
+                {
+                    "id": matched_file.pk,
+                    "name": matched_file.name,
+                    "parent": matched_file.parent.id if matched_file.parent else 0,
+                    "parent_name": matched_file.parent.name
+                    if matched_file.parent
+                    else None,
+                }
+                for matched_file in list_of_matched_files
+            ],
+            "relative_path": sorted(list(set(list_of_path))),
+        }
+    )
 
 
 @csrf_exempt
@@ -564,6 +730,27 @@ def hashed_status(request):
             "hashed_files": state["HASHED"],
             "total_files": total_files,
             "file_queue": file_queue,
+        }
+    )
+
+
+def render_tree_file_view(request):
+    user_org = request.user.organization.tree_node
+    all_obj = models.TreeNode.objects.filter(path__descendant=user_org.path).exclude(
+        path=user_org.path
+    )
+
+    return JsonResponse(
+        {
+            "objects": [
+                {
+                    "id": obj.pk,
+                    "name": obj.name,
+                    "parent": obj.parent.id if obj.parent else 0,
+                    "type": obj.node_type,
+                }
+                for obj in all_obj
+            ]
         }
     )
 

@@ -78,5 +78,6 @@ urlpatterns = [
     path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
     path("api/deposit_status", api.hashed_status, name="api_deposit_status"),
     path("api/path_listing", api.path_listing, name="api_path_listing"),
+    path("api/warning_deposit", api.warning_deposit, name="api_warning_deposit"),
     path("admin/", admin.site.urls),
 ]
