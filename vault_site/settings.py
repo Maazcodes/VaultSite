@@ -26,7 +26,6 @@ SHADIR_ROOT = Path("/opt/DPS/SHA_DIR/")
 
 FILE_UPLOAD_TEMP_DIR = Path("/opt/DPS/tmp/")
 
-DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
 # LOGIN_REDIRECT_URL = '/dashboard'
 
@@ -36,6 +35,8 @@ DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
 with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
     conf = yaml.safe_load(f)
+
+DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = conf.get(
