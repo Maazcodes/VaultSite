@@ -30,17 +30,6 @@ DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
 # LOGIN_REDIRECT_URL = '/dashboard'
 
-# configure email settings
-EMAIL_HOST = conf.get('EMAIL_HOST', 'mail.archive.org')
-if DEPLOYMENT_ENVIRONMENT == 'DEV':
-    # in development, always send emails to the console rather than sending
-    # actual emails.
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    CURRENT_HOST = conf.get('HOSTNAME', 'localhost')
-if DEPLOYMENT_ENVIRONMENT == 'QA':
-    CURRENT_HOST = conf.get('HOSTNAME', 'wbgrp-vault-site-qa.us.archive.org')
-if DEPLOYMENT_ENVIRONMENT == 'PROD':
-    CURRENT_HOST = conf.get('HOSTNAME', 'wbgrp-svc600.us.archive.org')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -269,3 +258,15 @@ LOGGING = {
 }
 
 SLACK_WEBHOOK = conf.get("VAULT_SLACK_WEBHOOK")
+
+# configure email settings
+EMAIL_HOST = conf.get("EMAIL_HOST", "mail.archive.org")
+if DEPLOYMENT_ENVIRONMENT == "DEV":
+    # in development, always send emails to the console rather than sending
+    # actual emails.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    CURRENT_HOST = conf.get("HOSTNAME", "localhost")
+if DEPLOYMENT_ENVIRONMENT == "QA":
+    CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-vault-site-qa.us.archive.org")
+if DEPLOYMENT_ENVIRONMENT == "PROD":
+    CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-svc600.us.archive.org")
