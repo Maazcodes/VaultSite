@@ -194,7 +194,7 @@ def report(request, report_id):
         {
             "collection": report.collection,
             "collection_id": str(report.collection.id),
-            "report_id":str(report.id),
+            "report_id": str(report.id),
             "report": report,
             "page_number": 1,
         },
