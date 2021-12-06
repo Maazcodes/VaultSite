@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from json import JSONEncoder
 
@@ -6,8 +5,8 @@ from django.db.models import QuerySet
 
 
 class ExtendedJSONEncoder(JSONEncoder):
-    """JSONEncoder subclass that can handle additional types.
-    """
+    """JSONEncoder subclass that can handle additional types."""
+
     def default(self, o):
         if isinstance(o, QuerySet):
             # Return a QuerySet as a list of dicts.
@@ -18,7 +17,8 @@ class ExtendedJSONEncoder(JSONEncoder):
         else:
             return super().default(o)
 
-tojson2 = ExtendedJSONEncoder(separators=(',', ':')).encode
+
+tojson2 = ExtendedJSONEncoder(separators=(",", ":")).encode
 
 
 # TODO - maybe make this work for Django templates.

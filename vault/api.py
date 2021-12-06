@@ -1,12 +1,14 @@
 import json
 import logging
 import os
+from itertools import chain
 
 import fs.errors
+from fs.osfs import OSFS
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import BadRequest
-from django.db.models import Count, Sum, Max
+from django.db.models import Count
 from django.db.models.functions import Coalesce
 from django.forms import model_to_dict
 from django.http import (
@@ -21,15 +23,11 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 
-from fs.osfs import OSFS
 
 from vault import models
 from vault.forms import (
-    FlowChunkGet,
-    FlowChunkPost,
     FlowChunkGetForm,
     FlowChunkPostForm,
-    RegisterDepositForm,
     RegisterDepositFileForm,
 )
 
@@ -39,12 +37,12 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def collections(request):
-    org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org)
+    org_id = request.user.organization_id
+    collections = models.Collection.objects.filter(organization_id=org_id)
     return JsonResponse(
         {
             "collections": [
-                {"id": collection.pk, "name": collection.name}
+                {"id": collection.id, "name": collection.name}
                 for collection in collections
             ]
         }
@@ -53,22 +51,42 @@ def collections(request):
 
 @login_required
 def reports(request):
-    org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by(
-        "-ended_at"
-    )
+    org_id = request.user.organization_id
+    reports = models.Report.objects.filter(collection__organization_id=org_id)
+    deposits = models.Deposit.objects.filter(organization_id=org_id)
+
+    def event_time(event):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_time, reverse=True)
+    formatted_events = []
+    for event in events:
+        if isinstance(event, models.Deposit):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": "Migration" if 15 <= event.id <= 96 else "Deposit",
+                    "model": "Deposit",
+                    "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_id": event.collection_id,
+                }
+            )
+        elif isinstance(event, models.Report):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": event.get_report_type_display(),
+                    "model": "Report",
+                    "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_id": event.collection_id,
+                }
+            )
     return JsonResponse(
         {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection_name": report.collection.name,
-                    "collection_id": report.collection.pk,
-                }
-                for report in reports
-            ]
+            "reports": formatted_events,
         }
     )
 
@@ -101,9 +119,6 @@ def collections_stats(request):
                     "time": collection.last_modified,
                     "fileCount": collection.file_count,
                     "totalSize": collection.total_size,
-                    "latestReport": reports.filter(collection__pk=collection.pk)
-                    .values("pk", "file_count", "total_size", "error_count", "ended_at")
-                    .first(),
                 }
                 for collection in collections
             ],
@@ -119,9 +134,9 @@ def org_collection_sizes(org_node_id):
     select coll.id as collection_id,
            stats.*
     from vault_collection coll
-        join (
-            select colln.*,
-                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
+        left join (
+            select colln.*, 
+                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
                    -- subtract 1 from file_count as nodes are own descendants
                    -- could also filter on node_type to disallow FOLDER
                    count(descn.id) - 1 as file_count,
@@ -137,23 +152,59 @@ def org_collection_sizes(org_node_id):
 
 
 @login_required
-def reports_files(request):
-    org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by(
-        "ended_at"
-    )
+def reports_files(request, collection_id=None):
+    org_id = request.user.organization_id
+    if collection_id:
+        collection = get_object_or_404(
+            models.Collection, pk=collection_id, organization_id=org_id
+        )
+        reports = models.Report.objects.filter(collection=collection)
+        deposits = models.Deposit.objects.filter(collection=collection).annotate(
+            file_count=Coalesce(Count("files"), 0),
+        )
+    else:
+        reports = models.Report.objects.filter(collection__organization_id=org_id)
+        deposits = models.Deposit.objects.filter(organization_id=org_id).annotate(
+            file_count=Coalesce(Count("files"), 0),
+        )
+
+    def event_time(event):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_time, reverse=False)
+
+    formatted_events = []
+    for event in events:
+        if isinstance(event, models.Deposit):
+            # filter out the "Migration" deposits
+            if 15 <= event.id <= 96:
+                continue
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": "Deposit",
+                    "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": event.collection_id,
+                    "fileCount": event.file_count,
+                }
+            )
+        elif isinstance(event, models.Report):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": event.get_report_type_display(),
+                    "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": event.collection_id,
+                    "fileCount": event.file_count,
+                }
+            )
+
     return JsonResponse(
         {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection": report.collection.pk,
-                    "fileCount": report.collection_file_count,
-                }
-                for report in reports
-            ]
+            "reports": formatted_events,
         }
     )
 
@@ -187,29 +238,6 @@ def collections_summary(request):
         )
 
     return JsonResponse({"collections": collection_output})
-
-
-@login_required
-def reports_files_by_collection(request, collection_id):
-    org = request.user.organization
-    collection = get_object_or_404(models.Collection, pk=collection_id)
-    if collection.organization != org:
-        raise Http404
-    reports = models.Report.objects.filter(collection=collection)
-    return JsonResponse(
-        {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection": report.collection.pk,
-                    "fileCount": report.collection_file_count,
-                }
-                for report in reports
-            ]
-        }
-    )
 
 
 @login_required
@@ -543,7 +571,7 @@ def hashed_status(request):
 @require_GET
 @login_required
 def path_listing(request):
-    path = request.GET.get('path', '').lstrip('/')
+    path = request.GET.get("path", "").lstrip("/")
 
     parent = request.user.organization.tree_node
     for node in path.split("/") if path else ():
@@ -551,11 +579,8 @@ def path_listing(request):
         parent = child
 
     # Don't return the organization node.
-    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" \
-        else None
-    child_nodes = parent.children.all().annotate(Max('uploaded_by__username'))
-    return JsonResponse({
-        'node': node,
-        'childNodes': list(child_nodes.values()),
-        'path': f'/{path}'
-    })
+    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" else None
+    child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
+    return JsonResponse(
+        {"node": node, "childNodes": list(child_nodes.values()), "path": f"/{path}"}
+    )

@@ -30,10 +30,15 @@ urlpatterns = [
     path("deposit/cli", views.deposit_cli, name="deposit_cli"),
     path("deposit/mail", views.deposit_mail, name="deposit_mail"),
     path("deposit/flow", views.deposit_flow, name="deposit_flow"),
+    path("deposit/<int:deposit_id>", views.deposit_report, name="deposit_report"),
     # path('deposit/debug', views.deposit_debug, name='deposit_debug'),
     path("deposit/ait", views.deposit_ait, name="deposit_ait"),
     re_path(r"^meta/files/(?P<path>.*)", views.render_file_view, name="files"),
-    re_path(r"^meta/files2/(?P<path>.*)", views.render_web_components_file_view, name="files2"),
+    re_path(
+        r"^meta/files2/(?P<path>.*)",
+        views.render_web_components_file_view,
+        name="files2",
+    ),
     path("administration", views.administration, name="administration"),
     path("administration/plan", views.administration_plan, name="administration_plan"),
     path(
@@ -41,7 +46,7 @@ urlpatterns = [
     ),
     path("administration/help", views.administration_help, name="administration_help"),
     # path('accounts/', include('django.contrib.auth.urls')),
-    path("api/collections", api.collections, name="api_collection"),
+    path("api/collections", api.collections, name="api_collections"),
     path("api/reports", api.reports, name="api_reports"),
     path("api/collections_stats", api.collections_stats, name="api_collections_stats"),
     path("api/reports_files", api.reports_files, name="api_reports_files"),
@@ -52,7 +57,7 @@ urlpatterns = [
     ),
     path(
         "api/reports_files/<collection_id>",
-        api.reports_files_by_collection,
+        api.reports_files,
         name="api_reports_files_by_collection",
     ),
     path(

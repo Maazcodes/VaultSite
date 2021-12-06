@@ -1,4 +1,6 @@
+-r requirements.in
 -c requirements.txt
+model_bakery
 playwright
 pytest
 pytest-django
