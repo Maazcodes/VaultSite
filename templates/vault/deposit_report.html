@@ -1,5 +1,5 @@
 {% extends "vault/base.html" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, ("collection", collection.pk)), ("Deposit " + deposit.pk|string, ("deposit_report", deposit.pk))) %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/" + collection.id|string), ("Deposit " + deposit.pk|string, "deposit/" + deposit.pk|string)) %}
 
 {% block head %}
 {{ super() }}
