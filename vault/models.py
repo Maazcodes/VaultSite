@@ -262,7 +262,7 @@ Vault team
         send_mail(
             "Vault - Deposit Complete",
             message,
-            f"donotreply@{settings.CURRENT_HOST}",
+            f"vault@archive.org",
             [self.user.email],
             fail_silently=False,
         )
