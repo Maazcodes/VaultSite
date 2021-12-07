@@ -12,7 +12,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Max, Sum, Count
 from django.db.models.functions import Coalesce
-from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
@@ -596,7 +595,7 @@ def render_web_components_file_view(request, path):
         parent = child
 
     # Don't return the organization node.
-    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" else None
+    node = parent if parent.node_type != "ORGANIZATION" else None
     child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
     return TemplateResponse(
         request,

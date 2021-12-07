@@ -1,14 +1,21 @@
+
 from datetime import datetime
 from json import JSONEncoder
 
-from django.db.models import QuerySet
+from django.forms import model_to_dict
+from django.db.models import (
+    Model,
+    QuerySet,
+)
 
 
 class ExtendedJSONEncoder(JSONEncoder):
     """JSONEncoder subclass that can handle additional types."""
 
     def default(self, o):
-        if isinstance(o, QuerySet):
+        if isinstance(o, Model):
+          return model_to_dict(o)
+        elif isinstance(o, QuerySet):
             # Return a QuerySet as a list of dicts.
             return list(o.values())
         if isinstance(o, datetime):
