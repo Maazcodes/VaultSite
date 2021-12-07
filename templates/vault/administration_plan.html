@@ -1,52 +1,66 @@
-{% extends "vault/administration.html" %}
-{% set active_subnav = "plan" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Administration", "administration"), ("Current Plan", "administration_plan")) %}
-{% block content %}
-    <div class="row">
-        <div class="large-12 columns">
-            <h2>Current Plan Information</h2>
-            <p style="margin-top:1em; margin-bottom:0px">
-                <span style="font-weight:bold">{{ organization.name }}</span> is enrolled in <span style="font-weight:bold">{{ plan.name }}</span> plan:
-            </p>
-            <ul>
-                <li>Price per upload: ${{ plan.price_per_terabyte }}/TiB</li>
-                <li>Replication: {{ plan.default_replication }} copies</li>
-                <li>Locations: {{ plan.default_geolocations.values_list("name", flat=True)|join(', ') }}</li>
-                <li>Fixity: {{ plan.get_default_fixity_frequency_display() }}</li>
-            </ul>
-            <div class="panel">
-                <p>More feature options will be available in later stages of the pilot and will be added in this space.</p>
-            </div>
-            {% if False %}
-            <h2>Orders</h2>
-                {% set headers = ("ID", "Type", "Collection", "Data", "Created", "Amount") %}
-                <table class="small-12 columns">
-                <thead>
-                {% for header in headers %}
-                    <th>{{ header }}</th>
-                {% endfor %}
-                <tr></tr>
-                </thead>
-                {% for i in range(4) %}
-                    <tbody>
-                    <tr>
-                        <td>123</td>
-                        <td>Upload</td>
-                        <td><a>Photos</a></td>
-                        <td>1 TB</td>
-                        <td>May 31, 2021</td>
-                        <td>$400</td>
-{#                        <td>{{ line_item.id }}</td>#}
-{#                        <td>{{ line_item.type }}</td>#}
-{#                        <td><a>{{ line_item.collection_name }}</a></td>#}
-{#                        <td>{{ line_item.data }}</td>#}
-{#                        <td>{{ line_item.created_at }}</td>#}
-{#                        <td>{{ line_item.amount }}</td>#}
-                    </tr>
-                    </tbody>
-                {% endfor %}
-                </table>
-            {% endif %}
-        </div>
+{% extends "vault/administration.html" %} {% set active_subnav = "plan" %} {%
+set breadcrumbs = (("Vault", "dashboard"), ("Administration", "administration"),
+("Current Plan", "administration/plan")) %} {% block content %}
+<div class="row">
+  <div class="large-12 columns">
+    <h2>Current Plan Information</h2>
+    <p style="margin-top: 1em; margin-bottom: 0px">
+      <span style="font-weight: bold">{{ organization.name }}</span> is enrolled
+      in <span style="font-weight: bold">{{ plan.name }}</span> plan:
+    </p>
+    <ul>
+      <li>Price per upload: ${{ plan.price_per_terabyte }}/TiB</li>
+      <li>Replication: {{ plan.default_replication }} copies</li>
+      <li>
+        Locations: {{ plan.default_geolocations.values_list("name",
+        flat=True)|join(', ') }}
+      </li>
+      <li>Fixity: {{ plan.get_default_fixity_frequency_display() }}</li>
+    </ul>
+    <div class="panel">
+      <p>
+        More feature options will be available in later stages of the pilot and
+        will be added in this space.
+      </p>
     </div>
+    {% if False %}
+    <h2>Orders</h2>
+    {% set headers = ("ID", "Type", "Collection", "Data", "Created", "Amount")
+    %}
+    <table class="small-12 columns">
+      <thead>
+        {% for header in headers %}
+        <th>{{ header }}</th>
+        {% endfor %}
+        <tr></tr>
+      </thead>
+      {% for i in range(4) %}
+      <tbody>
+        <tr>
+          <td>123</td>
+          <td>Upload</td>
+          <td><a>Photos</a></td>
+          <td>1 TB</td>
+          <td>May 31, 2021</td>
+          <td>$400</td>
+          {#
+          <td>{{ line_item.id }}</td>
+          #} {#
+          <td>{{ line_item.type }}</td>
+          #} {#
+          <td><a>{{ line_item.collection_name }}</a></td>
+          #} {#
+          <td>{{ line_item.data }}</td>
+          #} {#
+          <td>{{ line_item.created_at }}</td>
+          #} {#
+          <td>{{ line_item.amount }}</td>
+          #}
+        </tr>
+      </tbody>
+      {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+</div>
 {% endblock content %}

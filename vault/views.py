@@ -1,7 +1,10 @@
+from collections import Counter
 import datetime
 import json
 import logging
 from functools import reduce
+from itertools import chain
+from typing import Union
 
 from django.conf import settings
 from django.contrib import messages
@@ -9,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Max, Sum, Count
 from django.db.models.functions import Coalesce
+from django.forms import model_to_dict
 from django.http import Http404
 from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
@@ -85,20 +89,20 @@ def collections(request):
         org_root = str(org.tree_node_id)
         collections = models.TreeNode.objects.raw(
             """
-        select coll.id as collection_id, 
+        select coll.id as collection_id,
                NULL as last_fixity_report,
-               stats.* 
+               stats.*
         from vault_collection coll
             join (
-                select colln.*, 
-                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+                select colln.*,
+                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
                        -- subtract 1 from file_count as nodes are own descendants
                        -- could also filter on node_type to disallow FOLDER
                        count(descn.id) - 1 as file_count,
                        max(descn.modified_at) as last_modified
                 from vault_treenode colln, vault_treenode descn
-                where colln.node_type = 'COLLECTION' 
-                      and descn.path <@ colln.path 
+                where colln.node_type = 'COLLECTION'
+                      and descn.path <@ colln.path
                       and colln.path <@ Cast(%s as ltree)
                 group by colln.id
             ) stats on coll.tree_node_id = stats.id""",
@@ -121,20 +125,19 @@ def collections(request):
 
 @login_required
 def collection(request, collection_id):
-    org = request.user.organization
+    org_id = request.user.organization_id
+    collection = get_object_or_404(
+        models.Collection, organization_id=org_id, pk=collection_id
+    )
     if request.method == "POST":
         form = forms.EditCollectionSettingsForm(request.POST)
-        collection = models.Collection.objects.get(pk=collection_id)
-        if form.is_valid() and collection.organization == org:
+        if form.is_valid():
             collection.target_replication = form.cleaned_data["target_replication"]
             collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
             collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
             collection.save()
             messages.success(request, "Collection settings updated.")
 
-    collection = get_object_or_404(
-        models.Collection, organization=org, pk=collection_id
-    )
     collection_stats = models.TreeNode.objects.filter(
         path__descendant=collection.tree_node.path
     ).aggregate(
@@ -142,16 +145,7 @@ def collection(request, collection_id):
         total_size=Coalesce(Sum("size"), 0),
         last_modified=Max("modified_at"),
     )
-    collection_stats["file_count"] -= 1
-    # collection = (
-    #     models.Collection.objects.filter(organization=org, pk=collection_id)
-    #     .annotate(
-    #         file_count=Count("file"),
-    #         total_size=Sum("file__size"),
-    #         last_modified=Max("file__modified_date"),
-    #     )
-    #     .first()
-    # )
+    collection_stats["file_count"] -= 1  # Collection's TreeNode included in count
     form = forms.EditCollectionSettingsForm(
         initial=(
             {
@@ -161,17 +155,29 @@ def collection(request, collection_id):
             }
         )
     )
-    reports = models.Report.objects.filter(collection=collection.pk).order_by(
-        "-ended_at"
+    reports = models.Report.objects.filter(collection=collection.pk)
+    deposits = models.Deposit.objects.filter(collection=collection).annotate(
+        file_count=Coalesce(Count("files"), 0),
+        total_size=Coalesce(Sum("files__size"), 0),
     )
+
+    def event_sort(event: Union[models.Deposit, models.Report]):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
+
     return TemplateResponse(
         request,
         "vault/collection.html",
         {
             "collection": collection,
             "collection_stats": collection_stats,
+            "collection_id": str(collection.id),
             "form": form,
-            "reports": reports,
+            "events": events,
         },
     )
 
@@ -187,8 +193,52 @@ def report(request, report_id):
         "vault/report.html",
         {
             "collection": report.collection,
+            "collection_id": str(report.collection.id),
+            "report_id": str(report.id),
             "report": report,
             "page_number": 1,
+        },
+    )
+
+
+@login_required
+def deposit_report(request, deposit_id):
+    org_id = request.user.organization_id
+    deposit = get_object_or_404(models.Deposit, pk=deposit_id, organization_id=org_id)
+    collection = deposit.collection
+    deposit_files = deposit.files.all()
+    file_count = len(deposit_files)
+    total_size = sum(df.size for df in deposit_files)
+    state_count = Counter(df.state for df in deposit.files.all())
+    processed_count = state_count.get(
+        models.DepositFile.State.REPLICATED, 0
+    ) + state_count.get(models.DepositFile.State.HASHED, 0)
+    awaiting_processing_count = state_count.get(models.DepositFile.State.UPLOADED, 0)
+    awaiting_upload_count = state_count.get(models.DepositFile.State.REGISTERED, 0)
+    error_count = 0
+    if deposit.state in (models.Deposit.State.REPLICATED, models.Deposit.State.HASHED):
+        display_state = "Complete"
+    elif deposit.state == models.Deposit.State.UPLOADED:
+        display_state = "Processing"
+    elif deposit.state == models.Deposit.State.REGISTERED:
+        display_state = "Registered"
+    else:
+        display_state = "Error"
+    return TemplateResponse(
+        request,
+        "vault/deposit_report.html",
+        {
+            "collection": collection,
+            "deposit": deposit,
+            "deposit_files": deposit_files,
+            "file_count": file_count,
+            "total_size": total_size,
+            "state_count": state_count,
+            "processed_count": processed_count,
+            "awaiting_processing_count": awaiting_processing_count,
+            "awaiting_upload_count": awaiting_upload_count,
+            "error_count": error_count,
+            "display_state": display_state,
         },
     )
 
@@ -534,4 +584,22 @@ def render_file_view(request, path):
         request,
         "vault/files_view.html",
         {"items": children, "path": output_path},
+    )
+
+
+@login_required
+def render_web_components_file_view(request, path):
+    path = path.lstrip("/")
+    parent = request.user.organization.tree_node
+    for node in path.split("/") if path else ():
+        child = get_object_or_404(models.TreeNode, name=node, parent=parent)
+        parent = child
+
+    # Don't return the organization node.
+    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" else None
+    child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
+    return TemplateResponse(
+        request,
+        "vault/web_components_files_view.html",
+        {"node": node, "childNodes": child_nodes, "path": f"/{path}"},
     )

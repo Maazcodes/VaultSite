@@ -1,0 +1,173 @@
+{% extends "vault/base.html" %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/" + collection.id|string), ("Deposit " + deposit.pk|string, "deposit/" + deposit.pk|string)) %}
+
+{% block head %}
+{{ super() }}
+
+<link rel="stylesheet" href="{{ static("digipres/vendor/fontawesome-free/css/all.min.css") }}" type="text/css">
+<link rel="stylesheet" href="{{ static("digipres/css/digipres.css") }}">
+<link rel="stylesheet" href="{{ static("digipres/css/bootstrap-cards.css") }}">
+
+
+{#<script src="{{ static("digipres/vendor/jquery-twbsPagination/jquery.twbsPagination.min.js") }}"></script>#}
+
+<script src="{{ static("digipres/js/util.js") }}"></script>
+<script src="{{ static("digipres/js/chartalign.js") }}"></script>
+{#<script src="{{ static("digipres/js/pagetransitions.js") }}"></script>#}
+{#<script src="{{ static("digipres/js/sorttable.js") }}"></script>#}
+<script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
+{#<script src="{{ static("digipres/js/popper.min.js") }}"></script>#}
+{% endblock head %}
+
+{% block header_title %}Deposit {{ deposit.registered_at.strftime("%Y-%m-%d") }} - {{ collection.name }}{% endblock header_title %}
+{% block sticky_message %}{% endblock sticky_message %}
+{% block subnav %}{% endblock subnav %}
+{% block content %}
+    <div class="row">
+        <div class="small-12 columns">
+            <br>
+            <br>
+        <h1>Deposit Report</h1>
+        <div class="card">
+            <div class="card-body" style="margin-bottom: -20px;">
+                <p class="card-text">
+                    <strong>ID</strong>: {{ deposit.pk }}
+                    <br />
+                    <strong>State</strong>: {{ display_state }}
+                    <br />
+                    <strong>Registered At</strong>: {{ deposit.registered_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                    <br />
+                    {% if deposit.uploaded_at %}
+                    <strong>Finished Uploading At</strong>: {{ deposit.uploaded_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                    <br />
+                    {% endif %}
+                    {% if deposit.hashed_at %}
+                    <strong>Finished Processing At</strong>: {{ deposit.hashed_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                    <br />
+                    {% endif %}
+                    <strong>Total Size To Deposit</strong>: {{ total_size|filesizeformat(binary=True) }}
+                    <br />
+                    <strong>Total Files To Deposit</strong>: {{ file_count }}
+                    <br />
+                </p>
+                <h4>Progress</h4>
+                <p class="card-text">
+                    <strong>Complete</strong>: {{ processed_count }}/{{ file_count }} files
+                    <br />
+                    <strong>Awaiting Upload</strong>: {{ awaiting_upload_count }}/{{ file_count }} files
+                    <br />
+                    <strong>Awaiting Processing</strong>: {{ awaiting_processing_count }}/{{ file_count }} files
+                    <br />
+                    <strong>Errors</strong>: {{ error_count }}/{{ file_count }} files
+                    <br />
+                </p>
+                <div id="report-chart"></div>
+            </div>
+        </div>
+        <h1>Files</h1>
+        <div class="report-files-container">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item">
+                        <a onclick="filterState('.report-card-success')">Complete ({{ processed_count }})</a>
+                    </li>
+                    <li class="page-item">
+                        <a onclick="filterState('.report-card-processing')">Processing ({{ awaiting_processing_count }})</a>
+                    </li>
+                    <li class="page-item">
+                        <a onclick="filterState('.report-card-uploading')">Uploading ({{ awaiting_upload_count }})</a>
+                    </li>
+                    <li class="page-item">
+                        <a onclick="filterState('.report-card-error')">Error ({{ error_count }})</a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="report-files-list">
+                {% for file in deposit_files %}
+                    <div class="card report-card-{% if file.state in ("HASHED", "REPLICATED") %}success{% elif file.state == "UPLOADED" %}processing{% elif file.state == "REGISTERED" %}uploading{% else %}error{% endif %} card-body">
+                        <div class="card-title">{{ file.relative_path }}</div>
+                        <div class="card-text smaller">
+                            <strong>State</strong>: {% if file.state in ("HASHED", "REPLICATED") %}Complete{% else %}{{ file.state }}{% endif %}
+                            <br />
+                            <strong>Size</strong>: {{ file.size|filesizeformat(binary=True) }}
+                            <br />
+                            {% if file.uploaded_at %}
+                            <strong>Uploaded At</strong>: {{ file.uploaded_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                            <br />
+                            {% endif %}
+                            {% if file.hashed_at %}
+                            <strong>Hashed At</strong>: {{ file.hashed_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
+                            <br />
+                            {% endif %}
+                            <strong>MD5</strong>: {{ file.md5_sum }}
+                            <br />
+                            <strong>SHA1</strong>: {{ file.sha1_sum }}
+                            <br />
+                            <strong>SHA256</strong>: {{ file.sha256_sum }}
+                        </div>
+                    </div>
+                    {% if loop.last %}
+                        <div style="height: 100px;"></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    function filterState(stateClass) {
+        let stateClasses = [
+            '.report-card-success',
+            '.report-card-processing',
+            '.report-card-uploading',
+            '.report-card-error'
+        ];
+        let hideClasses = stateClasses.filter(state => state !== stateClass)
+        let to_show = document.querySelectorAll(stateClass)
+        let to_hide = document.querySelectorAll(hideClasses.join(","))
+        for (var i = 0; i < to_show.length; i++) {
+           to_show.item(i).setAttribute("style", "display: true")
+       }
+       for (var i = 0; i < to_hide.length; i++) {
+           to_hide.item(i).setAttribute("style", "display: none")
+       }
+    }
+    $(function() {
+        var processedCount = {{ processed_count }};
+        var awaitingProcessingCount = {{ awaiting_processing_count }}
+        var awaitingUploadCount = {{ awaiting_upload_count }}
+        var errorCount = {{ error_count }};
+
+        chartalign.register("#report-chart", function (width, height) {
+            return $("<canvas></canvas>").attr("width", width).attr("height", height);
+        }, function ($el) {
+            return new Chart($el.get(0), {
+                type: 'doughnut',
+                data: {
+                    labels: ["Complete", "Processing", "Uploading", "Error"],
+                    datasets: [
+                        {
+                            label: "Files",
+                            backgroundColor: ["#3cba9f", "#26547c", "#ffd166", "#c45850"],
+                            data: [processedCount, awaitingProcessingCount, awaitingUploadCount, errorCount]
+                        }
+                    ]
+                },
+                options: {
+                    legend: {
+                        display: true,
+                    },
+                    title: {
+                        display: false
+                    }
+                }
+            });
+        }, function (chart) {
+            chart.destroy();
+        });
+
+    });
+</script>
+
+{% endblock content %}

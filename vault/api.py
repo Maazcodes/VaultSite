@@ -1,13 +1,16 @@
 import json
 import logging
 import os
+from itertools import chain
 
 import fs.errors
+from fs.osfs import OSFS
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import BadRequest
-from django.db.models import Count, Sum, Max
+from django.db.models import Count, Max
 from django.db.models.functions import Coalesce
+from django.forms import model_to_dict
 from django.http import (
     Http404,
     JsonResponse,
@@ -18,16 +21,13 @@ from django.http import (
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET
 
-from fs.osfs import OSFS
 
 from vault import models
 from vault.forms import (
-    FlowChunkGet,
-    FlowChunkPost,
     FlowChunkGetForm,
     FlowChunkPostForm,
-    RegisterDepositForm,
     RegisterDepositFileForm,
 )
 
@@ -37,12 +37,12 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def collections(request):
-    org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org)
+    org_id = request.user.organization_id
+    collections = models.Collection.objects.filter(organization_id=org_id)
     return JsonResponse(
         {
             "collections": [
-                {"id": collection.pk, "name": collection.name}
+                {"id": collection.id, "name": collection.name}
                 for collection in collections
             ]
         }
@@ -51,22 +51,42 @@ def collections(request):
 
 @login_required
 def reports(request):
-    org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by(
-        "-ended_at"
-    )
+    org_id = request.user.organization_id
+    reports = models.Report.objects.filter(collection__organization_id=org_id)
+    deposits = models.Deposit.objects.filter(organization_id=org_id)
+
+    def event_time(event):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_time, reverse=True)
+    formatted_events = []
+    for event in events:
+        if isinstance(event, models.Deposit):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": "Migration" if 15 <= event.id <= 96 else "Deposit",
+                    "model": "Deposit",
+                    "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_id": event.collection_id,
+                }
+            )
+        elif isinstance(event, models.Report):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": event.get_report_type_display(),
+                    "model": "Report",
+                    "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection_id": event.collection_id,
+                }
+            )
     return JsonResponse(
         {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection_name": report.collection.name,
-                    "collection_id": report.collection.pk,
-                }
-                for report in reports
-            ]
+            "reports": formatted_events,
         }
     )
 
@@ -99,9 +119,6 @@ def collections_stats(request):
                     "time": collection.last_modified,
                     "fileCount": collection.file_count,
                     "totalSize": collection.total_size,
-                    "latestReport": reports.filter(collection__pk=collection.pk)
-                    .values("pk", "file_count", "total_size", "error_count", "ended_at")
-                    .first(),
                 }
                 for collection in collections
             ],
@@ -114,19 +131,19 @@ def org_collection_sizes(org_node_id):
     org_root = str(org_node_id)
     return models.TreeNode.objects.raw(
         """
-    select coll.id as collection_id, 
-           stats.* 
+    select coll.id as collection_id,
+           stats.*
     from vault_collection coll
-        join (
+        left join (
             select colln.*, 
                    Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
                    -- subtract 1 from file_count as nodes are own descendants
                    -- could also filter on node_type to disallow FOLDER
                    count(descn.id) - 1 as file_count,
-                   max(descn.modified_at) as last_modified 
+                   max(descn.modified_at) as last_modified
             from vault_treenode colln, vault_treenode descn
-            where colln.node_type = 'COLLECTION' 
-                  and descn.path <@ colln.path 
+            where colln.node_type = 'COLLECTION'
+                  and descn.path <@ colln.path
                   and colln.path <@ Cast(%s as ltree)
             group by colln.id
         ) stats on coll.tree_node_id = stats.id""",
@@ -135,23 +152,59 @@ def org_collection_sizes(org_node_id):
 
 
 @login_required
-def reports_files(request):
-    org = request.user.organization
-    reports = models.Report.objects.filter(collection__organization=org).order_by(
-        "ended_at"
-    )
+def reports_files(request, collection_id=None):
+    org_id = request.user.organization_id
+    if collection_id:
+        collection = get_object_or_404(
+            models.Collection, pk=collection_id, organization_id=org_id
+        )
+        reports = models.Report.objects.filter(collection=collection)
+        deposits = models.Deposit.objects.filter(collection=collection).annotate(
+            file_count=Coalesce(Count("files"), 0),
+        )
+    else:
+        reports = models.Report.objects.filter(collection__organization_id=org_id)
+        deposits = models.Deposit.objects.filter(organization_id=org_id).annotate(
+            file_count=Coalesce(Count("files"), 0),
+        )
+
+    def event_time(event):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    events = sorted(chain(deposits, reports), key=event_time, reverse=False)
+
+    formatted_events = []
+    for event in events:
+        if isinstance(event, models.Deposit):
+            # filter out the "Migration" deposits
+            if 15 <= event.id <= 96:
+                continue
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": "Deposit",
+                    "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": event.collection_id,
+                    "fileCount": event.file_count,
+                }
+            )
+        elif isinstance(event, models.Report):
+            formatted_events.append(
+                {
+                    "id": event.id,
+                    "reportType": event.get_report_type_display(),
+                    "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
+                    "collection": event.collection_id,
+                    "fileCount": event.file_count,
+                }
+            )
+
     return JsonResponse(
         {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection": report.collection.pk,
-                    "fileCount": report.collection_file_count,
-                }
-                for report in reports
-            ]
+            "reports": formatted_events,
         }
     )
 
@@ -185,29 +238,6 @@ def collections_summary(request):
         )
 
     return JsonResponse({"collections": collection_output})
-
-
-@login_required
-def reports_files_by_collection(request, collection_id):
-    org = request.user.organization
-    collection = get_object_or_404(models.Collection, pk=collection_id)
-    if collection.organization != org:
-        raise Http404
-    reports = models.Report.objects.filter(collection=collection)
-    return JsonResponse(
-        {
-            "reports": [
-                {
-                    "id": report.pk,
-                    "reportType": report.get_report_type_display(),
-                    "endedAt": report.ended_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
-                    "collection": report.collection.pk,
-                    "fileCount": report.collection_file_count,
-                }
-                for report in reports
-            ]
-        }
-    )
 
 
 @login_required
@@ -408,7 +438,173 @@ def register_deposit(request):
             )
         )
     models.DepositFile.objects.bulk_create(deposit_files)
-    return JsonResponse({"deposit_id": deposit.pk})
+
+    return JsonResponse(
+        {
+            "deposit_id": deposit.pk,
+        }
+    )
+
+
+def check_file_in_db(file_path_dict, node, full_path_dict, list_of_path):
+    """To check if the file exists in database. If it exists, append and show it to the user."""
+    try:
+        for file in file_path_dict[node]:
+
+            file_match = models.TreeNode.objects.filter(
+                name=file, parent=int(full_path_dict[node][1])
+            ).first()
+
+            if file_match:
+                list_of_path.append(node + file)
+    except:
+        file_path_dict[node] = []
+
+
+@csrf_exempt
+@login_required
+def warning_deposit(request):
+    try:
+        body = json.loads(request.body)
+    except (AttributeError, TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+
+    collection_table_coll_id = body.get("collection_id")
+
+    org_id = request.user.organization_id
+
+    collection = get_object_or_404(
+        models.Collection, pk=collection_table_coll_id, organization_id=org_id
+    )
+
+    collection_id = collection.tree_node.id
+
+    list_of_matched_files = []
+
+    relative_path_list = [i["relative_path"] for i in body.get("files")]
+
+    # Only for files
+    files_list = []
+    for file_path in relative_path_list:
+        path_list = file_path.split("/")
+        if len(path_list) == 1 and not path_list[0].endswith("/"):
+            # If it is a file and it contains directly in collection, append it to files_list
+            files_list.append(path_list[0])
+
+    for file in files_list:
+        # Check if the file exists in database. If yes, append to list_of_matched_files
+        matched_file = models.TreeNode.objects.filter(
+            name=file, parent=collection_id
+        ).first()
+        if matched_file:
+            list_of_matched_files.append(matched_file)
+
+    unique_path_list = sorted(
+        list(
+            set(
+                map(
+                    lambda x: "/".join(x.split("/")[:-1]) + "/"
+                    if not x.endswith("/")
+                    else x,
+                    relative_path_list,
+                )
+            )
+        )
+    )
+
+    allPathsList = []
+    for path in unique_path_list:
+        paths_without_file = path.split("/")[:-1]
+        prev_path_element = ""
+        for current_path_element in paths_without_file:
+            allPathsList.append(prev_path_element + current_path_element + "/")
+            prev_path_element += current_path_element + "/"
+
+    sorted_path_list = sorted(list(set(allPathsList)))
+
+    # Making all the values of paths as False initially in full_path_dict
+    full_path_dict = {x: False for x in sorted_path_list}
+
+    file_path_dict = {}
+    # Keeping a key as path and its value as list of files
+    for rel_path in relative_path_list:
+        file_name = rel_path.split("/")[-1]
+        parent_relative_path = "/".join(rel_path.split("/")[:-1]) + "/"
+
+        if not parent_relative_path in file_path_dict:
+            # Assigning empty list to all keys initially
+            file_path_dict[parent_relative_path] = []
+
+        file_path_dict[parent_relative_path].append(file_name)
+
+    list_of_path = []
+    stack_list = []
+
+    for node in full_path_dict:
+        node_list = node.split("/")
+        if len(node_list) > 2 and len(stack_list) == 0:
+            # to access first element(folder) of path in the beginning
+            # eg. "Parent/Child/GrandChild" - get only the word "Parent"
+            node_name = node.split("/")[0]
+        else:
+            # to access last element(folder) of path after first iteration
+            # eg. "Parent/Child/GrandChild" - get only the word "GrandChild"
+            node_name = node.split("/")[-2]
+
+        if len(stack_list) == 0:
+            # check if the first folder is a child of collection
+            match_node = models.TreeNode.objects.filter(
+                name=node_name, parent=collection_id
+            ).first()
+            if match_node:
+                stack_list.append(node)
+                full_path_dict[node] = [True, match_node.id]
+                check_file_in_db(file_path_dict, node, full_path_dict, list_of_path)
+        else:
+            while len(stack_list) > 0:
+                if node.startswith(stack_list[-1]):
+                    if models.TreeNode.objects.filter(
+                        name=node.split("/")[-2],
+                        parent=int(full_path_dict[stack_list[-1]][1]),
+                    ).first():
+                        match_folder = models.TreeNode.objects.filter(
+                            name=node.split("/")[-2],
+                            parent=int(full_path_dict[stack_list[-1]][1]),
+                        ).first()
+                        full_path_dict[node] = [True, match_folder.id]
+
+                        stack_list.append(
+                            node
+                        )  # to get the parent element in next iteration
+
+                        check_file_in_db(
+                            file_path_dict, node, full_path_dict, list_of_path
+                        )
+                        break
+                    else:
+                        full_path_dict[node] = [False]
+                        break
+                else:
+                    # if the last element of path does not match with the last element of stack_list, remove the last element
+                    # And keep on removing until it matches with the one in stack_list
+                    stack_list.pop()
+
+    return JsonResponse(
+        {
+            "objects": [
+                {
+                    "id": matched_file.pk,
+                    "name": matched_file.name,
+                    "parent": matched_file.parent.id if matched_file.parent else 0,
+                    "parent_name": matched_file.parent.name
+                    if matched_file.parent
+                    else None,
+                }
+                for matched_file in list_of_matched_files
+            ],
+            "relative_path": sorted(list(set(list_of_path))),
+        }
+    )
 
 
 @csrf_exempt
@@ -535,4 +731,43 @@ def hashed_status(request):
             "total_files": total_files,
             "file_queue": file_queue,
         }
+    )
+
+
+def render_tree_file_view(request):
+    user_org = request.user.organization.tree_node
+    all_obj = models.TreeNode.objects.filter(path__descendant=user_org.path).exclude(
+        path=user_org.path
+    )
+
+    return JsonResponse(
+        {
+            "objects": [
+                {
+                    "id": obj.pk,
+                    "name": obj.name,
+                    "parent": obj.parent.id if obj.parent else 0,
+                    "type": obj.node_type,
+                }
+                for obj in all_obj
+            ]
+        }
+    )
+
+
+@require_GET
+@login_required
+def path_listing(request):
+    path = request.GET.get("path", "").lstrip("/")
+
+    parent = request.user.organization.tree_node
+    for node in path.split("/") if path else ():
+        child = get_object_or_404(models.TreeNode, name=node, parent=parent)
+        parent = child
+
+    # Don't return the organization node.
+    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" else None
+    child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
+    return JsonResponse(
+        {"node": node, "childNodes": list(child_nodes.values()), "path": f"/{path}"}
     )

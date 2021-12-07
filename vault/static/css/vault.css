@@ -26,7 +26,7 @@
 	background-color: rgb(0,0,0);
 	background-color: rgba(0,0,0,0.4);
   }
-  
+
   /* Modal Content/Box */
   .modal-content {
 	background-color: #fefefe;
@@ -35,7 +35,7 @@
 	border: 1px solid #888;
 	width: 80%;
   }
-  
+
   /* The Close Button */
   .close {
 	color: #aaa;
@@ -43,10 +43,217 @@
 	font-size: 28px;
 	font-weight: bold;
   }
-  
+
   .close:hover,
   .close:focus {
 	color: black;
 	text-decoration: none;
 	cursor: pointer;
   }
+
+  /* Files View */
+  /* button style reset */
+  vault-files-view button {
+    padding: 0;
+    margin: 0;
+    background-color: transparent;
+    color: #000;
+  }
+
+  vault-files-view button:hover,
+  vault-files-view button:focus {
+    background-color: transparent;
+    color: #000;
+  }
+
+  vault-files-view {
+    display: grid;
+    grid-template-columns: min-content 1fr;
+  }
+
+  vault-files-view > div.left-panel {
+    margin-top: 1.5rem;
+  }
+
+  vault-files-view > div.left-panel,
+  vault-files-view > div.right-panel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  vault-files-view > div.left-panel {
+    resize: horizontal;
+    min-width: 250px;
+    max-width: 400px;
+  }
+
+  vault-files-view #file-tree-navigator-container,
+  vault-files-view #files-list-container {
+    padding: 1rem;
+  }
+
+  vault-files-view #files-list-container {
+    border-top: solid #bbb 1px;
+    overflow-x: auto;
+  }
+
+  vault-files-view #file-details-container {
+    border: solid #bbb 1px;
+    border-bottom: none;
+    border-right: none;
+  }
+
+  vault-files-view new-cta > button {
+    margin-left: 1rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #444;
+    padding: 0.6rem 2rem 0.6rem 1rem;
+    border: solid #ccc 1px;
+    border-radius: 1rem;
+    transition: background-color 0.25s, box-shadow 0.25s;
+  }
+
+  vault-files-view new-cta > button:before {
+    content: '\25EC';
+    margin-right: 1.25rem;
+    display: inline-block;
+    transform: rotate(0.5turn);
+    vertical-align: -0.2em;
+  }
+
+  vault-files-view new-cta > button:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    box-shadow: 3px 7px 6px 1px #ccc;
+  }
+
+  vault-files-view #breadcrumbs-container {
+    /* Set position=relative for details button abs positioning */
+    position: relative;
+    padding: 0.5rem;
+  }
+
+  vault-files-view > div.right-panel > div.inner-panel {
+    display: grid;
+    grid-template-columns: 1fr min-content;
+  }
+
+  vault-files-list ui5-table {
+    display: block;
+  }
+
+  vault-files-list ui5-table-column,
+  vault-files-list ui5-table-cell {
+      white-space: nowrap;
+  }
+
+  vault-files-list ui5-table-column::part(column) {
+    color: #fff;
+  }
+
+  vault-files-list ui5-table-cell.name {
+    max-width: 15vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  vault-files-list ui5-table-cell.name.FOLDER::part(cell) {
+    font-weight: bold;
+  }
+
+  vault-files-list ui5-table-cell.name.COLLECTION::part(cell):before,
+  vault-file-details h2 > span.name.COLLECTION:before {
+    content: '\25EC';
+    margin-right: 1rem;
+    display: inline-block;
+    transform: rotate(0.5turn);
+    vertical-align: -0.1em;
+  }
+
+  vault-files-list ui5-table-cell.name.FOLDER::part(cell):before,
+  vault-file-details h2 > span.name.FOLDER:before {
+    content: '\1f4c1';
+    margin-right: 1rem;
+    vertical-align: 0.15em;
+  }
+
+  vault-files-list ui5-table-cell.name.FILE::part(cell):before,
+  vault-file-details h2 > span.name.FILE:before {
+    content: '\1f4c4';
+    margin-right: 1rem;
+  }
+
+  file-details-buttons {
+    display: inline-block;
+    position: absolute;
+    right: 0.2rem;
+  }
+
+  file-details-buttons > ui5-button {
+    font-size: 1.5rem;
+  }
+
+  file-details-buttons > button:hover {
+    font-weight: bold;
+  }
+
+  vault-file-details {
+    width: 300px;
+    padding: 1rem;
+  }
+
+  vault-file-details > h2 {
+    margin: 0;
+  }
+
+  vault-file-details > h2 > span {
+    display: inline-block;
+  }
+
+  vault-file-details > h2 > span.name {
+    width: calc(100% - 1.5rem);
+  }
+
+  vault-file-details > h2 > button.close {
+    /* Several .close styles are inherited from vault.css */
+    font-weight: normal;
+    padding: 0;
+    background-color: inherit;
+  }
+
+  vault-file-details > div.details,
+  vault-file-details > div.activity {
+    margin-top: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  ui5-dialog > div {
+    padding: 1rem;
+  }
+
+/* Global UI5 Component Styles */
+
+ui5-tree {
+  line-height: 1.2rem;
+}
+
+:root {
+  --sapList_AlternatingBackground: transparent !important;
+  --sapList_SelectionBackgroundColor: #fff !important;
+  --sapList_Background: transparent !important;
+  --sapList_HeaderBackground: rgb(42, 40, 44) !important;
+  --sapObjectHeader_Background: transparent !important;
+  --_ui5_tc_header_box_shadow: none !important;
+  --_ui5_list_item_base_height: 1.75rem !important;
+  --sapFontFamily: "Open Sans", Helvetica, Arial, sans-serif !important;
+  --_ui5_list_item_title_size: 0.9rem !important;
+  --_ui5-tree-toggle-box-height: 1rem !important;
+  --_ui5-tree-toggle-box-width: 2rem !important;
+  --_ui5-tree-indent-step: 10px !important;
+  --_ui5_checkbox_width_height: 2rem !important;
+  --_ui5_checkbox_inner_width_height: 1.25rem !important;
+  --ui5-listitem-background-color: transparent !important;
+  --sapList_SelectionBackgroundColor: rgba(0, 0, 0, 0.05) !important;
+  --sapList_SelectionBorderColor: rgba(0, 0, 0, 0.05) !important;
+}

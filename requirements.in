@@ -3,6 +3,7 @@ fs
 internetarchive
 Jinja2
 psycopg2-binary
+PyYAML<6,>=3.10
 requests
 sentry-sdk
 

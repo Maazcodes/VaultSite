@@ -285,7 +285,7 @@ def finalize_deposit(deposit, state, uploaded_at):
     deposit.uploaded_at = uploaded_at
     deposit.hashed_at = timezone.now()
     deposit.save()
-    #TODO deposit.send_email()
+    deposit.send_deposit_report_email()
 
 
 def move_into_shafs(deposit_file, current_file_path):

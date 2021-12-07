@@ -11,11 +11,11 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 import os
-import yaml
 from pathlib import Path
 
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+import yaml
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,15 +26,17 @@ SHADIR_ROOT = Path("/opt/DPS/SHA_DIR/")
 
 FILE_UPLOAD_TEMP_DIR = Path("/opt/DPS/tmp/")
 
+
 # LOGIN_REDIRECT_URL = '/dashboard'
 
-EMAIL_HOST = "mail.archive.org"
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
     conf = yaml.safe_load(f)
+
+DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = conf.get(
@@ -45,11 +47,10 @@ SECRET_KEY = conf.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = conf.get("DEBUG", True)
 
-DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
-
 IA_CONFIG_PATH = conf.get("IA_CONFIG_PATH")
 
 ALLOWED_HOSTS = [
+    "vault-site-local",
     "localhost",
     "127.0.0.1",
     "wbgrp-svc600.us.archive.org",
@@ -258,3 +259,15 @@ LOGGING = {
 }
 
 SLACK_WEBHOOK = conf.get("VAULT_SLACK_WEBHOOK")
+
+# configure email settings
+EMAIL_HOST = conf.get("EMAIL_HOST", "mail.archive.org")
+if DEPLOYMENT_ENVIRONMENT == "DEV":
+    # in development, always send emails to the console rather than sending
+    # actual emails.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    CURRENT_HOST = conf.get("HOSTNAME", "localhost")
+if DEPLOYMENT_ENVIRONMENT == "QA":
+    CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-vault-site-qa.us.archive.org")
+if DEPLOYMENT_ENVIRONMENT == "PROD":
+    CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-svc600.us.archive.org")

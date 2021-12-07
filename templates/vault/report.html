@@ -1,5 +1,5 @@
 {% extends "vault/base.html" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, ("collection", collection.pk)), ("Report " + report.ended_at.strftime('%B %-d, %Y'), ("report", report.pk))) %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/" + collection_id), ("Report " + report.ended_at.strftime('%B %-d, %Y'), "reports/" + report_id)) %}
 
 {% block head %}
 {{ super() }}
@@ -9,11 +9,11 @@
 <link rel="stylesheet" href="{{ static("digipres/css/bootstrap-cards.css") }}">
 
 
-<script src="{{ static("digipres/vendor/jquery-twbsPagination/jquery.twbsPagination.min.js") }}"></script>
+{#<script src="{{ static("digipres/vendor/jquery-twbsPagination/jquery.twbsPagination.min.js") }}"></script>#}
 
 <script src="{{ static("digipres/js/util.js") }}"></script>
 <script src="{{ static("digipres/js/chartalign.js") }}"></script>
-<script src="{{ static("digipres/js/pagetransitions.js") }}"></script>
+{#<script src="{{ static("digipres/js/pagetransitions.js") }}"></script>#}
 <script src="{{ static("digipres/js/sorttable.js") }}"></script>
 <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
 <script src="{{ static("digipres/js/popper.min.js") }}"></script>
@@ -80,69 +80,69 @@
         var errorCount = {{ report.error_count }};
         var successCount = fileCount - errorCount;
 
-        function initPagination() {
-            var $list = $(".report-files-list");
-            $list.empty();
-            $pagination.twbsPagination("destroy");
-            $pagination.twbsPagination({
-                totalPages: Math.ceil((filterReport.filter ? (filterReport.success ? successCount : errorCount) : fileCount) / 10),
-                visiblePages: 7,
-                initiateStartPageClick: true,
-                hideOnlyOnePage: true,
-                onPageClick: function (event, page) {
-                    var $spinner = $(".report-files-container .spinner");
-                    $spinner.show();
-                    $list.empty();
-                    if (activeRequest) activeRequest.abort();
+        {#function initPagination() {#}
+        {#    var $list = $(".report-files-list");#}
+        {#    $list.empty();#}
+        {#    $pagination.twbsPagination("destroy");#}
+        {#    $pagination.twbsPagination({#}
+        {#        totalPages: Math.ceil((filterReport.filter ? (filterReport.success ? successCount : errorCount) : fileCount) / 10),#}
+        {#        visiblePages: 7,#}
+        {#        initiateStartPageClick: true,#}
+        {#        hideOnlyOnePage: true,#}
+        {#        onPageClick: function (event, page) {#}
+        {#            var $spinner = $(".report-files-container .spinner");#}
+        {#            $spinner.show();#}
+        {#            $list.empty();#}
+        {#            if (activeRequest) activeRequest.abort();#}
                     {#let url = "/ait/<%=unescape(user.idStr)%>/digipres/api/report_files/<%=unescape(collectionId)%>/<%=unescape(reportId)%>?page=" + page <%=unescape(if (demo) " + \"&demo=true\"" else "")%>#}
-                    let url = "{{ url("api_report_files", args=(0, 0)) }}";
-                    let urlEnd = "/{{ collection.id }}/{{ report.id }}?page={{ page_number }}";
-                    url = url.replace("/0/0", urlEnd);
-                    if (filterReport.filter) url += "&success=" + (filterReport.success ? "true" : "false");
-                    activeRequest = $.getJSON(url, function (json) {
-                        for (let file of json.files) {
-                            let checksum = "N/A";
-                            for (let cs of file.checksums) {
-                                if (cs.length > checksum.length) checksum = cs;
-                            }
-                            let sources = [];
-                            for (let s of file.sources) {
-                                sources.push(s.source + s.region)
-                            }
-                            let repl = new Set(sources).size;
-                            let hidden = true;
-                            let $code = $("<div>").addClass("report-code").append($("<pre>").text(JSON.stringify(file, null, 4)));
-                            let $card = $("<div>").addClass("card").addClass(file.success ? "report-card-success" : "report-card-error").append($("<div>").addClass("card-body").append([
-                                $("<div>").addClass("card-title").text(file.filename),
-                                $("<div>").addClass("card-text").append($("<smaller>").append([
-                                    $("<strong>").text("Size"),
-                                    ": " + formatBytes(file.size || 0) + ", ",
-                                    $("<strong>").text("Replication"),
-                                    ": " + repl + ", ",
-                                    $("<pre>").css("display", "inline").text(checksum.substr(0, 15)),
-                                    (checksum.length > 15 ? "..." : ""),
-                                    " - ",
-                                    $("<a>").attr("href", "#").text("show details").click(function () {
-                                        hidden = !hidden;
-                                        if (hidden) {
-                                            $code.hide();
-                                            $(this).text("show details");
-                                        } else {
-                                            $code.show();
-                                            $(this).text("hide details");
-                                        }
-                                        return false;
-                                    }),
-                                    $code
-                                ]))
-                            ]));
-                            $list.append($card);
-                        }
-                        $spinner.hide();
-                    });
-                }
-            });
-        }
+        {#            let url = "{{ url("api_report_files", args=(0, 0)) }}";#}
+        {#            let urlEnd = "/{{ collection.id }}/{{ report.id }}?page={{ page_number }}";#}
+        {#            url = url.replace("/0/0", urlEnd);#}
+        {#            if (filterReport.filter) url += "&success=" + (filterReport.success ? "true" : "false");#}
+        {#            activeRequest = $.getJSON(url, function (json) {#}
+        {#                for (let file of json.files) {#}
+        {#                    let checksum = "N/A";#}
+        {#                    for (let cs of file.checksums) {#}
+        {#                        if (cs.length > checksum.length) checksum = cs;#}
+        {#                    }#}
+        {#                    let sources = [];#}
+        {#                    for (let s of file.sources) {#}
+        {#                        sources.push(s.source + s.region)#}
+        {#                    }#}
+        {#                    let repl = new Set(sources).size;#}
+        {#                    let hidden = true;#}
+        {#                    let $code = $("<div>").addClass("report-code").append($("<pre>").text(JSON.stringify(file, null, 4)));#}
+        {#                    let $card = $("<div>").addClass("card").addClass(file.success ? "report-card-success" : "report-card-error").append($("<div>").addClass("card-body").append([#}
+        {#                        $("<div>").addClass("card-title").text(file.filename),#}
+        {#                        $("<div>").addClass("card-text").append($("<smaller>").append([#}
+        {#                            $("<strong>").text("Size"),#}
+        {#                            ": " + formatBytes(file.size || 0) + ", ",#}
+        {#                            $("<strong>").text("Replication"),#}
+        {#                            ": " + repl + ", ",#}
+        {#                            $("<pre>").css("display", "inline").text(checksum.substr(0, 15)),#}
+        {#                            (checksum.length > 15 ? "..." : ""),#}
+        {#                            " - ",#}
+        {#                            $("<a>").attr("href", "#").text("show details").click(function () {#}
+        {#                                hidden = !hidden;#}
+        {#                                if (hidden) {#}
+        {#                                    $code.hide();#}
+        {#                                    $(this).text("show details");#}
+        {#                                } else {#}
+        {#                                    $code.show();#}
+        {#                                    $(this).text("hide details");#}
+        {#                                }#}
+        {#                                return false;#}
+        {#                            }),#}
+        {#                            $code#}
+        {#                        ]))#}
+        {#                    ]));#}
+        {#                    $list.append($card);#}
+        {#                }#}
+        {#                $spinner.hide();#}
+        {#            });#}
+        {#        }#}
+        {#    });#}
+        {# } #}
 
         chartalign.register("#report-chart", function (width, height) {
             return $("<canvas></canvas>").attr("width", width).attr("height", height);
@@ -161,17 +161,17 @@
                 },
                 options: {
                     legend: {
-                        display: true,
-                        onClick: function (event, item) {
-                            var success = item.text === "successful";
-                            if (filterReport.filter && filterReport.success === success) {
-                                filterReport.filter = false;
-                            } else {
-                                filterReport.filter = true;
-                                filterReport.success = success;
-                            }
-                            initPagination();
-                        }
+                        display: true
+                        {#onClick: function (event, item) {#}
+                        {#    var success = item.text === "successful";#}
+                        {#    if (filterReport.filter && filterReport.success === success) {#}
+                        {#        filterReport.filter = false;#}
+                        {#    } else {#}
+                        {#        filterReport.filter = true;#}
+                        {#        filterReport.success = success;#}
+                        {#    }#}
+                        {#    initPagination();#}
+                        {# } #}
                     },
                     title: {
                         display: false
@@ -182,7 +182,7 @@
             chart.destroy();
         });
 
-        initPagination();
+        {#initPagination();#}
     });
 </script>
 

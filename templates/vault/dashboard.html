@@ -14,7 +14,6 @@
 
 <script src="{{ static("digipres/js/util.js") }}"></script>
 <script src="{{ static("digipres/js/chartalign.js") }}"></script>
-<script src="{{ static("digipres/js/pagetransitions.js") }}"></script>
 <script src="{{ static("digipres/js/sorttable.js") }}"></script>
 <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
 <script src="{{ static("digipres/js/popper.min.js") }}"></script>
@@ -190,12 +189,6 @@
     function isInitialized() {
         return initialized && fetching == 0;
     }
-
-    onPageTransition.push(function () {
-        for (let request of Object.values(activeRequests)) request.abort();
-        activeRequests = {};
-        chartalign.unregisterAll();
-    });
 
     var regionDetails = {
         "US West-1": {
@@ -420,7 +413,13 @@
                     datasets: [
                         {
                             label: "Collections",
-                            backgroundColor: ["#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850"],
+                            backgroundColor: [
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850",
+                                "#3e95cd", "#8e5ea2", "#306ccd", "#a27698", "#21ba60", "#e8e6c5", "#c45850", "#3cba9f", "#e8c3b9", "#c45850"
+                            ],
                             data: fileCounts
                         }
                     ]
@@ -429,7 +428,7 @@
                     legend: {display: false},
                     title: {
                         display: true,
-                        text: 'Collections Distribution (%)'
+                        text: 'Collections Distribution (Files)'
                     }
                 }
             });
@@ -476,6 +475,7 @@
                 $('#all-collections').addClass('selected');
                 showReports();
                 showStats();
+                fetchFilesEvolutions();
                 showFilesEvolutions();
                 showSummary();
             } else {
@@ -511,7 +511,7 @@
 
     function fetchCollections() {
         var $spinner = $("#dashboard-collections .spinner");
-        var url = "{{ url("api_collection") }}" + (demoMode ? "?demo=true" : "");
+        var url = "{{ url("api_collections") }}" + (demoMode ? "?demo=true" : "");
         fetching += 1;
         activeRequests[url] = $.getJSON(url, function (json) {
             $spinner.hide();
@@ -568,7 +568,12 @@
                 $("<span>").text(label),
                 {#$("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),#}
             ]).click(function () {
-                let report_url = "{{ url("report", args=(0,)) }}";
+                let report_url;
+                if (report.model === "Report") {
+                    report_url = "{{ url("report", args=(0,)) }}";
+                } else {
+                    report_url = "{{ url("deposit_report", args=(0,)) }}";
+                }
                 report_url = report_url.replace("/0", "/" + String(report.id));
                 window.open(report_url, '_blank');
                 {#selectReport(report.collection_id, report.id, $item);#}
@@ -725,13 +730,12 @@
                 labels.push(labels[0]);
                 dataPoints.push(dataPoints[0]);
             }
-            if (!collectionId) {
-                accountFilesEvolution.labels = labels;
-                for (let i=1;i< dataPoints.length;i++) {
-                    dataPoints[i] += dataPoints[i-1];
-                }
-                accountFilesEvolution.dataPoints = dataPoints;
+
+            accountFilesEvolution.labels = labels;
+            for (let i=1;i< dataPoints.length;i++) {
+                dataPoints[i] += dataPoints[i-1];
             }
+            accountFilesEvolution.dataPoints = dataPoints;
 
             $filesEvolutionChartSpinner.hide();
             $filesEvolutionChart.show();
