@@ -191,6 +191,7 @@ class Deposit(models.Model):
         UPLOADED = "UPLOADED", "Uploaded"
         HASHED = "HASHED", "Hashed"
         REPLICATED = "REPLICATED", "Replicated"
+        COMPLETE_WITH_ERRORS = "COMPLETE_WITH_ERRORS", "Complete With Errors"
 
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
@@ -243,6 +244,7 @@ class DepositFile(models.Model):
         UPLOADED = "UPLOADED", "Uploaded"
         HASHED = "HASHED", "Hashed"
         REPLICATED = "REPLICATED", "Replicated"
+        ERROR = "ERROR", "Error"
 
     deposit = models.ForeignKey(Deposit, on_delete=models.PROTECT, related_name="files")
 

@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 shutdown = threading.Event()
 
+
 # Look for hashed files ready for processing.
 # Mark Deposit done if all deposit files are done
 # TODO trigger on depositfile delete to archive the row
@@ -46,10 +47,9 @@ shutdown = threading.Event()
 
 
 def process_uploaded_deposit_files(args):
-
     while True:
         for deposit_file in DepositFile.objects.filter(
-            state=DepositFile.State.UPLOADED
+                state=DepositFile.State.UPLOADED
         ):
             org_id = deposit_file.deposit.organization_id
             org_tmp_path = str(org_id)
@@ -90,6 +90,14 @@ def process_uploaded_deposit_files(args):
                     logger.error(
                         f"Chunk marked as UPLOADED, but sizes don't match: {deposit_file.flow_identifier}"
                     )
+                    deposit_file.state = deposit_file.State.ERROR
+                    if is_deposit_uploaded(deposit_file.deposit):
+                        last_upload_at = DepositFile.objects.filter(
+                            deposit=deposit_file.deposit
+                        ).aggregate(last_upload_at=Max("uploaded_at"))
+                        finalize_deposit(deposit_file.deposit, Deposit.State.COMPLETE_WITH_ERRORS, last_upload_at["last_upload_at"])
+                        if not args.no_deposit_report:
+                            deposit.make_deposit_report()
                     continue
 
                 logger.debug(f"Chunk sizes match. Merging...")
@@ -106,7 +114,7 @@ def process_uploaded_deposit_files(args):
                 file_sha256_time = 0
                 for i in range(1, chunk_count + 1):
                     chunk_filename = (
-                        "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
+                            "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
                     )
                     chunk_path = os.path.join(osfs_root, chunk_filename)
                     merged_chunk_path = os.path.join(
@@ -243,29 +251,39 @@ def process_uploaded_deposit_files(args):
             # If the Deposit is in the early phase, and no deposit files in early phases
             # todo is is problematic? Should I only check for UPLOADED? We don't want to clobber an upload process
             deposit = deposit_file.deposit
-            if deposit.state in (Deposit.State.REGISTERED, Deposit.State.UPLOADED):
-                if 0 == len(
-                    DepositFile.objects.filter(
-                        deposit=deposit,
-                        state__in=(
-                            DepositFile.State.REGISTERED,
-                            DepositFile.State.UPLOADED,
-                        ),
-                    )
-                ):
-                    last_upload_at = DepositFile.objects.filter(
-                        deposit=deposit
-                    ).aggregate(last_upload_at=Max("uploaded_at"))
-                    deposit.state = Deposit.State.HASHED
-                    deposit.uploaded_at = last_upload_at["last_upload_at"]
-                    deposit.hashed_at = timezone.now()
-                    deposit.save()
-                    if not args.no_deposit_report:
-                        deposit.make_deposit_report()
+            if is_deposit_uploaded(deposit):
+                last_upload_at = DepositFile.objects.filter(
+                    deposit=deposit
+                ).aggregate(last_upload_at=Max("uploaded_at"))
+                finalize_deposit(deposit, Deposit.State.HASHED, last_upload_at["last_upload_at"])
+                if not args.no_deposit_report:
+                    deposit.make_deposit_report()
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
             return
+
+
+def is_deposit_uploaded(deposit):
+    if deposit.state in (Deposit.State.REGISTERED, Deposit.State.UPLOADED):
+        if 0 == len(
+                DepositFile.objects.filter(
+                    deposit=deposit,
+                    state__in=(
+                            DepositFile.State.REGISTERED,
+                            DepositFile.State.UPLOADED,
+                    ),
+                )
+        ):
+            return True
+    return False
+
+
+def finalize_deposit(deposit, state, uploaded_at):
+    deposit.state = state
+    deposit.uploaded_at = uploaded_at
+    deposit.hashed_at = timezone.now()
+    deposit.save()
 
 
 def move_into_shafs(deposit_file, current_file_path):
@@ -308,7 +326,6 @@ def make_or_find_file_node(deposit_file, parent):
 
 
 def make_or_find_parent_node(deposit_file):
-
     organization = Organization.objects.get(id=deposit_file.deposit.organization_id)
     collection = Collection.objects.get(id=deposit_file.deposit.collection_id)
 
