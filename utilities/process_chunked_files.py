@@ -74,7 +74,7 @@ def process_uploaded_deposit_files(args):
 
                 chunk_count = len(chunk_list)
 
-                # If the chunks for this DepositFile are on this machine
+                # If the chunks for this DepositFile are not on this machine
                 if chunk_count == 0:
                     continue
 
@@ -91,13 +91,7 @@ def process_uploaded_deposit_files(args):
                         f"Chunk marked as UPLOADED, but sizes don't match: {deposit_file.flow_identifier}"
                     )
                     deposit_file.state = deposit_file.State.ERROR
-                    if is_deposit_uploaded(deposit_file.deposit):
-                        last_upload_at = DepositFile.objects.filter(
-                            deposit=deposit_file.deposit
-                        ).aggregate(last_upload_at=Max("uploaded_at"))
-                        finalize_deposit(deposit_file.deposit, Deposit.State.COMPLETE_WITH_ERRORS, last_upload_at["last_upload_at"])
-                        if not args.no_deposit_report:
-                            deposit.make_deposit_report()
+                    finalize_deposit_file(deposit_file)
                     continue
 
                 logger.debug(f"Chunk sizes match. Merging...")
@@ -187,7 +181,8 @@ def process_uploaded_deposit_files(args):
                         logger.error(
                             f"Error moving merged file to destination {merged_filename} - {err}"
                         )
-                        # todo Set a DepositFile error status when that exists
+                        deposit_file.state = DepositFile.State.ERROR
+                        finalize_deposit_file(deposit_file)
                         continue
 
                     db_time = time.perf_counter()
@@ -248,20 +243,26 @@ def process_uploaded_deposit_files(args):
                         f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
                     )
 
-            # If the Deposit is in the early phase, and no deposit files in early phases
-            # todo is is problematic? Should I only check for UPLOADED? We don't want to clobber an upload process
-            deposit = deposit_file.deposit
-            if is_deposit_uploaded(deposit):
-                last_upload_at = DepositFile.objects.filter(
-                    deposit=deposit
-                ).aggregate(last_upload_at=Max("uploaded_at"))
-                finalize_deposit(deposit, Deposit.State.HASHED, last_upload_at["last_upload_at"])
-                if not args.no_deposit_report:
-                    deposit.make_deposit_report()
+            # Update DepositFile and Deposit status
+            deposit_file.state = DepositFile.State.HASHED
+            finalize_deposit_file(deposit_file)
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
             return
+
+
+def finalize_deposit_file(deposit_file):
+    deposit = deposit_file.deposit
+    if is_deposit_uploaded(deposit_file.deposit):
+        last_upload_at = DepositFile.objects.filter(
+            deposit=deposit_file.deposit
+        ).aggregate(last_upload_at=Max("uploaded_at"))
+        deposit_state = Deposit.State.HASHED
+        if deposit_file.state == DepositFile.State.ERROR:
+            deposit_state = Deposit.State.COMPLETE_WITH_ERRORS
+
+        finalize_deposit(deposit_file.deposit, deposit_state, last_upload_at["last_upload_at"])
 
 
 def is_deposit_uploaded(deposit):
@@ -284,6 +285,7 @@ def finalize_deposit(deposit, state, uploaded_at):
     deposit.uploaded_at = uploaded_at
     deposit.hashed_at = timezone.now()
     deposit.save()
+    #TODO deposit.send_email()
 
 
 def move_into_shafs(deposit_file, current_file_path):
@@ -385,14 +387,6 @@ def main(argv=None):
         default=logging.INFO,
         const=logging.DEBUG,
         help="verbose logging",
-    )
-    arg_parser.add_argument(
-        "--no-deposit-report",
-        dest="no_deposit_report",
-        action="store_const",
-        default=False,
-        const=True,
-        help="Don't run deposit Deposit.make_deposit_report() when a Deposit is finalized.",
     )
     args = arg_parser.parse_args(args=sys.argv[1:])
 
