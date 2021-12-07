@@ -52,7 +52,7 @@
   <vault-files-view base-path="{{ request.META.get('SCRIPT_NAME', '') }}"
                     app-path="/meta/files2"
                     path='{{ path | tojson }}'
-                    node='{{ node | tojson }}'
+                    node='{{ node | tojson2 }}'
                     child-nodes='{{ childNodes | tojson2 }}'
   >
   </vault-files-view>

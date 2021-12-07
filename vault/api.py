@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from functools import partial
 from itertools import chain
 
 import fs.errors
@@ -10,7 +11,6 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max
 from django.db.models.functions import Coalesce
-from django.forms import model_to_dict
 from django.http import (
     Http404,
     JsonResponse,
@@ -25,12 +25,15 @@ from django.views.decorators.http import require_GET
 
 
 from vault import models
+from vault.filters import ExtendedJSONEncoder
 from vault.forms import (
     FlowChunkGetForm,
     FlowChunkPostForm,
     RegisterDepositFileForm,
 )
 
+
+ExtendedJsonResponse = partial(JsonResponse, encoder=ExtendedJSONEncoder)
 
 logger = logging.getLogger(__name__)
 
@@ -135,8 +138,8 @@ def org_collection_sizes(org_node_id):
            stats.*
     from vault_collection coll
         left join (
-            select colln.*, 
-                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size, 
+            select colln.*,
+                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
                    -- subtract 1 from file_count as nodes are own descendants
                    -- could also filter on node_type to disallow FOLDER
                    count(descn.id) - 1 as file_count,
@@ -766,8 +769,10 @@ def path_listing(request):
         parent = child
 
     # Don't return the organization node.
-    node = model_to_dict(parent) if parent.node_type != "ORGANIZATION" else None
+    node = parent if parent.node_type != "ORGANIZATION" else None
     child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
-    return JsonResponse(
-        {"node": node, "childNodes": list(child_nodes.values()), "path": f"/{path}"}
-    )
+    return ExtendedJsonResponse({
+        "node": node,
+        "childNodes": child_nodes,
+        "path": f"/{path}"
+    })
