@@ -49,7 +49,7 @@ shutdown = threading.Event()
 def process_uploaded_deposit_files(args):
     while True:
         for deposit_file in DepositFile.objects.filter(
-                state=DepositFile.State.UPLOADED
+            state=DepositFile.State.UPLOADED
         ):
             org_id = deposit_file.deposit.organization_id
             org_tmp_path = str(org_id)
@@ -91,7 +91,8 @@ def process_uploaded_deposit_files(args):
                         f"Chunk marked as UPLOADED, but sizes don't match: {deposit_file.flow_identifier}"
                     )
                     deposit_file.state = deposit_file.State.ERROR
-                    finalize_deposit_file(deposit_file)
+                    deposit_file.save()
+                    finalize_deposit(deposit_file)
                     continue
 
                 logger.debug(f"Chunk sizes match. Merging...")
@@ -108,7 +109,7 @@ def process_uploaded_deposit_files(args):
                 file_sha256_time = 0
                 for i in range(1, chunk_count + 1):
                     chunk_filename = (
-                            "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
+                        "chunks/" + deposit_file.flow_identifier + "-" + str(i) + ".tmp"
                     )
                     chunk_path = os.path.join(osfs_root, chunk_filename)
                     merged_chunk_path = os.path.join(
@@ -182,7 +183,8 @@ def process_uploaded_deposit_files(args):
                             f"Error moving merged file to destination {merged_filename} - {err}"
                         )
                         deposit_file.state = DepositFile.State.ERROR
-                        finalize_deposit_file(deposit_file)
+                        deposit_file.save()
+                        finalize_deposit(deposit_file)
                         continue
 
                     db_time = time.perf_counter()
@@ -238,54 +240,50 @@ def process_uploaded_deposit_files(args):
                     deposit_file.tree_node = file_node
                     deposit_file.state = DepositFile.State.HASHED
                     deposit_file.save()
+                    finalize_deposit(deposit_file)
 
                     logger.info(
                         f"Chunked file merged {deposit_file.flow_identifier} - {deposit_file.sha256_sum}"
                     )
-
-            # Update DepositFile and Deposit status
-            deposit_file.state = DepositFile.State.HASHED
-            finalize_deposit_file(deposit_file)
 
         logger.debug(f"forever loop sleeping {SLEEP_TIME} sec before iterating")
         if shutdown.wait(SLEEP_TIME):
             return
 
 
-def finalize_deposit_file(deposit_file):
+def finalize_deposit(deposit_file):
     deposit = deposit_file.deposit
     if is_deposit_uploaded(deposit_file.deposit):
         last_upload_at = DepositFile.objects.filter(
             deposit=deposit_file.deposit
         ).aggregate(last_upload_at=Max("uploaded_at"))
-        deposit_state = Deposit.State.HASHED
-        if deposit_file.state == DepositFile.State.ERROR:
-            deposit_state = Deposit.State.COMPLETE_WITH_ERRORS
 
-        finalize_deposit(deposit_file.deposit, deposit_state, last_upload_at["last_upload_at"])
+        deposit.state = Deposit.State.HASHED
+        if deposit_file.state == DepositFile.State.ERROR:
+            deposit.state = Deposit.State.COMPLETE_WITH_ERRORS
+
+        deposit.uploaded_at = last_upload_at["last_upload_at"]
+        deposit.hashed_at = timezone.now()
+        try:
+            deposit.save()
+        except Exception as e:
+            pass
+        deposit.send_deposit_report_email()
 
 
 def is_deposit_uploaded(deposit):
     if deposit.state in (Deposit.State.REGISTERED, Deposit.State.UPLOADED):
         if 0 == len(
-                DepositFile.objects.filter(
-                    deposit=deposit,
-                    state__in=(
-                            DepositFile.State.REGISTERED,
-                            DepositFile.State.UPLOADED,
-                    ),
-                )
+            DepositFile.objects.filter(
+                deposit=deposit,
+                state__in=(
+                    DepositFile.State.REGISTERED,
+                    DepositFile.State.UPLOADED,
+                ),
+            )
         ):
             return True
     return False
-
-
-def finalize_deposit(deposit, state, uploaded_at):
-    deposit.state = state
-    deposit.uploaded_at = uploaded_at
-    deposit.hashed_at = timezone.now()
-    deposit.save()
-    deposit.send_deposit_report_email()
 
 
 def move_into_shafs(deposit_file, current_file_path):
