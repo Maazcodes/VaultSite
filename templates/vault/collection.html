@@ -38,7 +38,7 @@
                                 <td>{% if event.hashed_at %}{{ event.hashed_at.strftime('%B %-d, %Y') }}{% else %}-{% endif %}</td>
                                 <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
                                 <td>{{ event.file_count }}</td>
-                                <td>0</td>
+                                <td>{{ event.error_count }}</td>
                                 <td><a href="{{ url('deposit_report', args=(event.pk,)) }}">View Details</a></td>
                             </tr>
                             </tbody>

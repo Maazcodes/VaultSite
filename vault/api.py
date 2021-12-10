@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from collections import defaultdict
 from functools import partial
 from itertools import chain
 
@@ -709,30 +710,23 @@ def hashed_status(request):
         return HttpResponseBadRequest()
     deposit = get_object_or_404(models.Deposit, pk=deposit_id, organization_id=org_id)
 
-    state = {"REGISTERED": 0, "UPLOADED": 0, "HASHED": 0, "REPLICATED": 0}
-
-    deposit_files = (
+    state_count_qs = (
         models.DepositFile.objects.filter(deposit=deposit)
-        .values("state")
+        .values_list("state")
         .annotate(files=Count("state"))
-        .order_by("state")
     )
 
     total_files = 0
-
-    for deposit_file in deposit_files:
-        state[deposit_file["state"]] = deposit_file["files"]
-        total_files += deposit_file["files"]
-
-    file_queue = models.DepositFile.objects.filter(
-        state=models.DepositFile.State.UPLOADED
-    ).aggregate(file_count=Coalesce(Count("*"), 0))["file_count"]
+    state_count = defaultdict(int)
+    for state, file_count in state_count_qs:
+        state_count[state] = file_count
+        total_files += file_count
 
     return JsonResponse(
         {
-            "hashed_files": state["HASHED"],
+            "hashed_files": state_count[models.DepositFile.State.HASHED],
             "total_files": total_files,
-            "file_queue": file_queue,
+            "file_queue": state_count[models.DepositFile.State.UPLOADED],
         }
     )
 
@@ -771,8 +765,6 @@ def path_listing(request):
     # Don't return the organization node.
     node = parent if parent.node_type != "ORGANIZATION" else None
     child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
-    return ExtendedJsonResponse({
-        "node": node,
-        "childNodes": child_nodes,
-        "path": f"/{path}"
-    })
+    return ExtendedJsonResponse(
+        {"node": node, "childNodes": child_nodes, "path": f"/{path}"}
+    )

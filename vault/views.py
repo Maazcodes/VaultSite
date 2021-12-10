@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import defaultdict
 import datetime
 import json
 import logging
@@ -10,7 +10,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
-from django.db.models import Max, Sum, Count
+from django.db.models import Max, Q, Sum, Count
 from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.http import HttpResponse
@@ -140,7 +140,7 @@ def collection(request, collection_id):
     collection_stats = models.TreeNode.objects.filter(
         path__descendant=collection.tree_node.path
     ).aggregate(
-        file_count=Coalesce(Count("*"), 0),
+        file_count=Coalesce(Count("pk"), 0),
         total_size=Coalesce(Sum("size"), 0),
         last_modified=Max("modified_at"),
     )
@@ -156,8 +156,9 @@ def collection(request, collection_id):
     )
     reports = models.Report.objects.filter(collection=collection.pk)
     deposits = models.Deposit.objects.filter(collection=collection).annotate(
-        file_count=Coalesce(Count("files"), 0),
+        file_count=Count("files"),
         total_size=Coalesce(Sum("files__size"), 0),
+        error_count=Count("pk", filter=Q(files__state=models.DepositFile.State.ERROR)),
     )
 
     def event_sort(event: Union[models.Deposit, models.Report]):
@@ -207,16 +208,23 @@ def deposit_report(request, deposit_id):
     collection = deposit.collection
     deposit_files = deposit.files.all()
     file_count = len(deposit_files)
-    total_size = sum(df.size for df in deposit_files)
-    state_count = Counter(df.state for df in deposit.files.all())
-    processed_count = state_count.get(
-        models.DepositFile.State.REPLICATED, 0
-    ) + state_count.get(models.DepositFile.State.HASHED, 0)
-    awaiting_processing_count = state_count.get(models.DepositFile.State.UPLOADED, 0)
-    awaiting_upload_count = state_count.get(models.DepositFile.State.REGISTERED, 0)
-    error_count = 0
+    total_size = 0
+    state_count = defaultdict(int)
+    state_sizes = defaultdict(float)
+    for df in deposit_files:
+        total_size += df.size
+        state_count[df.state] += 1
+        state_sizes[df.state] += df.size
+    processed_states = (
+        models.DepositFile.State.HASHED,
+        models.DepositFile.State.REPLICATED,
+    )
+    processed_count = sum(state_count[state] for state in processed_states)
+    processed_size = sum(state_sizes[state] for state in processed_states)
     if deposit.state in (models.Deposit.State.REPLICATED, models.Deposit.State.HASHED):
         display_state = "Complete"
+    elif deposit.state == models.Deposit.State.COMPLETE_WITH_ERRORS:
+        display_state = "Complete with Errors"
     elif deposit.state == models.Deposit.State.UPLOADED:
         display_state = "Processing"
     elif deposit.state == models.Deposit.State.REGISTERED:
@@ -233,10 +241,9 @@ def deposit_report(request, deposit_id):
             "file_count": file_count,
             "total_size": total_size,
             "state_count": state_count,
+            "state_sizes": state_sizes,
             "processed_count": processed_count,
-            "awaiting_processing_count": awaiting_processing_count,
-            "awaiting_upload_count": awaiting_upload_count,
-            "error_count": error_count,
+            "processed_size": processed_size,
             "display_state": display_state,
         },
     )
