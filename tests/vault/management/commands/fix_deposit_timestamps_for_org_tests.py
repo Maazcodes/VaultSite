@@ -1,7 +1,6 @@
 from django.utils import timezone
 import pytest
 
-from tests.vault.fixtures import super_user
 from vault.models import Collection, Deposit, DepositFile
 from vault.management.commands.fix_deposit_timestamps_for_org import (
     fix_deposit_timestamps_for_org,

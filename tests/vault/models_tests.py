@@ -1,7 +1,6 @@
 from django.conf import settings
 import pytest
 
-from tests.vault.fixtures import super_user
 from vault.models import User
 
 
