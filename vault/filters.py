@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from json import JSONEncoder
 
@@ -14,7 +13,7 @@ class ExtendedJSONEncoder(JSONEncoder):
 
     def default(self, o):
         if isinstance(o, Model):
-          return model_to_dict(o)
+            return model_to_dict(o)
         elif isinstance(o, QuerySet):
             # Return a QuerySet as a list of dicts.
             return list(o.values())

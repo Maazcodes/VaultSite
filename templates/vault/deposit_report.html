@@ -1,5 +1,5 @@
 {% extends "vault/base.html" %}
-{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/" + collection.id|string), ("Deposit " + deposit.pk|string, "deposit/" + deposit.pk|string)) %}
+{% set breadcrumbs = (("Vault", "dashboard"), ("Collections", "collections"), (collection.name, "collections/" + collection.id|string), ("Deposit to " + collection.name + " on " + deposit.registered_at.strftime("%Y-%m-%d"), "deposit/" + deposit.pk|string)) %}
 
 {% block head %}
 {{ super() }}
@@ -19,7 +19,7 @@
 {#<script src="{{ static("digipres/js/popper.min.js") }}"></script>#}
 {% endblock head %}
 
-{% block header_title %}Deposit {{ deposit.registered_at.strftime("%Y-%m-%d") }} - {{ collection.name }}{% endblock header_title %}
+{% block header_title %}Deposit to {{ collection.name }} on {{ deposit.registered_at.strftime("%Y-%m-%d") }}{% endblock header_title %}
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}
 {% block content %}
@@ -45,20 +45,20 @@
                     <strong>Finished Processing At</strong>: {{ deposit.hashed_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
                     <br />
                     {% endif %}
-                    <strong>Total Size To Deposit</strong>: {{ total_size|filesizeformat(binary=True) }}
-                    <br />
                     <strong>Total Files To Deposit</strong>: {{ file_count }}
+                    <br />
+                    <strong>Total Size To Deposit</strong>: {{ total_size|filesizeformat(binary=True) }}
                     <br />
                 </p>
                 <h4>Progress</h4>
                 <p class="card-text">
-                    <strong>Complete</strong>: {{ processed_count }}/{{ file_count }} files
+                    <strong>Complete</strong>: {{ processed_count }} files, {{ processed_size|filesizeformat(binary=True) }}
                     <br />
-                    <strong>Awaiting Upload</strong>: {{ awaiting_upload_count }}/{{ file_count }} files
+                    <strong>Awaiting Upload</strong>: {{ state_count["REGISTERED"] }} files, {{ state_sizes["REGISTERED"]|filesizeformat(binary=True) }}
                     <br />
-                    <strong>Awaiting Processing</strong>: {{ awaiting_processing_count }}/{{ file_count }} files
+                    <strong>Awaiting Processing</strong>: {{ state_count["UPLOADED"] }} files, {{ state_sizes["UPLOADED"]|filesizeformat(binary=True) }}
                     <br />
-                    <strong>Errors</strong>: {{ error_count }}/{{ file_count }} files
+                    <strong>Errors</strong>: {{ state_count["ERROR"] }} files, {{ state_sizes["ERROR"]|filesizeformat(binary=True) }}
                     <br />
                 </p>
                 <div id="report-chart"></div>
@@ -69,16 +69,19 @@
             <nav>
                 <ul class="pagination">
                     <li class="page-item">
+                        <a onclick="showAllStates()">All ({{ file_count }})</a>
+                    </li>
+                    <li class="page-item">
                         <a onclick="filterState('.report-card-success')">Complete ({{ processed_count }})</a>
                     </li>
                     <li class="page-item">
-                        <a onclick="filterState('.report-card-processing')">Processing ({{ awaiting_processing_count }})</a>
+                        <a onclick="filterState('.report-card-processing')">Processing ({{ state_count["UPLOADED"] }})</a>
                     </li>
                     <li class="page-item">
-                        <a onclick="filterState('.report-card-uploading')">Uploading ({{ awaiting_upload_count }})</a>
+                        <a onclick="filterState('.report-card-uploading')">Uploading ({{ state_count["REGISERED"] }})</a>
                     </li>
                     <li class="page-item">
-                        <a onclick="filterState('.report-card-error')">Error ({{ error_count }})</a>
+                        <a onclick="filterState('.report-card-error')">Error ({{ state_count["ERROR"] }})</a>
                     </li>
                 </ul>
             </nav>
@@ -116,6 +119,18 @@
 </div>
 
 <script type="text/javascript">
+    function showAllStates() {
+        let stateClasses = [
+            '.report-card-success',
+            '.report-card-processing',
+            '.report-card-uploading',
+            '.report-card-error'
+        ];
+        let to_show = document.querySelectorAll(stateClasses.join(","))
+        for (var i = 0; i < to_show.length; i++) {
+            to_show.item(i).setAttribute("style", "display: true")
+        }
+    }
     function filterState(stateClass) {
         let stateClasses = [
             '.report-card-success',
@@ -135,9 +150,9 @@
     }
     $(function() {
         var processedCount = {{ processed_count }};
-        var awaitingProcessingCount = {{ awaiting_processing_count }}
-        var awaitingUploadCount = {{ awaiting_upload_count }}
-        var errorCount = {{ error_count }};
+        var awaitingProcessingCount = {{ state_count["UPLOADED"] }}
+        var awaitingUploadCount = {{ state_count["REGISTERED"] }}
+        var errorCount = {{ state_count["ERROR"] }};
 
         chartalign.register("#report-chart", function (width, height) {
             return $("<canvas></canvas>").attr("width", width).attr("height", height);
