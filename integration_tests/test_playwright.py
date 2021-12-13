@@ -1,8 +1,6 @@
 from playwright.sync_api import sync_playwright
 import pytest
 
-from tests.vault.fixtures import super_user
-
 
 def test_dashboard_is_working(super_user, live_server):
     with sync_playwright() as p:

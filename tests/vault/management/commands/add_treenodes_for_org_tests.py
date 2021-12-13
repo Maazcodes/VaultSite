@@ -1,6 +1,5 @@
 import pytest
 
-from tests.vault.fixtures import super_user
 from vault.management.commands.add_treenodes_for_org import add_treenodes_for_org
 from vault.models import Collection, Organization, TreeNode
 
