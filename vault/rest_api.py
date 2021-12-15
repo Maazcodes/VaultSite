@@ -161,7 +161,6 @@ class VaultViewSet(GenericViewSet):
         "iexact",
         "startswith",
     )
-    FILTERSET_DEFAULT_SPEC = ("exact",)
 
     @classmethod
     def as_view(cls, actions=None, **initkwargs):
@@ -183,8 +182,8 @@ class VaultViewSet(GenericViewSet):
                 # Field is text.
                 spec = cls.FILTERSET_TEXT_SPEC
             else:
-                # Field is something else.
-                spec = cls.FILTERSET_DEFAULT_SPEC
+                # Field is something else - don't enable filtering.
+                continue
             filterset_fields[field.name] = spec
         cls.filterset_fields = filterset_fields
 
