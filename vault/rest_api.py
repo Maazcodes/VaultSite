@@ -191,7 +191,10 @@ class VaultViewSet(GenericViewSet):
     def get_queryset(self):
         """Apply the user_queryset_filter() to the queryset."""
         user = self.request.user
-        return self.__class__.user_queryset_filter(user, self.queryset)
+        user_queryset_filter = self.__class__.user_queryset_filter
+        if user_queryset_filter is None:
+            return self.queryset
+        return user_queryset_filter(user, self.queryset)
 
     def get_serializer(self, *args, **kwargs):
         """Apply request-specific serializer modifications."""
@@ -237,6 +240,7 @@ class GeolocationViewSet(VaultReadOnlyModelViewSet):
     queryset = Geolocation.objects.all()
     serializer_class = GeolocationSerializer
     permission_classes = (IsAuthenticated,)
+    user_queryset_filter = None
 
 
 ###############################################################################
