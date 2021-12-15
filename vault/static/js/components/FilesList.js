@@ -1,7 +1,7 @@
 
 import ContextMenu from "./ContextMenu.js"
 import { publish, subscribe } from "./../lib/pubsub.js"
-import { escapeHtml, joinPath } from "./../lib/domLib.js"
+import { createElement, escapeHtml, joinPath } from "./../lib/domLib.js"
 import { humanBytes } from "./../lib/lib.js"
 
 export default class FilesList extends HTMLElement {
@@ -11,7 +11,8 @@ export default class FilesList extends HTMLElement {
     this.state = {
       detailsPanelClosed: false,
       selectedRows: [],
-      selectedNodes: []
+      selectedNodes: [],
+      nextChildBatchUrl: null
     }
     this.table = null
   }
@@ -19,12 +20,6 @@ export default class FilesList extends HTMLElement {
   connectedCallback () {
     // Expect this.props.files to have been been programmatically populated
     // by FilesView.
-
-    // Sort FOLDER-type items to the head.
-    this.props.nodes.sort((a, b) =>
-      (b.node_type === "FOLDER" ? 1 : 0) - (a.node_type === "FOLDER" ? 1 : 0)
-    )
-
     this.nodesChangedHandler()
 
     this.addEventListener("_focused", this.rowFocusedHandler.bind(this))
@@ -38,41 +33,66 @@ export default class FilesList extends HTMLElement {
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryMessageHandler.bind(this))
   }
 
-  nodesChangedHandler () {
-    // Sort FOLDER-type items to the head.
-    this.props.nodes.sort((a, b) =>
-      (b.node_type === "FOLDER" ? 1 : 0) - (a.node_type === "FOLDER" ? 1 : 0)
-    )
+  nodeToUI5TableRow (node, index) {
+    /* Return a <ui5-table-row> element for the given node and index.
+     */
+    return createElement(`
+      <ui5-table-row data-index="${index}" data-name="${node.name}">
+        <ui5-table-cell class="name ${node.node_type}"
+                        title="${escapeHtml(node.name)}"
+        >
+          ${escapeHtml(node.name)}
+        </ui5-table-cell>
+        <ui5-table-cell class="uploaded-by">
+          ${node.uploaded_by?.username || "&mdash;"}
+        </ui5-table-cell>
+        <ui5-table-cell class="modified-at">
+          ${node.modified_at}
+        </ui5-table-cell>
+        <ui5-table-cell class="size">
+          ${node.node_type === "FILE" ? humanBytes(node.size) : "&mdash;"}
+        </ui5-table-cell>
+      </ui5-table-row>
+      `)
+  }
 
+  appendChildNodes (nodes) {
+    /* Append nodes to the table.
+     */
+    let i = this.props.nodes.length
+    for (const node of nodes) {
+      this.props.nodes.push(node)
+      this.table.appendChild(this.nodeToUI5TableRow(node, i))
+      i += 1
+    }
+  }
+
+  nodesChangedHandler () {
     // Reset selectedNodes.
     this.state.selectedRows = []
     this.state.selectedNodes = []
 
     // Re-render.
     this.innerHTML = `
-      <ui5-table mode="MultiSelect">
+      <ui5-table mode="MultiSelect" sticky-column-header growing="Scroll"
+        no-data-text="Loading...">
         <ui5-table-column slot="columns">Name</ui5-table-column>
         <ui5-table-column slot="columns">Uploaded by</ui5-table-column>
         <ui5-table-column slot="columns">Last modified</ui5-table-column>
         <ui5-table-column slot="columns">File size</ui5-table-column>
-
-        ${this.props.nodes.map((node, i) => `
-          <ui5-table-row data-index="${i}" data-name="${node.name}">
-            <ui5-table-cell class="name ${node.node_type}"
-                            title="${escapeHtml(node.name)}"
-            >
-              ${escapeHtml(node.name)}
-            </ui5-table-cell>
-            <ui5-table-cell class="uploaded-by">${node.uploaded_by__username__max || "&mdash;"}</ui5-table-cell>
-            <ui5-table-cell class="modified-at">${node.modified_at}</ui5-table-cell>
-            <ui5-table-cell class="size">${node.node_type === "FILE" ? humanBytes(node.size) : "&mdash;"}</ui5-table-cell>
-          </ui5-table-row>
-        `).join('\n')}
       </ui5-table>
-        `
+    `
 
     // Save a reference to the table.
     this.table = this.querySelector("ui5-table")
+
+    // Append the node rows.
+    this.props.nodes.forEach(
+      (node, i) => this.table.appendChild(this.nodeToUI5TableRow(node, i))
+    )
+
+    // Register the ui5-table load-more event handler.
+    this.table.addEventListener("load-more", this.loadMoreHandler.bind(this))
   }
 
   getRowTarget (e) {
@@ -190,11 +210,25 @@ export default class FilesList extends HTMLElement {
     )
   }
 
-  changeDirectoryMessageHandler ({ path, childNodes }) {
+  changeDirectoryMessageHandler ({ path, childNodesResponse }) {
     /* Update props and re-render.
     */
-    Object.assign(this.props, { path, nodes: childNodes })
+    this.state.nextChildrenUrl = childNodesResponse.next
+    Object.assign(this.props, { path, nodes: childNodesResponse.results })
     this.nodesChangedHandler()
+  }
+
+  async loadMoreHandler (e) {
+    /* If there are more child nodes, load them and append them to the table.
+     */
+    if (!this.state.nextChildrenUrl) {
+      return
+    }
+    this.table.busy = true
+    const childNodesResponse = await (await fetch(this.state.nextChildrenUrl)).json()
+    this.state.nextChildrenUrl = childNodesResponse.next
+    this.appendChildNodes(childNodesResponse.results)
+    this.table.busy = false
   }
 }
 

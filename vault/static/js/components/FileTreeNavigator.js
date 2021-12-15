@@ -1,5 +1,5 @@
 
-import { subscribe } from "../lib/pubsub.js"
+import { publish, subscribe } from "../lib/pubsub.js"
 
 export default class FileTreeNavigator extends HTMLElement {
   constructor () {
@@ -16,6 +16,9 @@ export default class FileTreeNavigator extends HTMLElement {
     this.render()
 
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryHandler.bind(this))
+
+    // Announce component connection.
+    publish("FILE_TREE_NAVIGATOR_COMPONENT_CONNECTED")
   }
 
   render () {
@@ -29,7 +32,7 @@ export default class FileTreeNavigator extends HTMLElement {
           ${pathParts.map((pp, i) =>
             `<ui5-tree-item text="${pp}" expanded ${i === lastPartI ? "selected" : ""}>`
           ).join("")}
-            ${this.props.nodes.map(node =>
+            ${this.props.nodes.filter(node => node.node_type !== "FILE").map(node =>
               `<ui5-tree-item text="${node.name}" ${node.node_type === "FILE" ? "" : "has-children"}>
                </ui5-tree-item>`
             ).join("")}
@@ -39,9 +42,9 @@ export default class FileTreeNavigator extends HTMLElement {
     `
   }
 
-  changeDirectoryHandler ({ childNodes, path }) {
+  changeDirectoryHandler ({ childNodesResponse, path }) {
     this.props.path = path
-    this.props.nodes = childNodes
+    this.props.nodes = childNodesResponse.results
     this.render()
   }
 }

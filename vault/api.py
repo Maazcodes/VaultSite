@@ -750,21 +750,3 @@ def render_tree_file_view(request):
             ]
         }
     )
-
-
-@require_GET
-@login_required
-def path_listing(request):
-    path = request.GET.get("path", "").lstrip("/")
-
-    parent = request.user.organization.tree_node
-    for node in path.split("/") if path else ():
-        child = get_object_or_404(models.TreeNode, name=node, parent=parent)
-        parent = child
-
-    # Don't return the organization node.
-    node = parent if parent.node_type != "ORGANIZATION" else None
-    child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
-    return ExtendedJsonResponse(
-        {"node": node, "childNodes": child_nodes, "path": f"/{path}"}
-    )

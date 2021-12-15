@@ -30,7 +30,7 @@ export default class FileDetails extends HTMLElement {
   render () {
     const { node } = this.props
 
-    if (!node) {
+    if (node.node_type === "ORGANIZATION") {
       this.innerHTML = `
         <p>
           <em>Select a file or folder to view its details</em>

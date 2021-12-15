@@ -2,8 +2,7 @@
 const DEBUG = false
 
 export const TOPICS = new Set([
-  "API_REQUEST",
-  "API_RESPONSE",
+  "API_SERVICE_READY",
   "CHANGE_DIRECTORY",
   "CHANGE_DIRECTORY_REQUEST",
   "DETAILS_PANEL_CLOSED",
@@ -17,6 +16,7 @@ export const TOPICS = new Set([
   "NODE_RENAME_RESPONSE",
   "OPEN_FILE_REQUEST",
   "SHOW_DETAILS_PANEL",
+  "FILE_TREE_NAVIGATOR_COMPONENT_CONNECTED",
 ])
 
 const topicSubscribersMap = new Map(

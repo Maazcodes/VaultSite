@@ -14,9 +14,15 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, re_path
+from django.urls import (
+    include,
+    path,
+    re_path,
+)
+
 from vault import api, views
 
+from vault.rest_api import router as rest_api_router
 
 urlpatterns = [
     path("", views.index, name="index"),
@@ -77,7 +83,8 @@ urlpatterns = [
     ),
     path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
     path("api/deposit_status", api.hashed_status, name="api_deposit_status"),
-    path("api/path_listing", api.path_listing, name="api_path_listing"),
     path("api/warning_deposit", api.warning_deposit, name="api_warning_deposit"),
+    # Include the Django Rest Framework API routes.
+    path("api/", include(rest_api_router.urls)),
     path("admin/", admin.site.urls),
 ]
