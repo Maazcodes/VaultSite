@@ -600,12 +600,9 @@ def render_web_components_file_view(request, path):
     for node in path.split("/") if path else ():
         child = get_object_or_404(models.TreeNode, name=node, parent=parent)
         parent = child
-
-    # Don't return the organization node.
-    node = parent if parent.node_type != "ORGANIZATION" else None
-    child_nodes = parent.children.all().annotate(Max("uploaded_by__username"))
+    node = parent
     return TemplateResponse(
         request,
         "vault/web_components_files_view.html",
-        {"node": node, "childNodes": child_nodes, "path": f"/{path}"},
+        {"node": node, "path": f"/{path}"},
     )

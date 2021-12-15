@@ -17,11 +17,23 @@ import FilesList from "./FilesList.js"
    Conductor
  *****************************************************************************/
 class Conductor {
-  constructor (basePath, appPath, path) {
+  constructor ({ basePath, appPath, path, node }) {
     this.basePath = basePath
     this.appPath = appPath
     this.path = path
-    this.api = new API(basePath)
+    this.node = node
+    this.api = new API(`${basePath}/api/`)
+    this.state = {
+      childQuery: {
+        ordering: "-node_type,name",
+        limit: 25
+      },
+      // Define the set of topics to wait for before calling init().
+      topicsUntilInit: new Set([
+        "API_SERVICE_READY",
+        "FILE_TREE_NAVIGATOR_COMPONENT_CONNECTED"
+      ])
+    }
 
     subscribe(
       "CHANGE_DIRECTORY_REQUEST",
@@ -39,39 +51,68 @@ class Conductor {
     )
 
     window.addEventListener("popstate", this.popstateHandler.bind(this))
+
+    // Subscribe the handler to the topics in topicsUntilInit.
+    this.state.topicsUntilInit.forEach(topic =>
+      subscribe(topic, () => this.untilInitTopicHandler(topic))
+    )
   }
 
-  set path (path) {
+  init () {
+    /* Publish an initial CHANGE_DIRECTORY_REQUEST message to trigger the
+       initial node children load.
+     */
+    const { node, path } = this
+    publish("CHANGE_DIRECTORY_REQUEST", { node, path })
+  }
+
+  untilInitTopicHandler (topic) {
+    /* Register receipt of the topic message and maybe call init().
+     */
+    if (this.state.topicsUntilInit.size > 0) {
+      // The topic waitlist is not empty, so remove this one.
+      this.state.topicsUntilInit.delete(topic)
+      // If the waitlist is now empty, call init().
+      if (this.state.topicsUntilInit.size == 0) {
+        this.init()
+      }
+    }
+  }
+
+  doHistoryUpdate (path, node) {
     /* Write the path to the browser history.
      */
     path = path || "/"
     if (!path.startsWith("/")) {
       path = `/${path}`
     }
-    history.pushState({ path: path }, '', `${joinPath(this.appPath, path)}`)
+    history.pushState({ path, node }, '', `${joinPath(this.appPath, path)}`)
   }
 
   popstateHandler (e) {
     /* Navigate to history state path.
      */
     if (e.state) {
-      this.changeDirectoryRequestHandler({ path: e.state.path }, false)
+      this.changeDirectoryRequestHandler(
+        { node: e.state.node, path: e.state.path },
+        false
+      )
     }
   }
 
-  async changeDirectoryRequestHandler ({ path }, updateHistory = true) {
+  async changeDirectoryRequestHandler ({ node, path }, updateHistory = true) {
     /* Retrieve the directory listing from the API and emit it as a
        CHANGE_DIRECTORY command message.
      */
-    // Get the directory listing for the specified path.
-    const response = await this.api.pathListing(path)
-    const data = await response.json()
+    // Fetch the selected node's children.
+    const { limit, ordering } = this.state.childQuery
+    const childNodesResponse =
+      await this.api.treenodes.get(null, { parent: node.id, limit, ordering })
     // Publish a CHANGE_DIRECTORY command with the requested path listing.
-    // data comprises: { node, childNodes, path }
-    publish("CHANGE_DIRECTORY", data)
+    publish("CHANGE_DIRECTORY", { node, childNodesResponse, path })
     // Maybe update the browser history stack to reflect the new path.
     if (updateHistory) {
-      this.path = path
+      this.doHistoryUpdate(path, node)
     }
   }
 
@@ -101,14 +142,12 @@ export default class FilesView extends HTMLElement {
       appPath: this.getAttribute("app-path"),
       path: JSON.parse(this.getAttribute("path")),
       node: JSON.parse(this.getAttribute("node")),
-      childNodes: JSON.parse(this.getAttribute("child-nodes")),
     }
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${this.props.basePath}${this.props.appPath}`
 
     // Instantiate the Conductor with the current paths.
-    const { basePath, appPath, path } = this.props
-    this.conductor = new Conductor(basePath, appPath, path)
+    this.conductor = new Conductor(this.props)
 
     this.innerHTML = `
       <div class="left-panel">
@@ -137,7 +176,7 @@ export default class FilesView extends HTMLElement {
     // Init the FileTreeNavigator component and append it to the first column.
     this.fileTreeNavigator = Object.assign(new FileTreeNavigator(), {
       props: {
-        nodes: this.props.childNodes,
+        nodes: [],
         path: this.props.path
       }
     })
@@ -147,16 +186,17 @@ export default class FilesView extends HTMLElement {
     // Init the FilesList component and append it to the second column.
     this.filesList = Object.assign(new FilesList(), {
       props: {
-        nodes: this.props.childNodes,
+        nodes: [],
         path: this.props.path,
       }
     })
-    this.querySelector("#files-list-container")
-        .appendChild(this.filesList)
+    this.querySelector("#files-list-container").appendChild(this.filesList)
 
     // Init the FileDetails component and append it to the last column.
     this.fileDetails = Object.assign(new FileDetails(), {
-      props: { node: this.props.node }
+      props: {
+        node: this.props.node
+      }
     })
     this.querySelector("#file-details-container")
         .appendChild(this.fileDetails)

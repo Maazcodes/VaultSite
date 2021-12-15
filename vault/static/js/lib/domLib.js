@@ -19,3 +19,12 @@ export const joinPath = (...xs) => (
   `${xs.flatMap(x => x.split('/')).filter(x => x !== '').join('/')}` +
   `${xs.at(-1).endsWith("/") ? "/" : ""}`
 )
+
+export function createElement (DOMString, parentTag="div") {
+  // Return an HTML element object for the given DOM string.
+  const wrapper = document.createElement(parentTag)
+  wrapper.innerHTML = DOMString.trim()
+  const el = wrapper.firstChild
+  wrapper.removeChild(el)
+  return el
+}
