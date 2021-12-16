@@ -122,6 +122,11 @@ class TreeNodeSerializer(HyperlinkedModelSerializer):
             "url",
         ]
 
+    @classmethod
+    def setup_eager_loading(cls, queryset):
+        """Prefetch related fields to minimize the number of queries."""
+        return queryset.prefetch_related("uploaded_by")
+
 
 ###############################################################################
 # Custom ViewSet Base Classes
@@ -188,12 +193,21 @@ class VaultViewSet(GenericViewSet):
         cls.filterset_fields = filterset_fields
 
     def get_queryset(self):
-        """Apply the user_queryset_filter() to the queryset."""
-        user = self.request.user
+        """Return a queryset with applied request-time transformations."""
+        queryset = self.queryset
+
+        # Apply any defined upser_queryset_filter function.
         user_queryset_filter = self.__class__.user_queryset_filter
-        if user_queryset_filter is None:
-            return self.queryset
-        return user_queryset_filter(user, self.queryset)
+        if user_queryset_filter is not None:
+            queryset = user_queryset_filter(self.request.user, self.queryset)
+
+        # Perform any defined eager loading.
+        # https://ses4j.github.io/2015/11/23/optimizing-slow-django-rest-framework-performance/
+        serializer_cls = self.get_serializer_class()
+        if hasattr(serializer_cls, "setup_eager_loading"):
+            queryset = serializer_cls.setup_eager_loading(queryset)
+
+        return queryset
 
     def get_serializer(self, *args, **kwargs):
         """Apply request-specific serializer modifications."""
