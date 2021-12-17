@@ -1,5 +1,7 @@
 -r requirements.in
 -c requirements.txt
+cssselect
+lxml
 model_bakery
 playwright
 pytest

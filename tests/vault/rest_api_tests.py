@@ -3,6 +3,8 @@ from pytest import (
     mark,
 )
 
+import lxml.html
+
 from rest_framework.test import APIClient
 
 
@@ -42,6 +44,9 @@ class AuthenticatedClient(APIClient):
         # Set the HTTP header required for Django RemoteUserBackend.
         self.credentials(REMOTE_USER=user.username)
 
+    def get_html(self, *args, **kwargs):
+        return self.get(*args, HTTP_ACCEPT="text/html", **kwargs)
+
 
 def assert_404(response):
     """Assert a 404 status API response."""
@@ -65,6 +70,22 @@ def endpoint(resource_name, resource_id=None):
 def assert_hyperlinked_url(url, resource_name, resource_id):
     """Assert that a HyperlinkedModelSerializer URL is as expected."""
     assert url.endswith(endpoint(resource_name, resource_id))
+
+
+def get_endpoint_html_filter_selects(user, _endpoint):
+    """Return a list of <select> element nodes in the Filters dialog form
+    at the specified endpoint.
+    """
+    client = AuthenticatedClient(user)
+    html = client.get_html(endpoint(_endpoint)).content
+    el = lxml.html.fromstring(html)
+    return el.cssselect("div.modal-body > form select")
+
+
+def assert_option_element_is_initial_empty_placeholder(option):
+    """Assert that an option etree element is an empty initial placeholder."""
+    assert option.get("value") == ""
+    assert set(option.text) == {"-"}
 
 
 ###############################################################################
@@ -100,6 +121,24 @@ def test_organizations_endpoint_list_access(users):
         )
 
 
+@mark.django_db
+def test_organizations_endpoint_list_html_filters(users):
+    """Test that dropdowns in the organizations endpoint HTML response Filters dialog
+    form contain only authorized values.
+    """
+    for user in users:
+        selects = get_endpoint_html_filter_selects(user, "organizations")
+        # Assert that there's a single plan select.
+        assert len(selects) == 1
+        assert selects[0].name == "plan"
+        options = selects[0].getchildren()
+        # Assert that the options comprise an initial placeholder and the single
+        # user plan node.
+        assert len(options) == 2
+        assert_option_element_is_initial_empty_placeholder(options[0])
+        assert int(options[1].get("value")) == user.organization.plan.id
+
+
 #### Plans Endpoint Tests ####
 
 
@@ -130,6 +169,23 @@ def test_plans_endpoint_list_access(users):
         )
 
 
+@mark.django_db
+def test_plans_endpoint_list_html_filters(users):
+    """Test that dropdowns in the plans endpoint HTML response Filters dialog
+    form contain only authorized values.
+    """
+    for user in users:
+        selects = get_endpoint_html_filter_selects(user, "plans")
+        # Assert that there are default_replication and default_fixity_frequency
+        # selects.
+        assert len(selects) == 2
+        assert {x.name for x in selects} == {
+            "default_replication",
+            "default_fixity_frequency",
+        }
+        # These option values are non-sensitive so no need to check them.
+
+
 #### Users Endpoint Tests ####
 
 
@@ -155,6 +211,24 @@ def test_users_endpoint_list_access(users):
         response = client.get(endpoint("users")).json()
         assert response["count"] == 1
         assert_hyperlinked_url(response["results"][0]["url"], "users", user.id)
+
+
+@mark.django_db
+def test_users_endpoint_list_html_filters(users):
+    """Test that dropdowns in the users endpoint HTML response Filters dialog form
+    contain only authorized values.
+    """
+    for user in users:
+        selects = get_endpoint_html_filter_selects(user, "users")
+        # Assert that there's a single organization select.
+        assert len(selects) == 1
+        assert selects[0].name == "organization"
+        options = selects[0].getchildren()
+        # Assert that the options comprise an initial placeholder and the single
+        # user organization node.
+        assert len(options) == 2
+        assert_option_element_is_initial_empty_placeholder(options[0])
+        assert int(options[1].get("value")) == user.organization.id
 
 
 #### TreeNode Endpoint Tests ####
@@ -217,6 +291,23 @@ def test_treenodes_endpoint_list_access(users, make_treenode):
             "treenodes",
             client.user.organization.tree_node_id,
         )
+
+
+@mark.django_db
+def test_treenodes_endpoint_list_html_filters(users):
+    """Test that dropdowns in the treenodes endpoint HTML response Filters dialog
+    form contain only authorized values.
+    """
+    for user in users:
+        selects = get_endpoint_html_filter_selects(user, "treenodes")
+        # Assert that there are node_type and uploaded_by selects.
+        name_select_map = {x.name: x for x in selects}
+        assert set(name_select_map) == {"node_type", "uploaded_by"}
+        # Check that non-placeholder uploaded_by options comprise the single
+        # requesting user.
+        options = name_select_map["uploaded_by"].getchildren()
+        assert_option_element_is_initial_empty_placeholder(options[0])
+        assert int(options[1].get("value")) == user.id
 
 
 #### retrieve endpoint __depth param tests ####
