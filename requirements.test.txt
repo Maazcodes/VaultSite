@@ -41,6 +41,8 @@ contextlib2==21.6.0
     #   schema
 cryptography==35.0.0
     # via paramiko
+cssselect==1.1.0
+    # via -r requirements.test.in
 distlib==0.3.3
     # via virtualenv
 distro==1.6.0
@@ -109,6 +111,8 @@ jsonpointer==2.2
     #   jsonpatch
 jsonschema==3.2.0
     # via docker-compose
+lxml==4.7.1
+    # via -r requirements.test.in
 markupsafe==2.0.1
     # via
     #   -c requirements.txt
