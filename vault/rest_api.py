@@ -13,15 +13,14 @@ from django.db.models.fields import (
     TextField,
 )
 
+from django_filters import filterset
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import (
     ModelChoiceFilter,
+    ModelMultipleChoiceFilter,
     NumberFilter,
 )
-from django_filters.filterset import (
-    FilterSetMetaclass,
-    BaseFilterSet,
-)
+from django_filters.filterset import FilterSet
 
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
@@ -248,12 +247,17 @@ class GeolocationViewSet(VaultReadOnlyModelViewSet):
 ###############################################################################
 
 
-class VaultFilterSetMetaclass(FilterSetMetaclass):
-    """Subclass of FilterSetMetaclass that automatically generates a 'fields'
-    attribute comprising a predefined set of lookups for all number and text-type
-    fields, and creates top-level ModelChoiceFilter attributes for
-    ForeignKey-type fields with applied user_queryset_filter to limit the
-    set of presented options.
+class VaultFilterSet(FilterSet):
+    """
+    FilterSet subclass that:
+
+    - Adds gt, gte, ... lookups for numeric fields
+
+    - Adds contains, endswith, ... lookups for text fields
+
+    - Adds a filter override for ForeignKey fields using the ModelChoiceFilter
+      with a queryset that's constrained by any defined user_queryset_filter
+      on the target model's VaultFilterSet subclass.
     """
 
     FILTERSET_NUMBER_SPEC = (
@@ -263,6 +267,7 @@ class VaultFilterSetMetaclass(FilterSetMetaclass):
         "lt",
         "lte",
     )
+
     FILTERSET_TEXT_SPEC = (
         "contains",
         "endswith",
@@ -272,45 +277,40 @@ class VaultFilterSetMetaclass(FilterSetMetaclass):
         "startswith",
     )
 
-    # Define a place to keep track of registered model/user_queryset_filter pairs.
+    # Define a place to store a model -> user_queryset_filter map.
     model_user_queryset_filter_map = {}
 
-    def __new__(cls, name, bases, attrs):
-        """django-filter processes the top-level "declared filters" at class
-        construction time, so in order to dynamically set these attributes we
-        need to intercept that process via this metaclass.
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        # Add this to the class model => user_queryset_filter map.
+        VaultFilterSet.model_user_queryset_filter_map[
+            cls.Meta.model
+        ] = cls.Meta.user_queryset_filter
 
-        https://github.com/carltongibson/django-filter/blob/3635b2b67c110627e74404603330583df0000a44/django_filters/filterset.py
+        # Rewrite fields and set filter_overrides.
+        cls.Meta.fields = cls.build_filterset_fields()
+        cls.Meta.filter_overrides = cls.get_filter_overrides()
+
+        super().__init_subclass__(**kwargs)
+
+    @property
+    def qs(self):
+        """Override FilterSet.qs to apply any defined user_queryset_filter to the
+        queryset.
         """
-        meta = attrs["Meta"]
-
-        # Save the model/user_queryset_filter pair for later lookups within
-        # ModelChoiceFilter queryset arg functions.
-        cls.model_user_queryset_filter_map[meta.model] = meta.user_queryset_filter
-
-        # Set the fields attributes.
-        # https://django-filter.readthedocs.io/en/stable/guide/usage.html#generating-filters-with-meta-fields
-        meta.fields = cls.build_filterset_fields(meta)
-
-        # Generate choice filters for ForeignKey-type fields that are constrained
-        # by user_queryset_filter.
-        foreignkey_choice_attrs = cls.get_foreignkey_choice_attrs(meta.model)
-        # Do not override any already-defined attributes to allow for explicit subclass
-        # overrides.
-        attrs.update(
-            {k: v for k, v in foreignkey_choice_attrs.items() if k not in attrs}
-        )
-
-        # Invoke the FilterSetMetaclass and return the result.
-        return super().__new__(cls, name, bases, attrs)
+        queryset = super().qs
+        user_queryset_filter = self.__class__.Meta.user_queryset_filter
+        if user_queryset_filter is None:
+            return queryset
+        return user_queryset_filter(self.request.user, queryset)
 
     @classmethod
-    def build_filterset_fields(cls, meta):
+    def build_filterset_fields(cls):
         """Auto-generate a django-filter filterset_fields spec that
         includes extra lookup expression params based on the field type.
         """
         # Get any defined Meta.fields value.
-        fields = getattr(meta, "fields", ())
+        fields = getattr(cls.Meta, "fields", ())
 
         # Assert that any defined Meta.fields is a tuple or list as opposed to a
         # dict, which is not currently supported.
@@ -321,11 +321,13 @@ class VaultFilterSetMetaclass(FilterSetMetaclass):
 
         # Determine the set of fields to include.
         include_names = set(
-            fields or (x.name for x in meta.model._meta.fields)
-        ).difference(getattr(meta, "exclude", ()))
+            fields or (x.name for x in cls.Meta.model._meta.fields)
+        ).difference(getattr(cls.Meta, "exclude", ()))
+
+        declared_filter_field_names = set(cls.declared_filters.keys())
 
         fields = {}
-        for field in meta.model._meta.fields:
+        for field in cls.Meta.model._meta.fields:
             # Check whether we should include this field.
             if field.name not in include_names:
                 continue
@@ -335,6 +337,16 @@ class VaultFilterSetMetaclass(FilterSetMetaclass):
             elif isinstance(field, TEXT_FIELD_CLASSES):
                 # Field is text.
                 spec = cls.FILTERSET_TEXT_SPEC
+            elif (
+                isinstance(field, ForeignKey)
+                and field.name not in declared_filter_field_names
+            ):
+                # Field is a ForeignKey and was not declared as a top-level
+                # FilterSet attribute (i.e. override).
+                # We're specifying a ForeignKey override via Meta.filter_overrides in
+                # in __init__() but we need to include the field in fields in order
+                # for it to take effect.
+                spec = ("exact",)
             else:
                 # Field is something else - don't enable filtering.
                 continue
@@ -342,43 +354,46 @@ class VaultFilterSetMetaclass(FilterSetMetaclass):
         return fields
 
     @classmethod
-    def get_foreignkey_choice_attrs(cls, model):
-        """Return a { fieldName: ModelChoiceFilter, ...} dict for each ForeignKey-type
-        field with a callable ModelChoiceFilter queryset arg that will apply the
-        appropriate user_queryset_filter to limit the available choices.
+    def get_fk_override_queryset_func(cls, model):
+        """Return a queryset function that takes a request argument and returns
+        a queryset for the specified model filtered by any user_queryset_filter
+        defined on the corresponding model's VaultFilterSet subclass.
         """
 
-        def model_choice_filter(model):
-            # Note that the model_user_queryset_filter_map[model] needs to be within
-            # the lambda to ensure that the map is fully populated prior to access.
-            return ModelChoiceFilter(
-                queryset=lambda request: cls.model_user_queryset_filter_map[model](
-                    request.user, model.objects.all()
-                )
-            )
+        def f(request):
+            user_queryset_filter = cls.model_user_queryset_filter_map[model]
+            return user_queryset_filter(request.user, model.objects.all())
 
+        return f
+
+    @classmethod
+    def get_filter_overrides(cls):
+        """Return a FilterSet.Meta.filter_overrides dict that overrides the field types
+        that django-filters automatically defaults of ModelChoiceFilter or
+        ModelMultipleChoice with an unfiltered model queryset to instead use a queryset
+        that constrained by any defined user_queryset_filter.
+
+        See:
+          - https://django-filter.readthedocs.io/en/stable/ref/filterset.html?highlight=filter_override#filter-overrides
+          - https://django-filter.readthedocs.io/en/stable/ref/filters.html?highlight=modelchoicefilter#modelchoicefilter
+          - https://github.com/carltongibson/django-filter/blob/3635b2b67c110627e74404603330583df0000a44/django_filters/filterset.py#L149-L156
+        """
+        OVERRIDE_FILTER_CLASSES = (ModelChoiceFilter, ModelMultipleChoiceFilter)
         return {
-            field.name: model_choice_filter(field.target_field.model)
-            for field in model._meta.fields
-            if isinstance(field, ForeignKey)
+            field_class: {
+                "filter_class": obj["filter_class"],
+                "extra": lambda field: {
+                    "queryset": cls.get_fk_override_queryset_func(
+                        field.target_field.model
+                    )
+                },
+            }
+            for field_class, obj in filterset.FILTER_FOR_DBFIELD_DEFAULTS.items()
+            if obj["filter_class"] in OVERRIDE_FILTER_CLASSES
         }
 
 
-class VaultFilterSet(BaseFilterSet):
-    """Subclass of BaseFilterSet that overrides the qa property to apply
-    user_queryset_filter to the queryset.
-    """
-
-    @property
-    def qs(self):
-        queryset = super().qs
-        user_queryset_filter = self.__class__.Meta.user_queryset_filter
-        if user_queryset_filter is None:
-            return queryset
-        return user_queryset_filter(self.request.user, queryset)
-
-
-class TreeNodeFilterSet(VaultFilterSet, metaclass=VaultFilterSetMetaclass):
+class TreeNodeFilterSet(VaultFilterSet):
     # Use a number-type filter for parent instead of the default choice filter.
     parent = NumberFilter()
 
@@ -390,7 +405,7 @@ class TreeNodeFilterSet(VaultFilterSet, metaclass=VaultFilterSetMetaclass):
         )
 
 
-class OrganizationFilterSet(VaultFilterSet, metaclass=VaultFilterSetMetaclass):
+class OrganizationFilterSet(VaultFilterSet):
     # Use a number-type filter for tree_node instead of the default choice filter.
     tree_node = NumberFilter()
 
@@ -400,14 +415,14 @@ class OrganizationFilterSet(VaultFilterSet, metaclass=VaultFilterSetMetaclass):
         user_queryset_filter = lambda user, qs: qs.filter(id=user.organization_id)
 
 
-class UserFilterSet(VaultFilterSet, metaclass=VaultFilterSetMetaclass):
+class UserFilterSet(VaultFilterSet):
     class Meta:
         model = User
         fields = UserSerializer.Meta.fields
         user_queryset_filter = lambda user, qs: qs.filter(id=user.id)
 
 
-class PlanFilterSet(VaultFilterSet, metaclass=VaultFilterSetMetaclass):
+class PlanFilterSet(VaultFilterSet):
     class Meta:
         model = Plan
         fields = PlanSerializer.Meta.fields
