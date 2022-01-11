@@ -387,7 +387,7 @@ class TreeNode(models.Model):
 
 @receiver(post_save, sender=Organization)
 def create_organization_handler(sender, **kwargs):
-    """Autmatically create a TreeNode for new Organizations if necessary."""
+    """Automatically create a TreeNode for new Organizations if necessary."""
     if kwargs["created"]:
         org = kwargs["instance"]
         if not org.tree_node:
