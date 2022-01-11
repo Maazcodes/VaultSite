@@ -428,7 +428,7 @@ TREE_NODE_TYPE_VALID_PARENT_TYPES_MAP = {
     TreeNode.Type.ORGANIZATION: set(),
     TreeNode.Type.COLLECTION: {TreeNode.Type.ORGANIZATION},
     TreeNode.Type.FOLDER: {TreeNode.Type.COLLECTION, TreeNode.Type.FOLDER},
-    TreeNode.Type.FILE: {TreeNode.Type.FOLDER},
+    TreeNode.Type.FILE: {TreeNode.Type.COLLECTION, TreeNode.Type.FOLDER},
 }
 
 

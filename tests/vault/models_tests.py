@@ -54,7 +54,7 @@ def assert_tree_node_types_is_valid():
         ("ORGANIZATION", set(), 4),
         ("COLLECTION", {"ORGANIZATION"}, 3),
         ("FOLDER", {"COLLECTION", "FOLDER"}, 2),
-        ("FILE", {"FOLDER"}, 3),
+        ("FILE", {"COLLECTION", "FOLDER"}, 2),
     ),
 )
 def test_valid_organization_parents(
