@@ -4,6 +4,7 @@ from django.conf import settings
 from model_bakery import baker
 
 from vault.models import (
+    Collection,
     Geolocation,
     Organization,
     Plan,
@@ -15,6 +16,11 @@ from vault.models import (
 ###############################################################################
 # Factory Fixtures
 ###############################################################################
+
+
+@fixture
+def make_collection():
+    return lambda **kwargs: baker.make(Collection, **kwargs)
 
 
 @fixture
@@ -35,8 +41,12 @@ def make_plan(geolocation):
 
 @fixture
 def make_treenode():
-    def maker(parent, node_type="FILE"):
-        return baker.make(TreeNode, parent=parent, node_type=node_type)
+    def maker(parent, node_type="FILE", **kwargs):
+        # Enforce valid-length default names for ORGANIZATION and COLLECTION-type node.
+        model = {"ORGANIZATION": Organization, "COLLECTION": Collection}.get(node_type)
+        if model and "name" not in kwargs:
+            kwargs["name"] = baker.prepare(model).name
+        return baker.make(TreeNode, parent=parent, node_type=node_type, **kwargs)
 
     return maker
 

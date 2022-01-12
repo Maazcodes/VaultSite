@@ -1,12 +1,17 @@
 from django.core.exceptions import FieldError
 
+from model_bakery.baker import prepare
 from pytest import (
     fixture,
     mark,
     raises,
 )
 
-from vault.models import TreeNode
+from vault.models import (
+    Collection,
+    Organization,
+    TreeNode,
+)
 
 
 ###############################################################################
@@ -25,8 +30,13 @@ TREE_NODE_TYPES = {"ORGANIZATION", "COLLECTION", "FOLDER", "FILE"}
 @fixture
 def treenode_stack(make_treenode):
     """Return a complete valid TreeNode type hierarchy dict keyed by type name."""
-    organization_node = make_treenode(node_type="ORGANIZATION", parent=None)
-    collection_node = make_treenode(node_type="COLLECTION", parent=organization_node)
+    # Set valid-length name values for ORGANIZATION and COLLECTION-type nodes.
+    organization_node = make_treenode(
+        node_type="ORGANIZATION", parent=None, name=prepare(Organization).name
+    )
+    collection_node = make_treenode(
+        node_type="COLLECTION", parent=organization_node, name=prepare(Collection).name
+    )
     folder_node = make_treenode(node_type="FOLDER", parent=collection_node)
     file_node = make_treenode(node_type="FILE", parent=folder_node)
     return {
@@ -57,9 +67,10 @@ def assert_tree_node_types_is_valid():
         ("FILE", {"COLLECTION", "FOLDER"}, 2),
     ),
 )
-def test_valid_organization_parents(
+def test_treenode_type_hierarchy_enforcement(
     make_treenode, treenode_stack, node_type, valid_parent_types, num_invalid_types
 ):
+    """Check that the valid TreeNode type hierarchy is enforced."""
     # Check that a node is successfully created when a valid parent is specified.
     # Save a node for the subsequent invalid-parent update test.
     node = None
@@ -84,3 +95,65 @@ def test_valid_organization_parents(
         with raises(FieldError):
             node.parent = treenode_stack[invalid_parent_type]
             node.save()
+
+
+@mark.django_db
+def test_collection_name_change_triggers_treenode_name_update(make_collection):
+    """Check that updating a Collection's name field will automatically update the name
+    field of its associated TreeNode."""
+    # Create a collection.
+    collection = make_collection()
+    node = collection.tree_node
+    assert node.name == collection.name
+
+    # Rename the Collection.
+    new_name = collection.name[::-1]  # reverse
+    assert new_name != collection.name
+    collection.name = new_name
+    collection.save()
+
+    # Verify that the TreeNode name has also been updated.
+    node.refresh_from_db()
+    assert node.name == collection.name == new_name
+
+
+@mark.django_db
+def test_collection_type_treenode_name_change_triggers_collection_name_update(
+    make_collection,
+):
+    """Check that updating a COLLECTION-type TreeNode's name field will automatically
+    update the name field of its associated Collection."""
+    # Create a collection.
+    # Note that a TreeNode with name=collection.name is automatically created by the
+    # Collection post_save signal handler.
+    collection = make_collection()
+    node = collection.tree_node
+    assert collection.name == node.name
+
+    # Rename the node.
+    new_name = node.name[::-1]  # reverse
+    assert new_name != node.name
+    node.name = new_name
+    node.save()
+
+    # Verify that the Collection name has also been updated.
+    collection.refresh_from_db()
+    assert collection.name == node.name == new_name
+
+    # Check that attempting to set a TreeNode.name value that exceeds the max
+    # Collection.name length raises a FieldError.
+    node.name += "!"
+    with raises(FieldError) as e:
+        node.save()
+
+
+@mark.django_db
+def test_organization_type_treenode_name_length_cannot_exceed_organization_name_length(
+    treenode_stack,
+):
+    """Check that attempting to set an ORGANIZATION-type TreeNode name value to a length
+    that exceeds the max length of the Organization.name field raises a FieldError."""
+    node = treenode_stack["ORGANIZATION"]
+    node.name += "!"
+    with raises(FieldError):
+        node.save()
