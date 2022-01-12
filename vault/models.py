@@ -423,6 +423,18 @@ def create_collection_handler(sender, **kwargs):
             coll.save()
 
 
+@receiver(post_save, sender=Collection)
+def collection_update_postsave_handler(sender, **kwargs):
+    """Propagate name changes to the associated TreeNode."""
+    if kwargs["created"]:
+        return
+    collection = kwargs["instance"]
+    node = collection.tree_node
+    if node and node.name != collection.name:
+        node.name = collection.name
+        node.save()
+
+
 # Define the valid TreeNode child -> parent node_type hierarchy.
 TREE_NODE_TYPE_VALID_PARENT_TYPES_MAP = {
     TreeNode.Type.ORGANIZATION: set(),
@@ -432,10 +444,20 @@ TREE_NODE_TYPE_VALID_PARENT_TYPES_MAP = {
 }
 
 
+# Define a TreeNode.Type.* -> Model map for types that have an associated model.
+TREE_NODE_TYPE_MODEL_MAP = {
+    TreeNode.Type.ORGANIZATION: Organization,
+    TreeNode.Type.COLLECTION: Collection,
+}
+
+
 @receiver(pre_save, sender=TreeNode)
 def treenode_presave_handler(sender, **kwargs):
-    """Enforce that the TreeNode type is a valid child of the specified parent."""
+    """Enforce that the TreeNode type is a valid child of the specified parent and that
+    the name value for ORGANIZATION and COLLECTION-type nodes does not exceed the max
+    length of the name field on the associated model."""
     node = kwargs["instance"]
+    # Raise a FieldError if the parent type is invalid.
     parent_type = node.parent and node.parent.node_type
     valid_parent_types = TREE_NODE_TYPE_VALID_PARENT_TYPES_MAP[node.node_type]
     if (parent_type is None and valid_parent_types) or (
@@ -446,3 +468,29 @@ def treenode_presave_handler(sender, **kwargs):
             f"{valid_parent_types}, but specified parent is of type: "
             f"{parent_type}"
         )
+    # Raise a FieldError if the name length exceeds the max of the associated model for
+    # ORGANIZATION and COLLECTION-type nodes.
+    model = TREE_NODE_TYPE_MODEL_MAP.get(node.node_type)
+    if model and len(node.name) > model.name.field.max_length:
+        raise FieldError(
+            f"Can not set 'name' of length ({len(node.name)}) for node of "
+            f"type ({node.node_type}) because the "
+            f"({model.__name__}) model has a max 'name' length of "
+            f"({model.name.field.max_length})."
+        )
+
+
+@receiver(post_save, sender=TreeNode)
+def treenode_update_postsave_handler(sender, **kwargs):
+    """Propagate name changes for COLLECTION-type nodes to the associated Collection."""
+    if kwargs["created"]:
+        return
+    node = kwargs["instance"]
+    if node.node_type != TreeNode.Type.COLLECTION:
+        return
+    collection = Collection.objects.get(tree_node=node)
+    if collection.name != node.name:
+        # Note that TreeNode.name.max_lenth > Collection.name.max_length, but logic
+        # in treenode_presave_handler() prevents us from having to deal with that here.
+        collection.name = node.name
+        collection.save()
