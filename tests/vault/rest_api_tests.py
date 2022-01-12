@@ -25,7 +25,9 @@ def users(make_user, make_staff_user, make_super_user):
 
 @fixture
 def user_and_child_node(user, make_treenode):
-    child_node = make_treenode(parent=user.organization.tree_node)
+    child_node = make_treenode(
+        node_type="COLLECTION", parent=user.organization.tree_node
+    )
     return user, child_node
 
 

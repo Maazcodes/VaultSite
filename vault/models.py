@@ -2,13 +2,17 @@ import re
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import FieldError
 from django.core.mail import send_mail
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import UniqueConstraint, IntegerChoices, Sum, Count
 from django.db.models.functions import Coalesce
-from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.db.models.signals import (
+    pre_save,
+    post_save,
+)
 
 from vault.ltree import LtreeField
 
@@ -246,7 +250,7 @@ class Deposit(models.Model):
         message = """
 Hello {}
 
-Your deposit to {} is now complete: 
+Your deposit to {} is now complete:
 View deposit report {}
 View all collections {}
 
@@ -376,8 +380,14 @@ class TreeNode(models.Model):
         ]
 
 
+###############################################################################
+# Signal Handlers
+###############################################################################
+
+
 @receiver(post_save, sender=Organization)
 def create_organization_handler(sender, **kwargs):
+    """Automatically create a TreeNode for new Organizations if necessary."""
     if kwargs["created"]:
         org = kwargs["instance"]
         if not org.tree_node:
@@ -390,6 +400,8 @@ def create_organization_handler(sender, **kwargs):
 
 @receiver(post_save, sender=Collection)
 def create_collection_handler(sender, **kwargs):
+    """Automatically create corresponding ORGANIZATION and COLLECTION-type TreeNodes
+    for new Collections if necessary."""
     if kwargs["created"]:
         coll = kwargs["instance"]
         org = coll.organization
@@ -409,3 +421,28 @@ def create_collection_handler(sender, **kwargs):
             )
             coll.tree_node = coll_node
             coll.save()
+
+
+# Define the valid TreeNode child -> parent node_type hierarchy.
+TREE_NODE_TYPE_VALID_PARENT_TYPES_MAP = {
+    TreeNode.Type.ORGANIZATION: set(),
+    TreeNode.Type.COLLECTION: {TreeNode.Type.ORGANIZATION},
+    TreeNode.Type.FOLDER: {TreeNode.Type.COLLECTION, TreeNode.Type.FOLDER},
+    TreeNode.Type.FILE: {TreeNode.Type.COLLECTION, TreeNode.Type.FOLDER},
+}
+
+
+@receiver(pre_save, sender=TreeNode)
+def treenode_presave_handler(sender, **kwargs):
+    """Enforce that the TreeNode type is a valid child of the specified parent."""
+    node = kwargs["instance"]
+    parent_type = node.parent and node.parent.node_type
+    valid_parent_types = TREE_NODE_TYPE_VALID_PARENT_TYPES_MAP[node.node_type]
+    if (parent_type is None and valid_parent_types) or (
+        parent_type is not None and parent_type not in valid_parent_types
+    ):
+        raise FieldError(
+            f"Valid parents for node of type ({node.node_type}) are: "
+            f"{valid_parent_types}, but specified parent is of type: "
+            f"{parent_type}"
+        )
