@@ -8,6 +8,26 @@ https://docs.djangoproject.com/en/3.2/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
+
+Environment Variables
+=====================
+
+* ``AIT_CONF`` -- path to YAML file containing configuration overrides, including:
+    * ``MEDIA_ROOT`` -- path to directory in which files are stored
+    * ``SHADIR_ROOT`` -- path to directory into which content-addressible deposit
+      files are stored
+    * ``FILE_UPLOAD_TEMP_DIR`` -- path to directory into which deposited flow
+      chunks are saved
+    * ``LOGFILE_PATH`` -- path to output application log file
+    * ``SECRET_KEY`` -- Django SECRET_KEY
+    * ``DEBUG`` -- ``true`` when Django should operate in debug mode
+    * ``SENTRY_DSN`` -- Sentry DSN to which to report exceptions
+    * ``VAULT_POSTGRES_NAME`` -- name of postgres database used by application
+    * ``VAULT_POSTGRES_USER`` -- name of postgres user
+    * ``VAULT_POSTGRES_PASSWORD`` -- password of postgres user
+    * ``VAULT_POSTGRES_HOST`` -- hostname of postgres daemon
+    * ``VAULT_POSTGRES_PORT`` -- TCP port on which to connect to postgres daemon
+    * ``STATIC_ROOT`` -- path to directory root of static assets
 """
 
 import os
@@ -20,21 +40,19 @@ import yaml
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-MEDIA_ROOT = Path("/opt/DPS/files/")
+with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
+    conf = yaml.safe_load(f)
 
-SHADIR_ROOT = Path("/opt/DPS/SHA_DIR/")
-
-FILE_UPLOAD_TEMP_DIR = Path("/opt/DPS/tmp/")
-
+MEDIA_ROOT = Path(conf.get("MEDIA_ROOT", "/opt/DPS/files/"))
+SHADIR_ROOT = Path(conf.get("SHADIR_ROOT", "/opt/DPS/SHA_DIR/"))
+FILE_UPLOAD_TEMP_DIR = Path(conf.get("FILE_UPLOAD_TEMP_DIR", "/opt/DPS/tmp/"))
+LOGFILE_PATH = conf.get("LOGFILE_PATH", "/opt/DPS/vault-site/django-debug.log")
 
 # LOGIN_REDIRECT_URL = '/dashboard'
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
-
-with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
-    conf = yaml.safe_load(f)
 
 DEPLOYMENT_ENVIRONMENT = conf.get("DEPLOYMENT_ENVIRONMENT", "DEV")
 
@@ -200,7 +218,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "vault/static/",
 ]
 
-STATIC_ROOT = "/opt/DPS/html/django-admin-static-hack"
+STATIC_ROOT = conf.get("STATIC_ROOT", "/opt/DPS/html/django-admin-static-hack")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -249,7 +267,7 @@ LOGGING = {
         "file": {
             "level": "INFO",
             "class": "logging.FileHandler",
-            "filename": "/opt/DPS/vault-site/django-debug.log",
+            "filename": LOGFILE_PATH,
             # 'maxBytes': 1024*1024*100,
             # 'backupCount': 100,
             "formatter": "plain",

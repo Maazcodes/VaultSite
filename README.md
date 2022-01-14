@@ -13,41 +13,17 @@ Use Docker-Dev for a quicker setup.
 
 ### Virtualenv + Docker Install
 - Python 3.8
-- Optionally pip-tools
-- Create **/etc/vault.yml** for all config referenced in vault_site/settings.py
-- Create these dirs:
-  - /opt/DPS/
-    - SHA_DIR
-    - files
-    - html
-    - tmp
-    - vault-site
-      - django-debug.log
-- Set environment variable REMOTE_USER to your username of choice
-  - Until we complete de-apachefication we are using Apache REMOTE_USER authentication.
-  - Django inspects the REMOTE_USER env var and looks up that username in its vault_user table.
 - Run Postgres, install into virtual environment, and start the app:
 ```
 cd path/to/project
-mkdir postgres-data
-docker run --name vault-postgres -v postgres-data:/var/lib/postgresql/data \
-    -p 5432:5432 \
-    -e POSTGRES_USER=vault -e POSTGRES_PASSWORD=vault \
-    -d postgres:10
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-# or if you have pip-tools
-# for a local dev environment
-# pip-sync requirements.dev.txt 
-# for a prod environment
-# pip-sync requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
+utilities/dev-postgres.sh start
+make migrate
+AIT_CONF=./DPS_dev/vault.yml ./venv/bin/python manage.py createsuperuser
+REMOTE_USER=<your-superuser-name> make run
+# in a separate shell:
+make test
 ```
-- Run tests: pytest
-  
+
 ### If under Apache
 - Collect static files (css and js) with 'python3 manage.py collectstatic'
 - Link static files dir into Apache root: ln -s .../static .../django-admin-static-hack
@@ -55,11 +31,18 @@ python manage.py runserver
   https://docs.djangoproject.com/en/3.2/howto/deployment/wsgi/modwsgi/#serving-files
 
 ### Finally
-- Log in to admin
+- Log in to [admin](http://localhost:8000/admin/)
 - Create a plan, an organization and associate your user with that org
+- From the [dashboard](http://localhost:8000/dashboard), create a collection
+- Deposit file(s) to your new collection
+
+### Regarding `REMOTE_USER`
+Until we complete de-apachefication we are using Apache `REMOTE_USER`
+authentication. Django inspects the `REMOTE_USER` env var and looks up that
+username in its vault_user table. As such, above, we set the `REMOTE_USER`
+environment variable to the username of the superuser we created.
 
 ## Dependency Management
-
 The project is using pip-tools for dependency management. To get things running it can
 be as simple as `pip install -r requirements.dev.txt` but if you use `pip-sync
 requirements.dev.txt` it will keep your virtualenv in sync with the pinned dependencies.
@@ -78,7 +61,7 @@ lock file including pinned versions of all transitive dependencies.
 - Add the name of the package to the corresponding `.in` file for the environment the
 dependency is appropriate for.
 - Run `pip-compile` "inside out" from the environment you added the dep to.
-  - E.g. when a dep is added to requirements.in run pip-compile on requirements.in, 
+  - E.g. when a dep is added to requirements.in run pip-compile on requirements.in,
 requirements.test.in, then requirements.dev.in
 - Run `pip-sync` for the corresponding `.txt` file for the environment
 
