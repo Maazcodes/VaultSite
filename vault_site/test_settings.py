@@ -11,7 +11,7 @@ DATABASES = {
         "USER": conf.get("VAULT_TEST_POSTGRES_USER", "vault"),
         "PASSWORD": conf.get("VAULT_TEST_POSTGRES_PASSWORD", "vault"),
         "HOST": conf.get("VAULT_TEST_POSTGRES_HOST", "127.0.0.1"),
-        "PORT": conf.get("VAULT_TEST_POSTGRES_PORT", "55432"),
+        "PORT": conf.get("VAULT_TEST_POSTGRES_PORT", "5432"),
         "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
