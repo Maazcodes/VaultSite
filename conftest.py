@@ -25,13 +25,13 @@ def make_collection():
 
 @fixture
 def make_geolocation():
-    return lambda: baker.make(Geolocation)
+    return lambda **kwargs: baker.make(Geolocation, **kwargs)
 
 
 @fixture
 def make_plan(geolocation):
-    def maker():
-        plan = baker.make(Plan, price_per_terabyte=0)
+    def maker(**kwargs):
+        plan = baker.make(Plan, price_per_terabyte=0, **kwargs)
         plan.default_geolocations.set([geolocation])
         plan.save()
         return plan
@@ -53,8 +53,10 @@ def make_treenode():
 
 @fixture
 def make_organization(make_plan):
-    def maker():
-        organization = baker.make(Organization, plan=make_plan())
+    def maker(**kwargs):
+        if "plan" not in kwargs:
+            kwargs["plan"] = make_plan()
+        organization = baker.make(Organization, **kwargs)
         # Assert that a TreeNode is automatically created.
         assert isinstance(organization.tree_node, TreeNode)
         return organization

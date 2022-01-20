@@ -22,15 +22,15 @@ export default class FileDetails extends HTMLElement {
       "CHANGE_DIRECTORY",
       ({ node }) => this.changeDirectoryHandler(node)
     )
-
     subscribe("HIDE_DETAILS_PANEL", this.hide.bind(this))
     subscribe("SHOW_DETAILS_PANEL", this.show.bind(this))
+    subscribe("NODE_RENAME_RESPONSE", this.nodeRenameResponseHandler.bind(this))
   }
 
   render () {
     const { node } = this.props
 
-    if (node.node_type === "ORGANIZATION") {
+    if (!node || node.node_type === "ORGANIZATION") {
       this.innerHTML = `
         <p>
           <em>Select a file or folder to view its details</em>
@@ -99,6 +99,17 @@ export default class FileDetails extends HTMLElement {
     const { node } = message
     this.props.node = node
     this.render()
+  }
+
+  nodeRenameResponseHandler ({ node, newName, error }) {
+    // Ignore error responses.
+    if (error) {
+      return
+    }
+    if (this.props.node.url === node.url) {
+      this.props.node.name = newName
+      this.render()
+    }
   }
 
   tabSelectHandler (e) {

@@ -5,6 +5,8 @@ import { publish, subscribe } from "../lib/pubsub.js"
 import API from "../services/API.js"
 
 import "./FileDetailsButtons.js"
+import "./NewCollectionModal.js"
+import "./NewFolderModal.js"
 import "./DeleteModal.js"
 import "./MovePopover.js"
 import "./RenameModal.js"
@@ -18,11 +20,17 @@ import FilesList from "./FilesList.js"
  *****************************************************************************/
 class Conductor {
   constructor ({ basePath, appPath, path, node }) {
+    const API_BASE_PATH = `${basePath}/api/`
+
+    // The initial node is rendered outside of DRF so doesn't include a url
+    // property. So manually add it here.
+    node.url = `${API_BASE_PATH}treenodes/${node.id}/`
+
     this.basePath = basePath
     this.appPath = appPath
     this.path = path
     this.node = node
-    this.api = new API(`${basePath}/api/`)
+    this.api = new API(API_BASE_PATH)
     this.state = {
       childQuery: {
         ordering: "-node_type,name",
@@ -31,6 +39,7 @@ class Conductor {
       // Define the set of topics to wait for before calling init().
       topicsUntilInit: new Set([
         "API_SERVICE_READY",
+        "NEW_CTA_COMPONENT_CONNCECTED",
         "FILE_TREE_NAVIGATOR_COMPONENT_CONNECTED"
       ])
     }
@@ -38,6 +47,16 @@ class Conductor {
     subscribe(
       "CHANGE_DIRECTORY_REQUEST",
       message => this.changeDirectoryRequestHandler(message)
+    )
+
+    subscribe(
+      "CREATE_COLLECTION_REQUEST",
+      message => this.createCollectionRequestHandler(message)
+    )
+
+    subscribe(
+      "CREATE_FOLDER_REQUEST",
+      message => this.createFolderRequestHandler(message)
     )
 
     subscribe(
@@ -104,6 +123,9 @@ class Conductor {
     /* Retrieve the directory listing from the API and emit it as a
        CHANGE_DIRECTORY command message.
      */
+    // Save the new node and path.
+    this.node = node
+    this.path = path
     // Fetch the selected node's children.
     const { limit, ordering } = this.state.childQuery
     const childNodesResponse =
@@ -116,9 +138,41 @@ class Conductor {
     }
   }
 
+  async createCollectionRequestHandler ({ name }) {
+    const response = await this.api.collections.post({ name })
+    const error = await this.api.getResponseErrorDetail(response)
+    publish("CREATE_COLLECTION_RESPONSE", { name, error })
+    // If creation was successful, publish a CHANGE_DIRECTORY_REQUEST to navigate to
+    // the new collection.
+    if (!error) {
+      const collection = await response.json()
+      const node = await (await fetch(collection.tree_node)).json()
+      publish("CHANGE_DIRECTORY_REQUEST", { node,  path: `/${node.name}` })
+    }
+  }
+
+  async createFolderRequestHandler ({ name }) {
+    const response = await this.api.treenodes.post({
+      name,
+      node_type: "FOLDER",
+      parent: this.node.url
+    })
+
+    const error = await this.api.getResponseErrorDetail(response)
+    publish("CREATE_FOLDER_RESPONSE", { name, error })
+
+    // If creation was successful, publish a CHANGE_DIRECTORY_REQUEST to reload the
+    // current view.
+    // TODO - this more efficiently.
+    if (!error) {
+      publish("CHANGE_DIRECTORY_REQUEST", { node: this.node,  path: this.path })
+    }
+  }
+
   async nodeRenameRequestHandler ({ node, newName }) {
-    // TODO - make this work
-    setTimeout(() => publish("NODE_RENAME_RESPONSE"), 2000)
+    const response = await this.api.treenodes.patch(node.id, { name: newName })
+    const error = await this.api.getResponseErrorDetail(response)
+    publish("NODE_RENAME_RESPONSE", { node, newName, error })
   }
 
   async nodesDeleteRequestHandler ({ nodes }) {
@@ -168,6 +222,8 @@ export default class FilesView extends HTMLElement {
           <div id="file-details-container"></div>
         </div>
       </div>
+      <vault-new-collection-modal></vault-new-collection-modal>
+      <vault-new-folder-modal></vault-new-folder-modal>
       <vault-delete-modal></vault-delete-modal>
       <vault-move-popover></vault-move-popover>
       <vault-rename-modal></vault-rename-modal>

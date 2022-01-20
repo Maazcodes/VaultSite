@@ -10,6 +10,7 @@ export default class ContextMenu extends HTMLElement {
     // the click occurred so that we can pass this to the popover
     // component to make it display at the click site instead of
     // left/bottom-aligned with the corresponding element.
+    const disabledOptions = this.props.disabledOptions
     this.innerHTML = `
       <span style="position: absolute;
                    left: ${this.props.x}px;
@@ -22,7 +23,9 @@ export default class ContextMenu extends HTMLElement {
       <ui5-popover placement-type="Bottom">
         <ui5-list mode="SingleSelect">
           ${this.props.options.map(option =>
-            `<ui5-li data-value="${option}">${option}</ui5-li>`
+            `<ui5-li data-value="${option}"
+                     ${disabledOptions && disabledOptions.includes(option) ? "disabled" : ""}
+             >${option}</ui5-li>`
           ).join("\n")}
         </ui5-list>
       </ui5-popover>

@@ -14,7 +14,7 @@ export default class RenameModal extends Modal {
     this.setAttribute("header-text", "Rename")
     this.setAttribute("submit-text", "OK")
     this.innerHTML = `
-      <input type="text" name="newName" spellcheck="false"></input>
+      <input type="text" name="newName" spellcheck="false" autocomplete="off"></input>
     `
     super.connectedCallback()
 
@@ -57,10 +57,22 @@ export default class RenameModal extends Modal {
     this.setBusyState(true)
   }
 
-  nodeRenameResponseHandler (message) {
-    // TODO - handle errors
+  nodeRenameResponseHandler ({ error }) {
     this.setBusyState(false)
-    this.close()
+    if (!error) {
+      this.close()
+      return
+    }
+    const { code } = error
+    switch (code) {
+      case 409:
+        this.error = "An item with this name already exists"
+        break
+      default:
+        this.error = "An error occurred"
+    }
+    // Reselect the input.
+    this.input.select()
   }
 }
 

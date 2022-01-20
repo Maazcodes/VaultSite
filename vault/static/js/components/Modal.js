@@ -26,6 +26,7 @@ export default class Modal extends HTMLElement {
           <ui5-busy-indicator style="display: block;">
           ${this.innerHTML}
           </ui5-busy-indicator>
+          <div class="error"></div>
         </div>
         <div slot="footer">
           <ui5-button data-name="cancel" design="Transparent">
@@ -39,6 +40,7 @@ export default class Modal extends HTMLElement {
     `
     this.dialog = this.querySelector("ui5-dialog")
     this.busy = this.querySelector("ui5-busy-indicator")
+    this.errorDiv = this.querySelector("div.error")
     this.cancelButton = this.querySelector("ui5-button[data-name=cancel]")
     this.submitButton = this.querySelector("ui5-button[data-name=submit]")
     // Collect all non-disabled inputs and buttons for disabling while busy.
@@ -54,6 +56,9 @@ export default class Modal extends HTMLElement {
     }
 
     this.addEventListener("click", this.clickHandler.bind(this))
+
+    // Reset the error when dialog is closed.
+    this.dialog.addEventListener("after-close", () => this.error = "")
   }
 
   open () {
@@ -61,14 +66,20 @@ export default class Modal extends HTMLElement {
     this.dialog.show()
     // Register a global keydown handler with useCapture=true so that we can
     // prevent Escape from closing a busy modal.
-    document.addEventListener("keydown", this.keydownHandler.bind(this), true)
+    // Save the bound handler function so that we can successfully remove it later.
+    this.boundKeydownHandler = this.keydownHandler.bind(this)
+    document.addEventListener("keydown", this.boundKeydownHandler, true)
+  }
+
+  set error (error) {
+    this.errorDiv.textContent = error
   }
 
   close () {
     // Close the dialog.
     this.dialog.close()
     // Remove the global keydown handler.
-    document.removeEventListener("keydown", this.keydownHandler.bind(this), true)
+    document.removeEventListener("keydown", this.boundKeydownHandler, true)
   }
 
   setInputsDisabledState (disabled) {
