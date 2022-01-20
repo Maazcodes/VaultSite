@@ -16,6 +16,7 @@ export default class FileTreeNavigator extends HTMLElement {
     this.render()
 
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryHandler.bind(this))
+    subscribe("NODE_RENAME_RESPONSE", this.nodeRenameResponseHandler.bind(this))
 
     // Announce component connection.
     publish("FILE_TREE_NAVIGATOR_COMPONENT_CONNECTED")
@@ -33,7 +34,8 @@ export default class FileTreeNavigator extends HTMLElement {
             `<ui5-tree-item text="${pp}" expanded ${i === lastPartI ? "selected" : ""}>`
           ).join("")}
             ${this.props.nodes.filter(node => node.node_type !== "FILE").map(node =>
-              `<ui5-tree-item text="${node.name}" ${node.node_type === "FILE" ? "" : "has-children"}>
+              `<ui5-tree-item data-url="${node.url}" text="${node.name}"
+                            ${node.node_type === "FILE" ? "" : "has-children"}>
                </ui5-tree-item>`
             ).join("")}
           ${pathParts.map(() => `</ui5-tree-item>`).join("")}
@@ -46,6 +48,17 @@ export default class FileTreeNavigator extends HTMLElement {
     this.props.path = path
     this.props.nodes = childNodesResponse.results
     this.render()
+  }
+
+  nodeRenameResponseHandler ({ node, newName, error }) {
+    /* Update the corresponding ui5-tree-item with the new name.
+     */
+    // Ignore error and FILE-type node responses.
+    if (error || node.node_type === "FILE") {
+      return
+    }
+    this.querySelector(`ui5-tree-item[data-url="${node.url}"]`)
+        .setAttribute("text", newName)
   }
 }
 

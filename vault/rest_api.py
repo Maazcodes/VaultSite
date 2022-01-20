@@ -1,3 +1,6 @@
+from django.core.exceptions import ObjectDoesNotExist
+from django.urls import resolve
+from django.db import IntegrityError
 from django.db.models import (
     ForeignKey,
     TextChoices,
@@ -22,12 +25,23 @@ from django_filters import (
 )
 from django_filters.filterset import FilterSet
 
+from django.http import (
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+)
+
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.renderers import (
+    BrowsableAPIRenderer,
+    JSONRenderer,
+)
 from rest_framework.routers import DefaultRouter
+from rest_framework.views import exception_handler as _exception_handler
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.mixins import (
+    CreateModelMixin,
     UpdateModelMixin,
     ListModelMixin,
     RetrieveModelMixin,
@@ -37,7 +51,6 @@ from rest_framework.serializers import (
     ListSerializer,
 )
 
-from vault.filters import ExtendedJSONEncoder
 from vault.helpers import safe_parse_int
 from vault.models import (
     Collection,
@@ -66,11 +79,57 @@ TEXT_FIELD_CLASSES = (CharField, TextField, TextChoices)
 
 
 ###############################################################################
+# Exception Handler
+###############################################################################
+
+
+def exception_handler(exc, context):
+    # Call REST framework's default exception handler first,
+    # to get the standard error response.
+    response = _exception_handler(exc, context)
+    if response is not None:
+        return response
+
+    if isinstance(exc, IntegrityError):
+        # Handle unique constraint violations.
+        if exc.args[0].startswith("duplicate key value violates unique constraint"):
+            # 409 - Conflict: https://www.rfc-editor.org/rfc/rfc7231#section-6.5.8
+            return Response(
+                {"detail": "request violates unique constraint"}, status=409
+            )
+
+    return None
+
+
+###############################################################################
+# Custom BrowsableAPIRenderer Subclass
+###############################################################################
+
+
+class FormlessBrowsableAPIRenderer(BrowsableAPIRenderer):
+    """Renders the browsable api, but excludes the forms."""
+
+    def show_form_for_method(self, *args, **kwargs):
+        return False
+
+
+###############################################################################
+# Custom HyperlinkedModelSerializer Base Class
+###############################################################################
+
+
+class VaultHyperlinkedModelSerializer(HyperlinkedModelSerializer):
+    @classmethod
+    def get_url(cls, request, instance):
+        return cls(instance, context={"request": request})["url"].value
+
+
+###############################################################################
 # Serializers
 ###############################################################################
 
 
-class GeolocationSerializer(HyperlinkedModelSerializer):
+class GeolocationSerializer(VaultHyperlinkedModelSerializer):
     class Meta:
         model = Geolocation
         fields = (
@@ -79,7 +138,20 @@ class GeolocationSerializer(HyperlinkedModelSerializer):
         )
 
 
-class OrganizationSerializer(HyperlinkedModelSerializer):
+class CollectionSerializer(VaultHyperlinkedModelSerializer):
+    class Meta:
+        model = Collection
+        fields = (
+            "fixity_frequency",
+            "name",
+            "organization",
+            "target_replication",
+            "tree_node",
+            "url",
+        )
+
+
+class OrganizationSerializer(VaultHyperlinkedModelSerializer):
     class Meta:
         model = Organization
         fields = (
@@ -91,7 +163,7 @@ class OrganizationSerializer(HyperlinkedModelSerializer):
         )
 
 
-class PlanSerializer(HyperlinkedModelSerializer):
+class PlanSerializer(VaultHyperlinkedModelSerializer):
     class Meta:
         model = Plan
         fields = (
@@ -104,7 +176,7 @@ class PlanSerializer(HyperlinkedModelSerializer):
         )
 
 
-class UserSerializer(HyperlinkedModelSerializer):
+class UserSerializer(VaultHyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = (
@@ -121,7 +193,7 @@ class UserSerializer(HyperlinkedModelSerializer):
         )
 
 
-class MinimalUserSerializer(HyperlinkedModelSerializer):
+class MinimalUserSerializer(VaultHyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = (
@@ -130,7 +202,7 @@ class MinimalUserSerializer(HyperlinkedModelSerializer):
         )
 
 
-class TreeNodeSerializer(HyperlinkedModelSerializer):
+class TreeNodeSerializer(VaultHyperlinkedModelSerializer):
     uploaded_by = MinimalUserSerializer(read_only=True)
 
     class Meta:
@@ -164,9 +236,9 @@ class TreeNodeSerializer(HyperlinkedModelSerializer):
 ###############################################################################
 
 
-class VaultViewSet(GenericViewSet):
+class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMixin):
     """
-    GenericViewSet subclass that implements:
+    GenericViewSet subclass w/ List + Retrieve mixins that implements:
 
     - Additional GET param support
 
@@ -181,6 +253,19 @@ class VaultViewSet(GenericViewSet):
 
     permission_classes = (IsAuthenticated,)
     filter_backends = (DjangoFilterBackend, OrderingFilter)
+    renderer_classes = (JSONRenderer, FormlessBrowsableAPIRenderer)
+
+    """A read-only viewset that implements list() and retrieve() methods."""
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        """Assert that filterset_class is defined."""
+        filterset_class = getattr(cls, "filterset_class", None)
+        if filterset_class is None or not issubclass(filterset_class, FilterSet):
+            raise AssertionError(
+                f"{cls.__name__} needs to define a valid filterset_class"
+            )
+        super().__init_subclass__(**kwargs)
 
     def get_queryset(self):
         """Return a queryset with applied request-time transformations."""
@@ -212,34 +297,52 @@ class VaultViewSet(GenericViewSet):
 
         return serializer
 
+    def get_by_url(self, user, url):
+        """Attempt to return the model instance indicated by a
+        HyperlinkedModelSerializer-generated URL by first applying any specified
+        FilterSet.Meta.user_queryset_filter function. DoesNotExist will be raised
+        if user_queryset_filter prevents the get.
+        """
+        # Convert an absolute instance URL returned by the API to a relative URL
+        # that resolve() expects.
+        if url.startswith(("http://", "https://")):
+            url = "/" + url.split("/", 3)[3]
 
-class VaultReadOnlyModelViewSet(
-    VaultViewSet,
-    ListModelMixin,
-    RetrieveModelMixin,
-):
-    """A read-only viewset that implements list() and retrieve() methods."""
+        pk = int(resolve(url).kwargs["pk"])
+        model = self.serializer_class.Meta.model
 
-    pass
+        if not hasattr(self, "filterset_class"):
+            return model.get(pk=pk)
 
-
-class VaultUpdateModelViewSet(VaultReadOnlyModelViewSet, UpdateModelMixin):
-    """A viewset that extends VaultReadOnlyModelViewSet with an update()
-    method.
-    """
-
-    pass
+        queryset = model.objects.all()
+        user_queryset_filter = getattr(
+            self.filterset_class.Meta, "user_queryset_filter"
+        )
+        if user_queryset_filter:
+            queryset = user_queryset_filter(user, queryset)
+        return queryset.get(pk=pk)
 
 
-###############################################################################
-# Public Views
-###############################################################################
+class VaultUpdateModelMixin(UpdateModelMixin):
+    """A UpdateModelMixin subclass that overrides update() to protect immutable fields."""
 
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        """Assert that mutable_fields is defined."""
+        if getattr(cls, "mutable_fields", None) is None:
+            raise AssertionError(f"{cls.__name__} needs to define mutable_fields")
+        super().__init_subclass__(**kwargs)
 
-class GeolocationViewSet(VaultReadOnlyModelViewSet):
-    queryset = Geolocation.objects.all()
-    serializer_class = GeolocationSerializer
-    permission_classes = (IsAuthenticated,)
+    def update(self, request, *args, **kwargs):
+        """Check self.mutatble_fields against the request data object's keys and respond
+        with a 403 if any immutable field was specified."""
+        immutable_fields = set(request.data.keys()).difference(self.mutable_fields)
+        if immutable_fields:
+            return Response(
+                f"Immutable field(s) can not be updated: {immutable_fields}",
+                status=403,
+            )
+        return super().update(request, *args, **kwargs)
 
 
 ###############################################################################
@@ -343,7 +446,7 @@ class VaultFilterSet(FilterSet):
             ):
                 # Field is a ForeignKey and was not declared as a top-level
                 # FilterSet attribute (i.e. override).
-                # We're specifying a ForeignKey override via Meta.filter_overrides in
+                # We're specifying a ForeignKey override via Meta.filter_overrides
                 # in __init__() but we need to include the field in fields in order
                 # for it to take effect.
                 spec = ("exact",)
@@ -393,6 +496,25 @@ class VaultFilterSet(FilterSet):
         }
 
 
+class CollectionFilterSet(VaultFilterSet):
+    # Use a number-type filter for tree_node instead of the default choice filter.
+    tree_node = NumberFilter()
+
+    class Meta:
+        model = Collection
+        fields = CollectionSerializer.Meta.fields
+        user_queryset_filter = lambda user, qs: qs.filter(
+            organization__id=user.organization_id
+        )
+
+
+class GeolocationFilterSet(VaultFilterSet):
+    class Meta:
+        model = Geolocation
+        fields = GeolocationSerializer.Meta.fields
+        user_queryset_filter = lambda user, qs: qs
+
+
 class TreeNodeFilterSet(VaultFilterSet):
     # Use a number-type filter for parent instead of the default choice filter.
     parent = NumberFilter()
@@ -432,17 +554,49 @@ class PlanFilterSet(VaultFilterSet):
 
 
 ###############################################################################
-# Custom Responses
+# Views
 ###############################################################################
 
-JSONResponse = lambda data, **kwargs: Response(
-    ExtendedJSONEncoder().encode(data), **kwargs
-)
+
+class CollectionViewSet(
+    VaultReadOnlyModelViewSet, CreateModelMixin, VaultUpdateModelMixin
+):
+    queryset = Collection.objects.all()
+    serializer_class = CollectionSerializer
+    filterset_class = CollectionFilterSet
+    mutable_fields = ("name", "fixity_frequency", "target_replication")
+
+    @staticmethod
+    def _organization_ok(user, organization_url):
+        try:
+            OrganizationViewSet().get_by_url(user, organization_url)
+        except ObjectDoesNotExist:
+            return False
+        return True
+
+    # Note that we don't need to override update() to implement an _organization_ok()
+    # check because "organization" is not included in mutable_fields.
+
+    def create(self, request, *args, **kwargs):
+        """Override CreateModelMixin.create() to validate requests."""
+        organization_url = request.data.get("organization")
+        if organization_url:
+            # Return a 403 if the specified Organization is not accessible by the user.
+            if not self._organization_ok(request.user, organization_url):
+                return Response(status=403)
+        else:
+            # Organization was not specified, so assume the user's org.
+            request.data["organization"] = OrganizationSerializer.get_url(
+                request, request.user.organization
+            )
+
+        return super().create(request, *args, **kwargs)
 
 
-###############################################################################
-# Protected Views
-###############################################################################
+class GeolocationViewSet(VaultReadOnlyModelViewSet):
+    queryset = Geolocation.objects.all()
+    serializer_class = GeolocationSerializer
+    filterset_class = GeolocationFilterSet
 
 
 class OrganizationViewSet(VaultReadOnlyModelViewSet):
@@ -463,11 +617,45 @@ class UserViewSet(VaultReadOnlyModelViewSet):
     filterset_class = UserFilterSet
 
 
-class TreeNodeViewSet(VaultReadOnlyModelViewSet):
+class TreeNodeViewSet(
+    VaultReadOnlyModelViewSet, CreateModelMixin, VaultUpdateModelMixin
+):
     queryset = TreeNode.objects.all()
     serializer_class = TreeNodeSerializer
-    ordering_fields = ["id", "name", "node_type"]
+    ordering_fields = ("id", "name", "node_type")
     filterset_class = TreeNodeFilterSet
+    mutable_fields = ("name", "parent")
+
+    def _parent_ok(self, user, parent_url):
+        try:
+            self.get_by_url(user, parent_url)
+        except ObjectDoesNotExist:
+            return False
+        return True
+
+    def update(self, request, *args, **kwargs):
+        """Override UpdateModelMixin.update() to validate that any specified parent is
+        accessible by the requesting user.
+        """
+        if "parent" in request.data:
+            if not self._parent_ok(request.user, request.data["parent"]):
+                return Response(status=403)
+        return super().update(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """Override CreateModelMixin.create() to validate requests."""
+        if "node_type" not in request.data:
+            return HttpResponseBadRequest("node_type is required")
+        if request.data["node_type"] != "FOLDER":
+            return HttpResponseBadRequest(
+                'Creation only enabled for node_type="FOLDER"'
+            )
+
+        # Return a 403 if the specified parent is not accessible by this user.
+        if not self._parent_ok(request.user, request.data["parent"]):
+            return HttpResponseForbidden()
+
+        return super().create(request, *args, **kwargs)
 
 
 ###############################################################################
@@ -475,6 +663,7 @@ class TreeNodeViewSet(VaultReadOnlyModelViewSet):
 ###############################################################################
 
 router = DefaultRouter()
+router.register("collections", CollectionViewSet)
 router.register("geolocations", GeolocationViewSet)
 router.register("organizations", OrganizationViewSet)
 router.register("plans", PlanViewSet)

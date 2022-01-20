@@ -119,6 +119,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.RemoteUserAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination.LimitOffsetPagination"),
+    "EXCEPTION_HANDLER": "vault.rest_api.exception_handler",
     "PAGE_SIZE": 10,
 }
 

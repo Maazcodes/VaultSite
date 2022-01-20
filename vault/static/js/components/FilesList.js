@@ -31,6 +31,7 @@ export default class FilesList extends HTMLElement {
     subscribe("DETAILS_PANEL_CLOSED", () => this.state.detailsPanelClosed = true)
     subscribe("DETAILS_PANEL_OPEN", () => this.state.detailsPanelClosed = false)
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryMessageHandler.bind(this))
+    subscribe("NODE_RENAME_RESPONSE", this.nodeRenameResponseMessageHandler.bind(this))
   }
 
   nodeToUI5TableRow (node, index) {
@@ -40,9 +41,7 @@ export default class FilesList extends HTMLElement {
       <ui5-table-row data-index="${index}" data-name="${node.name}">
         <ui5-table-cell class="name ${node.node_type}"
                         title="${escapeHtml(node.name)}"
-        >
-          ${escapeHtml(node.name)}
-        </ui5-table-cell>
+        >${escapeHtml(node.name)}</ui5-table-cell>
         <ui5-table-cell class="uploaded-by">
           ${node.uploaded_by?.username || "&mdash;"}
         </ui5-table-cell>
@@ -73,9 +72,10 @@ export default class FilesList extends HTMLElement {
     this.state.selectedNodes = []
 
     // Re-render.
+    const noDataText = !this.innerHTML ? "Loading..." : "No items found"
     this.innerHTML = `
       <ui5-table mode="MultiSelect" sticky-column-header growing="Scroll"
-        no-data-text="Loading...">
+        no-data-text="${noDataText}">
         <ui5-table-column slot="columns">Name</ui5-table-column>
         <ui5-table-column slot="columns">Uploaded by</ui5-table-column>
         <ui5-table-column slot="columns">Last modified</ui5-table-column>
@@ -180,20 +180,30 @@ export default class FilesList extends HTMLElement {
     // Build the options array based on the current state of things.
     const numSelectedNodes = this.state.selectedNodes.length
     const node = this.props.nodes[parseInt(tr.dataset.index)]
+    const isCollection = node.node_type === "COLLECTION"
     const options = [
       this.state.detailsPanelClosed && "View Details",
       node.node_type === "FILE" && numSelectedNodes < 2 && "Preview",
       numSelectedNodes < 2 && "Rename",
-      "Move",
-      numSelectedNodes < 2 && "Download",
-      "Delete"
+      !isCollection && "Move",
+      numSelectedNodes < 2 && !isCollection && "Download",
+      !isCollection && "Delete"
     ].filter(x => x !== false)
+
+    // TODO - implement these
+    const disabledOptions = [
+      "Preview",
+      "Move",
+      "Download",
+      "Delete",
+    ]
 
     this.appendChild(
       Object.assign(new ContextMenu(), {
         props: {
           x: e.clientX,
           y: e.clientY + window.scrollY,
+          disabledOptions,
           options,
           context: {
             currentRow: tr,
@@ -216,6 +226,22 @@ export default class FilesList extends HTMLElement {
     this.state.nextChildrenUrl = childNodesResponse.next
     Object.assign(this.props, { path, nodes: childNodesResponse.results })
     this.nodesChangedHandler()
+  }
+
+  nodeRenameResponseMessageHandler ({ node, newName, error}) {
+    /* Update the corresponding table row and name cell elements with the
+       new name.
+     */
+    // Ignore error responses.
+    if (error) {
+      return
+    }
+    const ui5TableRow =
+      this.table.querySelector(`ui5-table-row[data-name="${node.name}"]`)
+    const ui5TableCell =
+      ui5TableRow.querySelector(":scope > ui5-table-cell.name")
+    ui5TableRow.dataset["name"] = newName
+    ui5TableCell.textContent = newName
   }
 
   async loadMoreHandler (e) {

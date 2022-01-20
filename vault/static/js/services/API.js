@@ -1,6 +1,8 @@
 
 import { publish } from "../lib/pubsub.js"
 
+const APPLICATION_JSON = "application/json"
+
 const encodeSearchParams = x => x ? `?${new URLSearchParams(x).toString()}` : ''
 
 export default class API {
@@ -19,7 +21,11 @@ export default class API {
   constructor (basePath = '/api') {
     // Collect the request method names and function that we want to bind
     // to each resource.
-    const nameMethodPairs = [ 'get' ].map(k => [ k, this[k].bind(this) ])
+    const nameMethodPairs = [
+      'get',
+      'patch',
+      'post',
+    ].map(k => [ k, this[k].bind(this) ])
 
     // Request the name -> url map of all available resource from the server.
     this.getJSON(basePath).then(resourceURLMap => {
@@ -48,7 +54,7 @@ export default class API {
         url, {
           credentials: "same-origin",
           headers: {
-            "accept": "application/json"
+            "accept": APPLICATION_JSON
           }
         }
       )
@@ -61,5 +67,44 @@ export default class API {
     return await this.getJSON(
       `${resourceUrl}${id ? `${id}` : ""}${encodeSearchParams(params)}`
     )
+  }
+
+  async patch (resourceUrl, id, data) {
+    /* Make a PATCH request with the specified data.
+     */
+    return await fetch(
+      `${resourceUrl}${id}/`, {
+        credentials: "same-origin",
+        method: "PATCH",
+        headers: {
+          "Accept": APPLICATION_JSON,
+          "content-type": APPLICATION_JSON
+        },
+        body: JSON.stringify(data)
+      }
+    )
+  }
+
+  async post (resourceUrl, data) {
+    /* Make a PUT request with the specified data.
+     */
+    return await fetch(
+      resourceUrl, {
+        credentials: "same-origin",
+        method: "POST",
+        headers: {
+          "Accept": APPLICATION_JSON,
+          "content-type": APPLICATION_JSON
+        },
+        body: JSON.stringify(data)
+      }
+    )
+  }
+
+  async getResponseErrorDetail (response) {
+    return response.status < 400 ? null : {
+      code: response.status,
+      detail: (await response.json()).detail
+    }
   }
 }
