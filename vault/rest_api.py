@@ -1,5 +1,4 @@
 from django.core.exceptions import ObjectDoesNotExist
-from django.urls import resolve
 from django.db import IntegrityError
 from django.db.models import (
     ForeignKey,
@@ -15,7 +14,6 @@ from django.db.models.fields import (
     PositiveSmallIntegerField,
     TextField,
 )
-
 from django_filters import filterset
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import (
@@ -24,10 +22,13 @@ from django_filters import (
     NumberFilter,
 )
 from django_filters.filterset import FilterSet
-
 from django.http import (
     HttpResponseBadRequest,
     HttpResponseForbidden,
+)
+from django.urls import (
+    get_script_prefix,
+    resolve,
 )
 
 from rest_framework.filters import OrderingFilter
@@ -297,17 +298,37 @@ class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMix
 
         return serializer
 
+    @staticmethod
+    def normalize_instance_url(url):
+        """Normalize a model instance URL to an app-root relative path."""
+        # Convert an absolute instance URL returned by the API to a relative URL
+        # that resolve() expects.
+        if url.startswith(("http://", "https://")):
+            url = "/" + url.split("/", 3)[3]
+
+        # Remove any script prefix (a.k.a. SCRIPT_NAME) from the relative URL
+        # to prevent resolve() from raising ObjectDoesNotExist.
+        script_prefix = get_script_prefix()
+        if url.startswith(script_prefix):
+            prefix_len = len(script_prefix)
+            # If the prefix has a trailing "/", retain this as the leading char
+            # of the final URL to make it app-root relative.
+            if script_prefix.endswith("/"):
+                prefix_len -= 1
+            url = url[prefix_len:]
+
+        # Add a leading "/" if necessary.
+        if not url.startswith("/"):
+            url = "/" + url
+
+        return url
+
     def get_by_url(self, user, url):
         """Attempt to return the model instance indicated by a
         HyperlinkedModelSerializer-generated URL by first applying any specified
         FilterSet.Meta.user_queryset_filter function. DoesNotExist will be raised
         if user_queryset_filter prevents the get.
         """
-        # Convert an absolute instance URL returned by the API to a relative URL
-        # that resolve() expects.
-        if url.startswith(("http://", "https://")):
-            url = "/" + url.split("/", 3)[3]
-
         pk = int(resolve(url).kwargs["pk"])
         model = self.serializer_class.Meta.model
 
@@ -581,15 +602,17 @@ class CollectionViewSet(
         """Override CreateModelMixin.create() to validate requests."""
         organization_url = request.data.get("organization")
         if organization_url:
+            # Normalize the organization URL.
+            organization_url = self.normalize_instance_url(organization_url)
             # Return a 403 if the specified Organization is not accessible by the user.
             if not self._organization_ok(request.user, organization_url):
                 return Response(status=403)
         else:
             # Organization was not specified, so assume the user's org.
-            request.data["organization"] = OrganizationSerializer.get_url(
+            organization_url = OrganizationSerializer.get_url(
                 request, request.user.organization
             )
-
+        request.data["organization"] = organization_url
         return super().create(request, *args, **kwargs)
 
 
@@ -638,18 +661,23 @@ class TreeNodeViewSet(
         accessible by the requesting user.
         """
         if "parent" in request.data:
+            # Normalize the parent URL.
+            request.data["parent"] = self.normalize_instance_url(request.data["parent"])
             if not self._parent_ok(request.user, request.data["parent"]):
                 return Response(status=403)
         return super().update(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         """Override CreateModelMixin.create() to validate requests."""
-        if "node_type" not in request.data:
-            return HttpResponseBadRequest("node_type is required")
+        if "node_type" not in request.data or "parent" not in request.data:
+            return HttpResponseBadRequest("node_type and parent are required")
         if request.data["node_type"] != "FOLDER":
             return HttpResponseBadRequest(
                 'Creation only enabled for node_type="FOLDER"'
             )
+
+        # Normalize the parent URL.
+        request.data["parent"] = self.normalize_instance_url(request.data["parent"])
 
         # Return a 403 if the specified parent is not accessible by this user.
         if not self._parent_ok(request.user, request.data["parent"]):

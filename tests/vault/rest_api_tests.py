@@ -2,6 +2,7 @@ from pytest import fixture, mark, raises
 
 import lxml.html
 from django.forms import model_to_dict
+from django.urls import resolve
 from model_bakery import baker
 from rest_framework.test import APIClient
 
@@ -11,6 +12,7 @@ from vault.models import (
     Organization,
     TreeNode,
 )
+import vault.rest_api
 from vault.rest_api import (
     CollectionFilterSet,
     CollectionViewSet,
@@ -159,6 +161,45 @@ def test_VaultUpdateModelMixin_must_define_mutable_fields():
     # Test a valid value.
     class C(VaultUpdateModelMixin):
         mutable_fields = ()
+
+
+#### VaultReadOnlyModelViewSet Utility Tests ####
+
+
+def test_VaultReadOnlyModelViewSet_normalize_instance_url(monkeypatch):
+    """Test that VaultReadOnlyModelViewSet.normalize_instance_url() converts
+    URLs to app-root relative paths."""
+    # Expect the same result for each input.
+    expected = "/api/treenodes/1/"
+    # Check that Django can resolve the expected, normalized path.
+    resolve(expected)
+    for url, script_name in (
+        # HTTP + no script name
+        ("http://vault-site/api/treenodes/1/", None),
+        # HTTPS + no script name
+        ("https://vault-site/api/treenodes/1/", None),
+        # HTTP + script name with no trailing slash
+        ("http://vault-site/vault/api/treenodes/1/", "/vault"),
+        # HTTP + script name with trailing slash
+        ("http://vault-site/vault/api/treenodes/1/", "/vault/"),
+        # HTTPS + script name with no trailing slash
+        ("https://vault-site/vault/api/treenodes/1/", "/vault"),
+        # HTTPS + script name with trailing slash
+        ("https://vault-site/vault/api/treenodes/1/", "/vault/"),
+        # Relative + no script name
+        ("/api/treenodes/1/", None),
+        # Relative with no leading slash + no script name
+        ("api/treenodes/1/", None),
+        # Relative + script name with no trailing slash
+        ("/vault/api/treenodes/1/", "/vault"),
+        # Relative + script name with trailing slash
+        ("/vault/api/treenodes/1/", "/vault/"),
+    ):
+        monkeypatch.setattr(
+            vault.rest_api, "get_script_prefix", lambda: script_name or "/"
+        )
+        result = VaultReadOnlyModelViewSet.normalize_instance_url(url)
+        assert result == expected
 
 
 #### Collections Endpoint Tests ####
