@@ -1,5 +1,8 @@
+from urllib import parse
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
+from django.utils.encoding import uri_to_iri
 from django.db.models import (
     ForeignKey,
     TextChoices,
@@ -14,14 +17,6 @@ from django.db.models.fields import (
     PositiveSmallIntegerField,
     TextField,
 )
-from django_filters import filterset
-from django_filters.rest_framework import DjangoFilterBackend
-from django_filters import (
-    ModelChoiceFilter,
-    ModelMultipleChoiceFilter,
-    NumberFilter,
-)
-from django_filters.filterset import FilterSet
 from django.http import (
     HttpResponseBadRequest,
     HttpResponseForbidden,
@@ -29,6 +24,15 @@ from django.http import (
 from django.urls import (
     get_script_prefix,
     resolve,
+)
+
+from django_filters import filterset
+from django_filters.filterset import FilterSet
+from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import (
+    ModelChoiceFilter,
+    ModelMultipleChoiceFilter,
+    NumberFilter,
 )
 
 from rest_framework.filters import OrderingFilter
@@ -299,29 +303,23 @@ class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMix
         return serializer
 
     @staticmethod
-    def normalize_instance_url(url):
-        """Normalize a model instance URL to an app-root relative path."""
-        # Convert an absolute instance URL returned by the API to a relative URL
-        # that resolve() expects.
-        if url.startswith(("http://", "https://")):
-            url = "/" + url.split("/", 3)[3]
+    def normalize_hyperlinkedrelatedfield_url(url):
+        """Return a HyperlinkedRelatedField URL as a app-root relative path.
+        Adapted from: https://github.com/encode/django-rest-framework/blob/02eeb6fa003b5cbe3851ac18392f129d31a1a6bd/rest_framework/relations.py#L343-L355
+        """
+        try:
+            http_prefix = url.startswith(("http:", "https:"))
+        except AttributeError:
+            return None
 
-        # Remove any script prefix (a.k.a. SCRIPT_NAME) from the relative URL
-        # to prevent resolve() from raising ObjectDoesNotExist.
-        script_prefix = get_script_prefix()
-        if url.startswith(script_prefix):
-            prefix_len = len(script_prefix)
-            # If the prefix has a trailing "/", retain this as the leading char
-            # of the final URL to make it app-root relative.
-            if script_prefix.endswith("/"):
-                prefix_len -= 1
-            url = url[prefix_len:]
+        if http_prefix:
+            # If needed convert absolute URLs to relative path
+            url = parse.urlparse(url).path
+            prefix = get_script_prefix()
+            if url.startswith(prefix):
+                url = "/" + url[len(prefix) :]
 
-        # Add a leading "/" if necessary.
-        if not url.startswith("/"):
-            url = "/" + url
-
-        return url
+        return uri_to_iri(parse.unquote(url))
 
     def get_by_url(self, user, url):
         """Attempt to return the model instance indicated by a
@@ -329,6 +327,11 @@ class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMix
         FilterSet.Meta.user_queryset_filter function. DoesNotExist will be raised
         if user_queryset_filter prevents the get.
         """
+        # Normalize the URL to an app-root relative path.
+        url = self.normalize_hyperlinkedrelatedfield_url(url)
+        if url is None:
+            raise ObjectDoesNotExist
+
         pk = int(resolve(url).kwargs["pk"])
         model = self.serializer_class.Meta.model
 
@@ -602,17 +605,14 @@ class CollectionViewSet(
         """Override CreateModelMixin.create() to validate requests."""
         organization_url = request.data.get("organization")
         if organization_url:
-            # Normalize the organization URL.
-            organization_url = self.normalize_instance_url(organization_url)
             # Return a 403 if the specified Organization is not accessible by the user.
             if not self._organization_ok(request.user, organization_url):
                 return Response(status=403)
         else:
             # Organization was not specified, so assume the user's org.
-            organization_url = OrganizationSerializer.get_url(
+            request.data["organization"] = OrganizationSerializer.get_url(
                 request, request.user.organization
             )
-        request.data["organization"] = organization_url
         return super().create(request, *args, **kwargs)
 
 
@@ -661,8 +661,6 @@ class TreeNodeViewSet(
         accessible by the requesting user.
         """
         if "parent" in request.data:
-            # Normalize the parent URL.
-            request.data["parent"] = self.normalize_instance_url(request.data["parent"])
             if not self._parent_ok(request.user, request.data["parent"]):
                 return Response(status=403)
         return super().update(request, *args, **kwargs)
@@ -675,9 +673,6 @@ class TreeNodeViewSet(
             return HttpResponseBadRequest(
                 'Creation only enabled for node_type="FOLDER"'
             )
-
-        # Normalize the parent URL.
-        request.data["parent"] = self.normalize_instance_url(request.data["parent"])
 
         # Return a 403 if the specified parent is not accessible by this user.
         if not self._parent_ok(request.user, request.data["parent"]):

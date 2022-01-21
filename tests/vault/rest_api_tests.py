@@ -2,9 +2,9 @@ from pytest import fixture, mark, raises
 
 import lxml.html
 from django.forms import model_to_dict
-from django.urls import resolve
 from model_bakery import baker
 from rest_framework.test import APIClient
+import rest_framework.relations
 
 from vault.filters import ExtendedJSONEncoder
 from vault.models import (
@@ -166,39 +166,28 @@ def test_VaultUpdateModelMixin_must_define_mutable_fields():
 #### VaultReadOnlyModelViewSet Utility Tests ####
 
 
-def test_VaultReadOnlyModelViewSet_normalize_instance_url(monkeypatch):
-    """Test that VaultReadOnlyModelViewSet.normalize_instance_url() converts
+def test_VaultReadOnlyModelViewSet_normalize_hyperlinkedrelatedfield_url(monkeypatch):
+    """Test that VaultReadOnlyModelViewSet.normalize_hyperlinkedrelatedfield_url() converts
     URLs to app-root relative paths."""
     # Expect the same result for each input.
     expected = "/api/treenodes/1/"
     # Check that Django can resolve the expected, normalized path.
-    resolve(expected)
     for url, script_name in (
         # HTTP + no script name
         ("http://vault-site/api/treenodes/1/", None),
         # HTTPS + no script name
         ("https://vault-site/api/treenodes/1/", None),
-        # HTTP + script name with no trailing slash
-        ("http://vault-site/vault/api/treenodes/1/", "/vault"),
         # HTTP + script name with trailing slash
         ("http://vault-site/vault/api/treenodes/1/", "/vault/"),
-        # HTTPS + script name with no trailing slash
-        ("https://vault-site/vault/api/treenodes/1/", "/vault"),
         # HTTPS + script name with trailing slash
         ("https://vault-site/vault/api/treenodes/1/", "/vault/"),
         # Relative + no script name
         ("/api/treenodes/1/", None),
-        # Relative with no leading slash + no script name
-        ("api/treenodes/1/", None),
-        # Relative + script name with no trailing slash
-        ("/vault/api/treenodes/1/", "/vault"),
-        # Relative + script name with trailing slash
-        ("/vault/api/treenodes/1/", "/vault/"),
     ):
         monkeypatch.setattr(
             vault.rest_api, "get_script_prefix", lambda: script_name or "/"
         )
-        result = VaultReadOnlyModelViewSet.normalize_instance_url(url)
+        result = VaultReadOnlyModelViewSet.normalize_hyperlinkedrelatedfield_url(url)
         assert result == expected
 
 
@@ -294,6 +283,39 @@ def test_collections_endpoint_create_allowed(users, make_organization):
         )
         response = client.post(endpoint("collections"), collection_dict)
         assert response.status_code == 403
+
+
+@mark.django_db
+def test_collections_endpoint_create_with_hyperlinked_related_variations(
+    monkeypatch, user
+):
+    """Test creating a collecting using a variety of different absolute and relative
+    hyperlinked organization URL formats."""
+    client = AuthenticatedClient(user)
+
+    # Get the default organization path in the format "/api/organizations/<id>"
+    org_path = endpoint("organizations", user.organization.id)
+
+    for org_path_prefix, script_name in (
+        ("", None),
+        ("http://localhost", None),
+        ("https://localhost", None),
+        ("http://localhost:8080", None),
+        ("http://localhost/vault", "/vault/"),
+        ("https://localhost/vault", "/vault/"),
+        ("http://localhost:8080/vault", "/vault/"),
+    ):
+        collection_dict = model_to_dict(baker.prepare(Collection, organization=None))
+        collection_dict["organization"] = org_path_prefix + org_path
+
+        get_script_prefix = lambda: script_name or "/"
+        # Patch get_script_prefix() in both our code and rest_framework.
+        monkeypatch.setattr(vault.rest_api, "get_script_prefix", get_script_prefix)
+        monkeypatch.setattr(
+            rest_framework.relations, "get_script_prefix", get_script_prefix
+        )
+        response = client.post(endpoint("collections"), collection_dict)
+        assert response.status_code == 201
 
 
 @mark.django_db
