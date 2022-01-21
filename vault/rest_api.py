@@ -1,6 +1,8 @@
+from urllib import parse
+
 from django.core.exceptions import ObjectDoesNotExist
-from django.urls import resolve
 from django.db import IntegrityError
+from django.utils.encoding import uri_to_iri
 from django.db.models import (
     ForeignKey,
     TextChoices,
@@ -15,19 +17,22 @@ from django.db.models.fields import (
     PositiveSmallIntegerField,
     TextField,
 )
+from django.http import (
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+)
+from django.urls import (
+    get_script_prefix,
+    resolve,
+)
 
 from django_filters import filterset
+from django_filters.filterset import FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import (
     ModelChoiceFilter,
     ModelMultipleChoiceFilter,
     NumberFilter,
-)
-from django_filters.filterset import FilterSet
-
-from django.http import (
-    HttpResponseBadRequest,
-    HttpResponseForbidden,
 )
 
 from rest_framework.filters import OrderingFilter
@@ -297,16 +302,35 @@ class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMix
 
         return serializer
 
+    @staticmethod
+    def normalize_hyperlinkedrelatedfield_url(url):
+        """Return a HyperlinkedRelatedField URL as a app-root relative path.
+        Adapted from: https://github.com/encode/django-rest-framework/blob/02eeb6fa003b5cbe3851ac18392f129d31a1a6bd/rest_framework/relations.py#L343-L355
+        """
+        try:
+            http_prefix = url.startswith(("http:", "https:"))
+        except AttributeError:
+            return None
+
+        if http_prefix:
+            # If needed convert absolute URLs to relative path
+            url = parse.urlparse(url).path
+            prefix = get_script_prefix()
+            if url.startswith(prefix):
+                url = "/" + url[len(prefix) :]
+
+        return uri_to_iri(parse.unquote(url))
+
     def get_by_url(self, user, url):
         """Attempt to return the model instance indicated by a
         HyperlinkedModelSerializer-generated URL by first applying any specified
         FilterSet.Meta.user_queryset_filter function. DoesNotExist will be raised
         if user_queryset_filter prevents the get.
         """
-        # Convert an absolute instance URL returned by the API to a relative URL
-        # that resolve() expects.
-        if url.startswith(("http://", "https://")):
-            url = "/" + url.split("/", 3)[3]
+        # Normalize the URL to an app-root relative path.
+        url = self.normalize_hyperlinkedrelatedfield_url(url)
+        if url is None:
+            raise ObjectDoesNotExist
 
         pk = int(resolve(url).kwargs["pk"])
         model = self.serializer_class.Meta.model
@@ -589,7 +613,6 @@ class CollectionViewSet(
             request.data["organization"] = OrganizationSerializer.get_url(
                 request, request.user.organization
             )
-
         return super().create(request, *args, **kwargs)
 
 
@@ -644,8 +667,8 @@ class TreeNodeViewSet(
 
     def create(self, request, *args, **kwargs):
         """Override CreateModelMixin.create() to validate requests."""
-        if "node_type" not in request.data:
-            return HttpResponseBadRequest("node_type is required")
+        if "node_type" not in request.data or "parent" not in request.data:
+            return HttpResponseBadRequest("node_type and parent are required")
         if request.data["node_type"] != "FOLDER":
             return HttpResponseBadRequest(
                 'Creation only enabled for node_type="FOLDER"'
