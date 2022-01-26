@@ -12,7 +12,6 @@ export default class FileDetails extends HTMLElement {
     // by FilesView.
     this.style.display = "block"
     this.render()
-
     subscribe("FILE_ROW_SELECTED", this.fileRowSelectedHandler.bind(this))
     subscribe(
       "FILE_CONTEXT_MENU_ITEM_SELECTED",
@@ -53,14 +52,14 @@ export default class FileDetails extends HTMLElement {
       <div class="details">
         <dl style="font-size: 0.8rem;">
           ${Object.keys(node).sort().map(
-            k => node[k] === null ? null : `<dt>${k}</dt><dd>${node[k]}</dd>`
+            k => node[k] === null ? null : `<dt>${k}</dt><dd>${k == "uploaded_by" ? node[k].username : node[k]}</dd>`
           ).filter(s => s !== null).join("")}
         </dl>
       </div>
 
       <div class="activity hidden">
         TODO
-      </div>
+      </div>    
     `
 
     this.querySelector("button.close")

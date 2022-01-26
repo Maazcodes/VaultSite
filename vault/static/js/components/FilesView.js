@@ -14,6 +14,7 @@ import "./NewCta.js"
 import FileDetails from "./FileDetails.js"
 import FileTreeNavigator from "./FileTreeNavigator.js"
 import FilesList from "./FilesList.js"
+import BreadcrumbsView from "./BreadcrumbsView.js";
 
 /******************************************************************************
    Conductor
@@ -56,7 +57,11 @@ class Conductor {
 
     subscribe(
       "CREATE_FOLDER_REQUEST",
-      message => this.createFolderRequestHandler(message)
+      message => this.createFolderRequestHandler(message))
+
+    subscribe(
+      "NODE_CHILDREN_REQUEST",
+      message => this.nodeChildrenRequestHandler(message)
     )
 
     subscribe(
@@ -119,7 +124,13 @@ class Conductor {
     }
   }
 
-  async changeDirectoryRequestHandler ({ node, path }, updateHistory = true) {
+  async nodeChildrenRequestHandler (nodeId){
+    const { limit, ordering } = this.state.childQuery
+    const nodeChildrenResponse =  await this.api.treenodes.get(null, { parent: nodeId, limit, ordering})
+    publish("NODE_CHILDREN_RESPONSE", nodeChildrenResponse.results)
+  }
+
+  async changeDirectoryRequestHandler ({nodeId, node, path }, updateHistory = true) {
     /* Retrieve the directory listing from the API and emit it as a
        CHANGE_DIRECTORY command message.
      */
@@ -128,8 +139,11 @@ class Conductor {
     this.path = path
     // Fetch the selected node's children.
     const { limit, ordering } = this.state.childQuery
-    const childNodesResponse =
-      await this.api.treenodes.get(null, { parent: node.id, limit, ordering })
+    if(nodeId && node == undefined){
+      node = await this.api.treenodes.get(null, {id: nodeId, limit, ordering })
+      node = node.results[0]
+    }
+    const childNodesResponse = await this.api.treenodes.get(null, { parent: node.id, limit, ordering })
     // Publish a CHANGE_DIRECTORY command with the requested path listing.
     publish("CHANGE_DIRECTORY", { node, childNodesResponse, path })
     // Maybe update the browser history stack to reflect the new path.
@@ -180,7 +194,6 @@ class Conductor {
     setTimeout(() => publish("NODES_DELETE_RESPONSE"), 2000)
   }
 }
-
 /******************************************************************************
    FilesView Component
  *****************************************************************************/
@@ -196,13 +209,15 @@ export default class FilesView extends HTMLElement {
       appPath: this.getAttribute("app-path"),
       path: JSON.parse(this.getAttribute("path")),
       node: JSON.parse(this.getAttribute("node")),
+      orgId: this.getAttribute("orgId"),
+      parentChildDict: JSON.parse(this.getAttribute("parentChildDict"))
     }
+    
+    const {basePath, appPath, path, node} = this.props
     // Prepend the internal representation of appPath with basePath.
-    this.props.appPath = `${this.props.basePath}${this.props.appPath}`
-
+    this.props.appPath = `${basePath}${appPath}`
     // Instantiate the Conductor with the current paths.
     this.conductor = new Conductor(this.props)
-
     this.innerHTML = `
       <div class="left-panel">
         <div id="new-cta-container">
@@ -212,9 +227,6 @@ export default class FilesView extends HTMLElement {
       </div>
       <div class="right-panel">
         <div id="breadcrumbs-container">
-          <em style="font-size: 2rem;">
-            ${this.props.path.split("/").filter(Boolean).join(" &gt; ") || "My Vault"}
-          </em>
           <file-details-buttons></file-details-buttons>
         </div>
         <div class="inner-panel">
@@ -228,22 +240,28 @@ export default class FilesView extends HTMLElement {
       <vault-move-popover></vault-move-popover>
       <vault-rename-modal></vault-rename-modal>
     `
-
     // Init the FileTreeNavigator component and append it to the first column.
-    this.fileTreeNavigator = Object.assign(new FileTreeNavigator(), {
-      props: {
-        nodes: [],
-        path: this.props.path
-      }
-    })
+    this.fileTreeNavigator = new FileTreeNavigator(this.props)
     this.querySelector("#file-tree-navigator-container")
         .appendChild(this.fileTreeNavigator)
+
+    // Init the Breadcrumbs component and append it above the second column.
+    this.breadCrumb = Object.assign(new BreadcrumbsView(), {
+      props: {
+        nodes: [],
+        path:path,
+        appPath:this.props.appPath,
+        node:node,
+        basePath:basePath
+      },
+    });
+    this.querySelector("#breadcrumbs-container").appendChild(this.breadCrumb);
 
     // Init the FilesList component and append it to the second column.
     this.filesList = Object.assign(new FilesList(), {
       props: {
         nodes: [],
-        path: this.props.path,
+        path:path,
       }
     })
     this.querySelector("#files-list-container").appendChild(this.filesList)
@@ -251,7 +269,7 @@ export default class FilesView extends HTMLElement {
     // Init the FileDetails component and append it to the last column.
     this.fileDetails = Object.assign(new FileDetails(), {
       props: {
-        node: this.props.node
+        node:node
       }
     })
     this.querySelector("#file-details-container")
@@ -262,10 +280,6 @@ export default class FilesView extends HTMLElement {
 
   changeDirectoryMessageHandler ({ path, childNodes }) {
     Object.assign(this.props, { path, childNodes })
-
-    // DEV - set simple breadcrumbs display
-    const el = this.querySelector("#breadcrumbs-container > em")
-    el.innerHTML = path.split("/").filter(Boolean).join(" &gt; ") || "My Vault"
   }
 }
 
