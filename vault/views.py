@@ -601,8 +601,34 @@ def render_web_components_file_view(request, path):
         child = get_object_or_404(models.TreeNode, name=node, parent=parent)
         parent = child
     node = parent
+    org_node = request.user.organization.tree_node
+    org_id = org_node.id
+    node_path_list = node.path.split(".")
+    parent_child_dict = {
+        node.id: [] for node in models.TreeNode.objects.filter(id__in=node_path_list)
+        # Get all the objects from TreeNode whose id matches in node path list
+    }
+
+    for child in models.TreeNode.objects.filter(parent__in=node_path_list).exclude(node_type="FILE"):
+        # Get all the objects from TreeNode whose parent id matches in node path list
+        parent_child_dict[child.parent_id].append(child)
+
+    node_dict = {
+        "id": node.id,
+        "node_type": node.node_type,
+        "parent": node.parent.id if node.parent else 0,
+        "name": node.name,
+        "uploaded_at": str(node.uploaded_at),
+        "size": node.size if node.size else "-",
+        "path": node.path,
+    }
     return TemplateResponse(
         request,
         "vault/web_components_files_view.html",
-        {"node": node, "path": f"/{path}"},
+        {
+            "node": node_dict,
+            "path": f"/{path}",
+            "org_id": org_id,
+            "parent_child_dict": parent_child_dict,
+        },
     )

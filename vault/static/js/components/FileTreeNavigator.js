@@ -1,20 +1,24 @@
-
 import { publish, subscribe } from "../lib/pubsub.js"
-
 export default class FileTreeNavigator extends HTMLElement {
-  constructor () {
+  constructor ({ orgId, parentChildDict}) {
     super()
+    this.orgId = orgId
+    // parent child dictionary receiving from views.py file - receive data after refresh
+    this.parentChildDict = parentChildDict 
+    // parentChildDict = {"parent id": [list of children]}
     this.props = {
       nodes: [],
-      path: undefined
+      node: {},
     }
+    // parent child dictionary created locally in this file to store data after every publish function call
+    this.parentChildDictionary = {} 
   }
 
   connectedCallback () {
     // Expect this.props.nodes to have been been programmatically populated
     // by FilesView.
     this.render()
-
+    subscribe("NODE_CHILDREN_RESPONSE", this.nodeChildrenResponseHandler.bind(this))
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryHandler.bind(this))
     subscribe("NODE_RENAME_RESPONSE", this.nodeRenameResponseHandler.bind(this))
 
@@ -23,30 +27,104 @@ export default class FileTreeNavigator extends HTMLElement {
   }
 
   render () {
-    const { path } = this.props
-    const pathParts = path === "/" ? [] : path.replace(/^\//, "").split("/")
-    const lastPartI = pathParts.length - 1
-
-    this.innerHTML = `
-      <ui5-tree>
-        <ui5-tree-item text="My Vault" expanded>
-          ${pathParts.map((pp, i) =>
-            `<ui5-tree-item text="${pp}" expanded ${i === lastPartI ? "selected" : ""}>`
-          ).join("")}
+    const { node, nodes} = this.props;
+    this.parentChildDictionary[node.id] = nodes;
+    // Inserted elementindex attribute for visited folders
+    if (node.id == this.orgId || !document.getElementById("treeDynamic")) {
+      // initiate tree view and add event listeners only at initial stage
+      // Add event listeners only if this condition is true - this is done to avoid addition of multiple event listeners
+      this.innerHTML = `
+        <ui5-tree id="treeDynamic">
+          <ui5-tree-item text="Collections" id="${this.orgId}" expanded>
             ${this.props.nodes.filter(node => node.node_type !== "FILE").map(node =>
-              `<ui5-tree-item data-url="${node.url}" text="${node.name}"
-                            ${node.node_type === "FILE" ? "" : "has-children"}>
-               </ui5-tree-item>`
+              `<ui5-tree-item text="${node.name}" path="/${node.name}" id="${node.id}" ${node.node_type === "FILE" ? "" : "has-children"}>
+                </ui5-tree-item>`
             ).join("")}
-          ${pathParts.map(() => `</ui5-tree-item>`).join("")}
-        </ui5-tree-item>
-      </ui5-tree>
-    `
+          </ui5-tree-item>
+        </ui5-tree>
+      `
+      var dynamicTree = document.getElementById("treeDynamic");
+      var firstTreeElement = document.querySelectorAll("ui5-tree-item")[0];
+      dynamicTree.addEventListener("item-toggle", async function(event) {
+        var item = event.detail.item; // get the node that is toggled
+        if (item.text != firstTreeElement.text && item.expanded) {
+            item.innerHTML = "";
+          }
+        if (item.text == firstTreeElement.text && !item.expanded) {
+          // clearing previous tree data for first element
+          firstTreeElement.innerHTML = ""; 
+        }
+        // show only subfolders after toggle
+        if (!item.expanded) {
+          // Request API from Conductor class for node's children
+          publish("NODE_CHILDREN_REQUEST", item.id);
+        }
+      })
+      dynamicTree.addEventListener("item-click", async function(event) {
+        var nodeItem = event.detail.item; // get the node that is clicked
+        var nodeItemId = nodeItem.id;
+        var nodePublishPath = $(nodeItem).attr('path');
+        if (nodeItem.text == firstTreeElement.text) {
+          // publish path for first tree element
+          nodePublishPath = "/"
+        }
+        publish("CHANGE_DIRECTORY_REQUEST", { nodeId: nodeItemId, path: `${nodePublishPath}`});
+      })
+    } 
+    else {
+      var nodeElement = document.getElementById(String(node.id));
+      var nodePathArray = node.path.split(".");
+      if (!nodeElement) {
+      // if parent node is not present in tree view, create it with the help of node path
+        for (let index = 0; index < nodePathArray.length; index++) {
+          const NodeId = nodePathArray[index];
+          if (document.getElementById(String(NodeId))) {
+            var ParentNode = document.getElementById(String(NodeId));
+            this.CreateTreeViewElements(this.parentChildDictionary[NodeId] || this.parentChildDict[NodeId], ParentNode)
+          }
+        }
+      }
+      else {
+        // toggle the node in tree view by getting parent node if parent node is present in tree view
+        this.CreateTreeViewElements(nodes, nodeElement);
+      }
+    }     
   }
 
-  changeDirectoryHandler ({ childNodesResponse, path }) {
-    this.props.path = path
-    this.props.nodes = childNodesResponse.results
+  CreateTreeViewElements(nodesArray, parentNode){
+    // create tree elements after clicking on collection table or breacrumbs
+    for (let index = 0; index < nodesArray.length; index++) {
+      const childNode = nodesArray[index];
+      if (childNode.node_type !== "FILE" && !document.getElementById(String(childNode.id))) {
+        var newItem = document.createElement("ui5-tree-item");
+        newItem.id = String(childNode.id);
+        newItem.text = String(childNode.name);
+        newItem.setAttribute("path", String($(parentNode).attr('path') || "") + "/" + String(newItem.text) )
+        newItem.setAttribute("has-children", "");
+        parentNode.appendChild(newItem);
+      }
+    }
+    if (!parentNode.expanded) {
+      parentNode.expanded = true;
+    }
+  }
+
+  nodeChildrenResponseHandler (nodesChildrenResponse){
+    if (nodesChildrenResponse.length > 0) {
+      var nodeParentUrlList = nodesChildrenResponse[0].parent.split("/")
+      var parentId = nodeParentUrlList[nodeParentUrlList.length-2]
+      var parentElement = document.getElementById(String(parentId))
+      parentElement.innerHTML = `${nodesChildrenResponse.filter(node => node.node_type !== "FILE").map(node =>
+                  `<ui5-tree-item text="${node.name}" path="${$(parentElement).attr('path')}/${node.name}" id="${node.id}" ${node.node_type === "FILE" ? "" : "has-children"}>
+                  </ui5-tree-item>`
+                ).join("")}`
+      this.parentChildDictionary[parentId] = nodesChildrenResponse;
+    }
+  }
+
+  changeDirectoryHandler ({ childNodesResponse, node}) {
+    this.props.node = node;
+    this.props.nodes = childNodesResponse.results;
     this.render()
   }
 

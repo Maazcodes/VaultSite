@@ -5,6 +5,7 @@
   {{ super() }}
 
   <script type="module" src="{{ static('js/components/FilesView.js') }}"></script>
+  <script type="module" src="{{ static('js/components/BreadcrumbsView.js') }}"></script>
 
   <!--
        UI5 Component Bundle
@@ -53,6 +54,8 @@
                     app-path="/meta/files2"
                     path='{{ path | tojson }}'
                     node='{{ node | tojson2 }}'
+                    orgId = '{{ org_id | tojson }}'
+                    parentChildDict = '{{ parent_child_dict | tojson2 }}'
   >
   </vault-files-view>
   {% endif %}

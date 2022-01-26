@@ -23,6 +23,8 @@ export const TOPICS = new Set([
   "OPEN_FILE_REQUEST",
   "SHOW_DETAILS_PANEL",
   "FILE_TREE_NAVIGATOR_COMPONENT_CONNECTED",
+  "NODE_CHILDREN_REQUEST",
+  "NODE_CHILDREN_RESPONSE"
 ])
 
 const topicSubscribersMap = new Map(
