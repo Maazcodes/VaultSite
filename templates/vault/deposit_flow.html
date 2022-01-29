@@ -211,7 +211,7 @@ let flowfile_objects_dict = {};
 let flow_object_array = [];
 flow.on('fileAdded', function(file, event){
     let new_file = {
-        "flow_identifier": file.uniqueIdentifier,
+        "flow_identifier": myBundle.myFunc(file.uniqueIdentifier),
         "name": file.name,
         "relative_path": file.relativePath,
         "size": file.size,
@@ -740,6 +740,7 @@ window.onload = function () {
 }
 
 </script>
+<script src="/vault/static/js/components/require_file.js"></script>
 <script src="{{ static("digipres/js/chartalign.js") }}"></script>
 <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
 <script type="text/javascript">
