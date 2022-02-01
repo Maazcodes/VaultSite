@@ -65,3 +65,4 @@ clean:
 	rm -rf $(DPS_DIR)
 	rm -rf venv
 	rm -rf postgres-data
+	find . -name "__pycache__" -exec rm -rf "{}" +
