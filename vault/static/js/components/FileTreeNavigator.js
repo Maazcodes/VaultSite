@@ -29,13 +29,18 @@ export default class FileTreeNavigator extends HTMLElement {
   render () {
     const { node, nodes} = this.props;
     this.parentChildDictionary[node.id] = nodes;
-    // Inserted elementindex attribute for visited folders
+    const currentNode = document.getElementById(String(node.id))
+    const selectedElements = document.querySelectorAll("ui5-tree-item[selected]")
+    selectedElements.forEach(element => element.removeAttribute("selected"))
+    if (!!currentNode) {
+      currentNode.setAttribute("selected", "");
+    }
     if (node.id == this.orgId || !document.getElementById("treeDynamic")) {
       // initiate tree view and add event listeners only at initial stage
       // Add event listeners only if this condition is true - this is done to avoid addition of multiple event listeners
       this.innerHTML = `
         <ui5-tree id="treeDynamic">
-          <ui5-tree-item text="Collections" id="${this.orgId}" expanded>
+          <ui5-tree-item text="Collections" id="${this.orgId}" has-children expanded selected>
             ${this.props.nodes.filter(node => node.node_type !== "FILE").map(node =>
               `<ui5-tree-item text="${node.name}" path="/${node.name}" id="${node.id}" ${node.node_type === "FILE" ? "" : "has-children"}>
                 </ui5-tree-item>`
@@ -92,7 +97,7 @@ export default class FileTreeNavigator extends HTMLElement {
   }
 
   CreateTreeViewElements(nodesArray, parentNode){
-    // create tree elements after clicking on collection table or breacrumbs
+    // create tree elements after clicking on collection table or breadcrumbs
     for (let index = 0; index < nodesArray.length; index++) {
       const childNode = nodesArray[index];
       if (childNode.node_type !== "FILE" && !document.getElementById(String(childNode.id))) {
