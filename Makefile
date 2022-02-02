@@ -15,32 +15,45 @@ DEV_DIRS = \
 
 export AIT_CONF = $(DPS_DIR)/vault.yml
 
-venv: requirements.dev.txt
+venv:
 	virtualenv venv
+
+./venv/bin/pip-sync: venv
 	venv/bin/pip install pip-tools==$(PIPTOOLS_VERSION)
-	venv/bin/pip-sync requirements.dev.txt
-	touch venv
+	touch $@
+
+requirements.txt: requirements.in ./venv/bin/pip-sync
+	venv/bin/pip-compile --output-file $@ $<
+
+requirements.test.txt: requirements.test.in requirements.txt
+	venv/bin/pip-compile --output-file $@ $<
+
+requirements.dev.txt: requirements.dev.in requirements.test.txt
+	venv/bin/pip-compile --output-file $@ $<
+	venv/bin/pip-sync $@
 
 $(DEV_DIRS):
 	mkdir -p $@
 
 $(AIT_CONF): $(DEV_DIRS)
-	echo "FILE_UPLOAD_TEMP_DIR: $(TMP_DPATH)" > $@
-	echo "LOGFILE_PATH: $(LOGFILE_DPATH)/django-debug.log" >> $@
-	echo "MEDIA_ROOT: $(FILES_DPATH)" >> $@
-	echo "SHADIR_ROOT: $(SHA_DPATH)" >> $@
-	echo "STATIC_ROOT: $(STATIC_ROOT_DPATH)" >> $@
+	@echo "FILE_UPLOAD_TEMP_DIR: $(TMP_DPATH)" > $@
+	@echo "LOGFILE_PATH: $(LOGFILE_DPATH)/django-debug.log" >> $@
+	@echo "MEDIA_ROOT: $(FILES_DPATH)" >> $@
+	@echo "SHADIR_ROOT: $(SHA_DPATH)" >> $@
+	@echo "STATIC_ROOT: $(STATIC_ROOT_DPATH)" >> $@
+	@echo "PETABOX_SECRET: bogus-petabox-secret" >> $@
 
 .PHONY: test
-test: venv $(AIT_CONF)
-	venv/bin/pytest
+test: requirements.dev.txt $(AIT_CONF)
+	@# pass extra params on to pytest: https://stackoverflow.com/a/6273809
+	venv/bin/pytest $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: migrate
-migrate: venv $(AIT_CONF)
+migrate: requirements.dev.txt $(AIT_CONF)
 	venv/bin/python manage.py migrate
 
 .PHONY: run
-run: venv $(AIT_CONF)
+run: requirements.dev.txt $(AIT_CONF)
 ifndef REMOTE_USER
 	@echo "ensure REMOTE_USER is set and try again"
 	@exit 1

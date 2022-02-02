@@ -9,3 +9,4 @@ pytest-django
 pytest-docker
 pytest-playwright
 tox
+freezegun==1.1.0

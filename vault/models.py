@@ -1,4 +1,5 @@
 import re
+import typing
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -15,6 +16,7 @@ from django.db.models.signals import (
 )
 
 from vault.ltree import LtreeField
+from vault.pb_utils import get_presigned_url
 
 TEBIBYTE = 2 ** 40
 
@@ -378,6 +380,27 @@ class TreeNode(models.Model):
                 fields=("parent", "name"), name="vault_treenode_parent_and_name"
             ),
         ]
+
+    @property
+    def content_url(self) -> typing.Optional[str]:
+        """Generates a URL for downloading the content of this *TreeNode*.
+
+        Returns ``None`` if this *TreeNode* is not of *node_type* *FILE*., or
+        if *pbox_path* is ``None``.
+        """
+
+        if self.node_type != TreeNode.Type.FILE:
+            return None
+
+        if self.pbox_path is None:
+            return None
+
+        return get_presigned_url(
+            self.pbox_path,
+            settings.PETABOX_SERVICE_NAME,
+            settings.PETABOX_SECRET,
+            settings.PETABOX_URL_SIGNATURE_EXPIRATION_SECS,
+        )
 
 
 ###############################################################################

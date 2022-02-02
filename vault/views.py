@@ -605,11 +605,14 @@ def render_web_components_file_view(request, path):
     org_id = org_node.id
     node_path_list = node.path.split(".")
     parent_child_dict = {
-        node.id: [] for node in models.TreeNode.objects.filter(id__in=node_path_list)
+        node.id: []
+        for node in models.TreeNode.objects.filter(id__in=node_path_list)
         # Get all the objects from TreeNode whose id matches in node path list
     }
 
-    for child in models.TreeNode.objects.filter(parent__in=node_path_list).exclude(node_type="FILE"):
+    for child in models.TreeNode.objects.filter(parent__in=node_path_list).exclude(
+        node_type="FILE"
+    ):
         # Get all the objects from TreeNode whose parent id matches in node path list
         parent_child_dict[child.parent_id].append(child)
 
