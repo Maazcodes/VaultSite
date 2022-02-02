@@ -28,6 +28,8 @@ Environment Variables
     * ``VAULT_POSTGRES_HOST`` -- hostname of postgres daemon
     * ``VAULT_POSTGRES_PORT`` -- TCP port on which to connect to postgres daemon
     * ``STATIC_ROOT`` -- path to directory root of static assets
+    * ``PETABOX_SECRET`` -- secret key shared with petabox used for signing
+      content URLs for downloads
 """
 
 import os
@@ -47,6 +49,7 @@ MEDIA_ROOT = Path(conf.get("MEDIA_ROOT", "/opt/DPS/files/"))
 SHADIR_ROOT = Path(conf.get("SHADIR_ROOT", "/opt/DPS/SHA_DIR/"))
 FILE_UPLOAD_TEMP_DIR = Path(conf.get("FILE_UPLOAD_TEMP_DIR", "/opt/DPS/tmp/"))
 LOGFILE_PATH = conf.get("LOGFILE_PATH", "/opt/DPS/vault-site/django-debug.log")
+PETABOX_SECRET = bytes(conf["PETABOX_SECRET"], "ascii")
 
 # LOGIN_REDIRECT_URL = '/dashboard'
 
@@ -300,3 +303,10 @@ if DEPLOYMENT_ENVIRONMENT == "QA":
     CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-vault-site-qa.us.archive.org")
 if DEPLOYMENT_ENVIRONMENT == "PROD":
     CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-svc600.us.archive.org")
+
+# name of service as which to identify when creating presigned petabox content
+# URLs
+PETABOX_SERVICE_NAME = "dps-vault"
+
+# time after issuance before presigned petabox URLs expire
+PETABOX_URL_SIGNATURE_EXPIRATION_SECS = 30 * 60

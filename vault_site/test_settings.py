@@ -15,3 +15,5 @@ DATABASES = {
         "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
+
+PETABOX_SECRET = bytes("bogus-petabox-secret", "ascii")

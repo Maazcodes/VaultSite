@@ -228,7 +228,9 @@ class TreeNodeSerializer(VaultHyperlinkedModelSerializer):
             "uploaded_at",
             "uploaded_by",
             "url",
+            "content_url",
         ]
+        read_only_fields = ["content_url"]
 
     @classmethod
     def setup_eager_loading(cls, queryset):

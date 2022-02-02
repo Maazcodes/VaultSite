@@ -1,5 +1,6 @@
 from django.core.exceptions import FieldError
 
+from freezegun import freeze_time
 from model_bakery.baker import prepare
 from pytest import (
     fixture,
@@ -57,44 +58,97 @@ def assert_tree_node_types_is_valid():
     assert TREE_NODE_TYPES == set(TreeNode.Type.values)
 
 
-@mark.django_db
-@mark.parametrize(
-    "node_type,valid_parent_types,num_invalid_types",
-    (
-        ("ORGANIZATION", set(), 4),
-        ("COLLECTION", {"ORGANIZATION"}, 3),
-        ("FOLDER", {"COLLECTION", "FOLDER"}, 2),
-        ("FILE", {"COLLECTION", "FOLDER"}, 2),
-    ),
-)
-def test_treenode_type_hierarchy_enforcement(
-    make_treenode, treenode_stack, node_type, valid_parent_types, num_invalid_types
-):
-    """Check that the valid TreeNode type hierarchy is enforced."""
-    # Check that a node is successfully created when a valid parent is specified.
-    # Save a node for the subsequent invalid-parent update test.
-    node = None
-    if not valid_parent_types:
-        node = make_treenode(node_type=node_type, parent=None)
-    else:
-        for parent_type in valid_parent_types:
-            node = make_treenode(
-                node_type=node_type, parent=treenode_stack[parent_type]
-            )
+class TestTreeNode:
+    @mark.django_db
+    @mark.parametrize(
+        "node_type,valid_parent_types,num_invalid_types",
+        (
+            ("ORGANIZATION", set(), 4),
+            ("COLLECTION", {"ORGANIZATION"}, 3),
+            ("FOLDER", {"COLLECTION", "FOLDER"}, 2),
+            ("FILE", {"COLLECTION", "FOLDER"}, 2),
+        ),
+    )
+    def test_type_hierarchy_enforcement(
+        self,
+        make_treenode,
+        treenode_stack,
+        node_type,
+        valid_parent_types,
+        num_invalid_types,
+    ):
+        """Check that the valid TreeNode type hierarchy is enforced."""
+        # Check that a node is successfully created when a valid parent is specified.
+        # Save a node for the subsequent invalid-parent update test.
+        node = None
+        if not valid_parent_types:
+            node = make_treenode(node_type=node_type, parent=None)
+        else:
+            for parent_type in valid_parent_types:
+                node = make_treenode(
+                    node_type=node_type, parent=treenode_stack[parent_type]
+                )
 
-    # Check that specifying a parent with an invalid type is not allowed.
-    invalid_parent_types = TREE_NODE_TYPES - valid_parent_types
-    assert len(invalid_parent_types) == num_invalid_types
-    for invalid_parent_type in invalid_parent_types:
-        # Test on creation.
-        with raises(FieldError):
-            make_treenode(
-                node_type=node_type, parent=treenode_stack[invalid_parent_type]
-            )
-        # Test on update.
-        with raises(FieldError):
-            node.parent = treenode_stack[invalid_parent_type]
-            node.save()
+        # Check that specifying a parent with an invalid type is not allowed.
+        invalid_parent_types = TREE_NODE_TYPES - valid_parent_types
+        assert len(invalid_parent_types) == num_invalid_types
+        for invalid_parent_type in invalid_parent_types:
+            # Test on creation.
+            with raises(FieldError):
+                make_treenode(
+                    node_type=node_type, parent=treenode_stack[invalid_parent_type]
+                )
+            # Test on update.
+            with raises(FieldError):
+                node.parent = treenode_stack[invalid_parent_type]
+                node.save()
+
+    @freeze_time("2022-01-01")
+    @mark.django_db
+    def test_content_url__success(
+        self,
+        make_treenode,
+        treenode_stack,
+    ):
+        """TreeNode.content_url successfully generates pbox url"""
+        treenode = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FILE",
+            pbox_path="foo/bar",
+        )
+        assert treenode.pbox_path is not None
+        assert (
+            treenode.content_url
+            == "https://archive.org/download/foo/bar?dps-vault-foo=1640997000-901322cdff274c82a9f7e30a8859c355"
+        )
+
+    @mark.django_db
+    def test_content_url__none_when_node_type_not_file(
+        self,
+        make_treenode,
+        treenode_stack,
+    ):
+        """TreeNode.content_url returns no URL when node_type is not file"""
+        treenode = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FOLDER",
+        )
+        assert treenode.node_type == "FOLDER"
+        assert treenode.content_url is None
+
+    @mark.django_db
+    def test_content_url__none_when_pbox_path_none(
+        self,
+        make_treenode,
+        treenode_stack,
+    ):
+        """TreeNode.content_url returns no URL when pbox_path not defined"""
+        treenode = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FILE",
+        )
+        assert treenode.pbox_path is None
+        assert treenode.content_url is None
 
 
 @mark.django_db

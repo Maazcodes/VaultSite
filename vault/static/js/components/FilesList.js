@@ -32,6 +32,7 @@ export default class FilesList extends HTMLElement {
     subscribe("DETAILS_PANEL_OPEN", () => this.state.detailsPanelClosed = false)
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryMessageHandler.bind(this))
     subscribe("NODE_RENAME_RESPONSE", this.nodeRenameResponseMessageHandler.bind(this))
+    subscribe("FILE_CONTEXT_MENU_ITEM_SELECTED", this.fileContextMenuItemSelectedMessageHandler.bind(this));
   }
 
   nodeToUI5TableRow (node, index) {
@@ -179,12 +180,13 @@ export default class FilesList extends HTMLElement {
     const numSelectedNodes = this.state.selectedNodes.length
     const node = this.props.nodes[parseInt(tr.dataset.index)]
     const isCollection = node.node_type === "COLLECTION"
+    const isDownloadable = !!node.content_url
     const options = [
       this.state.detailsPanelClosed && "View Details",
       node.node_type === "FILE" && numSelectedNodes < 2 && "Preview",
       numSelectedNodes < 2 && "Rename",
       !isCollection && "Move",
-      numSelectedNodes < 2 && !isCollection && "Download",
+      numSelectedNodes < 2 && "Download",
       !isCollection && "Delete"
     ].filter(x => x !== false)
 
@@ -192,7 +194,7 @@ export default class FilesList extends HTMLElement {
     const disabledOptions = [
       "Preview",
       "Move",
-      "Download",
+      (numSelectedNodes < 2 && isDownloadable) || "Download",
       "Delete",
     ]
 
@@ -240,6 +242,18 @@ export default class FilesList extends HTMLElement {
       ui5TableRow.querySelector(":scope > ui5-table-cell.name")
     ui5TableRow.dataset["name"] = newName
     ui5TableCell.textContent = newName
+  }
+
+  fileContextMenuItemSelectedMessageHandler ({ value: context_action, context}) {
+    const {currentRow, selectedRows, selectedNodes} = context
+    switch (context_action) {
+      case "Download":
+        const contentUrl = selectedNodes[0]?.content_url
+        if (contentUrl) {
+          window.open(contentUrl, "_blank")
+        }
+        break
+    }
   }
 
   async loadMoreHandler (e) {
