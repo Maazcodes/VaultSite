@@ -150,6 +150,21 @@ class TestTreeNode:
         assert treenode.pbox_path is None
         assert treenode.content_url is None
 
+    @mark.django_db
+    def test_content_url__none_when_pbox_path_invalid(
+        self,
+        make_treenode,
+        treenode_stack,
+    ):
+        """TreeNode.content_url returns no URL when pbox_path is invalid"""
+        treenode = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FILE",
+            pbox_path="INVALID-BECAUSE-NO-SLASHES",
+        )
+        assert "/" not in treenode.pbox_path
+        assert treenode.content_url is None
+
 
 @mark.django_db
 def test_collection_name_change_triggers_treenode_name_update(make_collection):

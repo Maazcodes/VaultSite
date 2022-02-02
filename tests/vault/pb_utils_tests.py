@@ -10,7 +10,7 @@ class TestGetPresignedURL:
         item = "item"
         petabox_secret = bytes("petabox_secret", "ascii")
         service_name = "service_name"
-        with pytest.raises(ValueError):
+        with pytest.raises(pb_utils.InvalidPetaboxPath):
             pb_utils.get_presigned_url(f"{item}", service_name, petabox_secret)
 
     @freeze_time("2022-01-01")

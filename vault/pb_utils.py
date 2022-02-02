@@ -7,6 +7,10 @@ import hmac
 import time
 
 
+class InvalidPetaboxPath(Exception):
+    pass
+
+
 def get_presigned_url(
     pbox_item_slash_filename: str,
     service_name: str,
@@ -24,10 +28,17 @@ def get_presigned_url(
     :param signature_validity_secs: number of seconds after call-time in which
         resulting URL signature is valid
 
+    :raises InvalidPetaboxPath: when *pbox_item_slash_filename* does not
+        describe a path containing both an item and file path
+
     :seealso: https://webarchive.jira.com/browse/AITFIVE-1764
     :seealso: https://git.archive.org/wb/pygwb/blob/5d8a7c7f65a/gwb/loader/petabox.py#L74
     """
-    [item_id, _] = pbox_item_slash_filename.split("/", maxsplit=1)
+    try:
+        [item_id, _] = pbox_item_slash_filename.split("/", maxsplit=1)
+    except ValueError as e:
+        raise InvalidPetaboxPath(e)
+
     collapsed_id = item_id.replace(".", "_")
     expiry = int(time.time() + signature_validity_secs)
     msg = f"{collapsed_id}-{expiry}"

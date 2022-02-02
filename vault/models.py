@@ -1,3 +1,4 @@
+import logging
 import re
 import typing
 
@@ -16,9 +17,13 @@ from django.db.models.signals import (
 )
 
 from vault.ltree import LtreeField
-from vault.pb_utils import get_presigned_url
+from vault.pb_utils import (
+    InvalidPetaboxPath,
+    get_presigned_url,
+)
 
 TEBIBYTE = 2 ** 40
+logger = logging.getLogger(__name__)
 
 
 class ReplicationFactor(IntegerChoices):
@@ -386,7 +391,7 @@ class TreeNode(models.Model):
         """Generates a URL for downloading the content of this *TreeNode*.
 
         Returns ``None`` if this *TreeNode* is not of *node_type* *FILE*., or
-        if *pbox_path* is ``None``.
+        if *pbox_path* is ``None`` or describes an invalid path.
         """
 
         if self.node_type != TreeNode.Type.FILE:
@@ -395,12 +400,21 @@ class TreeNode(models.Model):
         if self.pbox_path is None:
             return None
 
-        return get_presigned_url(
-            self.pbox_path,
-            settings.PETABOX_SERVICE_NAME,
-            settings.PETABOX_SECRET,
-            settings.PETABOX_URL_SIGNATURE_EXPIRATION_SECS,
-        )
+        try:
+            return get_presigned_url(
+                self.pbox_path,
+                settings.PETABOX_SERVICE_NAME,
+                settings.PETABOX_SECRET,
+                settings.PETABOX_URL_SIGNATURE_EXPIRATION_SECS,
+            )
+        except InvalidPetaboxPath as e:
+            logger.warn(
+                "TreeNode id=%d has an invalid pbox_path=%s",
+                self.id,
+                self.pbox_path,
+                exc_info=e,
+            )
+            return None
 
 
 ###############################################################################
