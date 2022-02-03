@@ -185,7 +185,6 @@
 </div>
 <script type="text/javascript">
 
-
 var flow = new Flow({
   target:'{{ url("api_flow_chunk") }}',
   query:{upload_token:'my_token'},
@@ -195,7 +194,13 @@ var flow = new Flow({
   maxChunkRetries: undefined,
   permanentErrors: [],
   chunkRetryInterval: 5000,
-  allowDuplicateUploads: true
+  allowDuplicateUploads: true,
+  generateUniqueIdentifier: function (file){
+      var relativePath = file.relativePath || file.webkitRelativePath || file.fileName || file.name;
+      const uniqueIdentifier = file.size + '-' + relativePath
+      const hashUniqueIdentifier = bundle.stringToHash(uniqueIdentifier)
+      return hashUniqueIdentifier
+  }
 });
 
 flow.assignBrowse(document.getElementById('browseFilesButton'));
@@ -211,7 +216,7 @@ let flowfile_objects_dict = {};
 let flow_object_array = [];
 flow.on('fileAdded', function(file, event){
     let new_file = {
-        "flow_identifier": myBundle.myFunc(file.uniqueIdentifier),
+        "flow_identifier": file.uniqueIdentifier,
         "name": file.name,
         "relative_path": file.relativePath,
         "size": file.size,
