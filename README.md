@@ -1,9 +1,8 @@
 # Vault Site
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Prototype Django UI for the Vault digital preservation service.
+Vault digital preservation service.
 
-## Requirements and Installation
+## Development
 
 ### Docker-Dev Install
 
@@ -24,12 +23,6 @@ REMOTE_USER=<your-superuser-name> make run
 make test
 ```
 
-### If under Apache
-- Collect static files (css and js) with 'python3 manage.py collectstatic'
-- Link static files dir into Apache root: ln -s .../static .../django-admin-static-hack
-- And then add Apache config clause as doc'd here:
-  https://docs.djangoproject.com/en/3.2/howto/deployment/wsgi/modwsgi/#serving-files
-
 ### Finally
 - Log in to [admin](http://localhost:8000/admin/)
 - Create a plan, an organization and associate your user with that org
@@ -43,26 +36,46 @@ username in its vault_user table. As such, above, we set the `REMOTE_USER`
 environment variable to the username of the superuser we created.
 
 ## Dependency Management
-The project is using pip-tools for dependency management. To get things running it can
-be as simple as `pip install -r requirements.dev.txt` but if you use `pip-sync
-requirements.dev.txt` it will keep your virtualenv in sync with the pinned dependencies.
+The project is using [pip-tools(https://github.com/jazzband/pip-tools) for
+dependency management. To get things running it can be as simple as `pip
+install -r requirements.dev.txt` but if you use `pip-sync requirements.dev.txt`
+it will keep your virtualenv in sync with the pinned dependencies.
 
 There are three sets of dependencies for three environments:
 - requirements.txt (prod/qa/etc)
 - requirements.test.txt (all the above plus deps for running tests)
 - requirements.dev.txt (all the above plus deps for local development)
 
-You only need to install one set of dependencies for the environment you're running in.
-Each of these `.txt` files has a corresponding `.in` file. The `.txt` files serve as the
-lock file including pinned versions of all transitive dependencies.
+You only need to install one set of dependencies for the environment you're
+running in. Each of these `.txt` files has a corresponding `.in` file. The
+`.txt` files serve as the lock file including pinned versions of all transitive
+dependencies.
 
 ### Adding new dependencies
 
-- Add the name of the package to the corresponding `.in` file for the environment the
-dependency is appropriate for.
+- Add the name of the package to the corresponding `.in` file for the
+  environment the dependency is appropriate for.
 - Run `pip-compile` "inside out" from the environment you added the dep to.
-  - E.g. when a dep is added to requirements.in run pip-compile on requirements.in,
-requirements.test.in, then requirements.dev.in
+  - E.g. when a dep is added to requirements.in run pip-compile on
+    requirements.in, requirements.test.in, then requirements.dev.in
 - Run `pip-sync` for the corresponding `.txt` file for the environment
 
-Adding a Makefile for all of this might not be a bad idea.
+## Deployment
+Vault is deployed using
+[ait-ansible](https://git.archive.org/archive-it/ait-ansible). So that we
+always understand exactly what changes we're deploying, deployments must be
+made targeting a specific git ref (i.e., a hash, tag, or branch name), which we
+do using the `vault_git_ref` ansible var. Example:
+
+```sh
+# - be ssh'd onto a machine in-cluster
+# - have an up-to-date clone of ait-ansible
+
+# from the ait-ansible directory
+pwd
+./git.archive.org/archive-it/ait-ansible
+
+# git refs are provided via the `vault_git_ref` var
+ansible-playbook --ask-vault-password -i qa setup_vault_site.yml --extra-vars vault_git_ref=eec824149cc850e094dd92921e4af0f8f13ee380
+# ...
+```

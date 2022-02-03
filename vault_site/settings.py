@@ -18,7 +18,6 @@ Environment Variables
       files are stored
     * ``FILE_UPLOAD_TEMP_DIR`` -- path to directory into which deposited flow
       chunks are saved
-    * ``LOGFILE_PATH`` -- path to output application log file
     * ``SECRET_KEY`` -- Django SECRET_KEY
     * ``DEBUG`` -- ``true`` when Django should operate in debug mode
     * ``SENTRY_DSN`` -- Sentry DSN to which to report exceptions
@@ -48,7 +47,6 @@ with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
 MEDIA_ROOT = Path(conf.get("MEDIA_ROOT", "/opt/DPS/files/"))
 SHADIR_ROOT = Path(conf.get("SHADIR_ROOT", "/opt/DPS/SHA_DIR/"))
 FILE_UPLOAD_TEMP_DIR = Path(conf.get("FILE_UPLOAD_TEMP_DIR", "/opt/DPS/tmp/"))
-LOGFILE_PATH = conf.get("LOGFILE_PATH", "/opt/DPS/vault-site/django-debug.log")
 PETABOX_SECRET = bytes(conf["PETABOX_SECRET"], "ascii")
 
 # LOGIN_REDIRECT_URL = '/dashboard'
@@ -112,14 +110,14 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.auth.middleware.RemoteUserMiddleware",
+    "vault.middleware.VaultRemoteUserMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.RemoteUserAuthentication",
+        "vault.authentication.VaultRemoteUserAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination.LimitOffsetPagination"),
     "EXCEPTION_HANDLER": "vault.rest_api.exception_handler",
@@ -263,27 +261,24 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "plain": {
-            "format": "{levelname} {asctime} {module} {message}",
+            "format": "{asctime} {levelname} {module} {message}",
             "style": "{",
         },
     },
     "handlers": {
-        "file": {
+        "console": {
+            "class": "logging.StreamHandler",
             "level": "INFO",
-            "class": "logging.FileHandler",
-            "filename": LOGFILE_PATH,
-            # 'maxBytes': 1024*1024*100,
-            # 'backupCount': 100,
             "formatter": "plain",
         },
     },
     "root": {
-        "handlers": ["file"],
+        "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
         "vault": {
-            "handlers": ["file"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
@@ -303,6 +298,10 @@ if DEPLOYMENT_ENVIRONMENT == "QA":
     CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-vault-site-qa.us.archive.org")
 if DEPLOYMENT_ENVIRONMENT == "PROD":
     CURRENT_HOST = conf.get("HOSTNAME", "wbgrp-svc600.us.archive.org")
+
+if DEPLOYMENT_ENVIRONMENT != "DEV":
+    # informs application it's mounted on /vault, which is necessary for URL generation
+    FORCE_SCRIPT_NAME="/vault"
 
 # name of service as which to identify when creating presigned petabox content
 # URLs

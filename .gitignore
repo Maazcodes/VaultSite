@@ -5,5 +5,8 @@ db.sqlite3
 *.pyc
 .DS_Store
 DPS_dev
+dist
+*.egg-info
+build
 
 postgres-data

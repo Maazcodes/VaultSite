@@ -15,7 +15,6 @@ from internetarchive import Item, get_session
 os.environ["DJANGO_SETTINGS_MODULE"] = "vault_site.settings"
 import django
 
-sys.path.append(os.path.join("..", os.getcwd()))
 django.setup()
 from django.conf import settings
 from django.utils import timezone, dateformat
@@ -64,7 +63,7 @@ def process_hashed_deposit_files():
                     )
                 else:
                     logger.error(
-                        f"Error uploading to petabox. Status:{status_code} - item {item_file_path}"
+                        f"Error uploading to petabox. DepositFile: {deposit_file.id} - Status:{status_code} - item {item_file_path}"
                     )
                     if status_code == 503:
                         logger.error(
@@ -128,6 +127,9 @@ def try_upload_to_pbox(deposit_file, file_path):
             "Deposit:" + str(deposit_id), deposit_file.relative_path
         )
         item_file_path = os.path.join(item_name, pbox_file_path)
+        if len(item_file_path) >= 255:
+            logger.error(f"deposit file id={deposit_file.id} item_file_path length is too long: {item_file_path}")
+            return 0, None
 
         metadata = dict(
             collection=deposit_file.deposit.organization.pbox_collection,

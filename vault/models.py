@@ -361,6 +361,8 @@ class TreeNode(models.Model):
 
     size = models.PositiveBigIntegerField(blank=True, null=True)
     file_type = models.CharField(max_length=255, blank=True, null=True)
+    # TODO (mwilson): expand/remove char limit:
+    # https://webarchive.jira.com/browse/WT-1167
     pbox_path = models.CharField(max_length=255, blank=True, null=True)
 
     uploaded_at = models.DateTimeField(

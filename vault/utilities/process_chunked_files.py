@@ -21,7 +21,6 @@ from fs.osfs import OSFS
 os.environ["DJANGO_SETTINGS_MODULE"] = "vault_site.settings"
 import django
 
-sys.path.append(os.path.join("..", os.getcwd()))
 django.setup()
 from django.conf import settings
 from django.utils import timezone

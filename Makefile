@@ -37,7 +37,6 @@ $(DEV_DIRS):
 
 $(AIT_CONF): $(DEV_DIRS)
 	@echo "FILE_UPLOAD_TEMP_DIR: $(TMP_DPATH)" > $@
-	@echo "LOGFILE_PATH: $(LOGFILE_DPATH)/django-debug.log" >> $@
 	@echo "MEDIA_ROOT: $(FILES_DPATH)" >> $@
 	@echo "SHADIR_ROOT: $(SHA_DPATH)" >> $@
 	@echo "STATIC_ROOT: $(STATIC_ROOT_DPATH)" >> $@
