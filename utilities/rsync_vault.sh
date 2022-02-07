@@ -36,12 +36,15 @@ LOCKFILE="${HOME}/RSYNC_LOGS/rsync_vault.lock"
 LOGFILE="${HOME}/RSYNC_LOGS/VAULT_RSYNC.log"
 
 # If Lock File doesn't exist, create it and set trap on exit
- if { set -C; 2>/dev/null >${LOCKFILE}; }; then
-         trap "rm -f ${LOCKFILE}" EXIT
- else
-         tty -s && echo "Lock file exists… exiting"
-         exit
- fi
+if {
+	set -C
+	2>/dev/null >${LOCKFILE}
+}; then
+	trap "rm -f ${LOCKFILE}" EXIT
+else
+	tty -s && echo "Lock file exists… exiting"
+	exit
+fi
 
 SOURCE='/opt/DPS'
 #TARGETS='phil-dev:/phil-dev/'
@@ -53,16 +56,15 @@ DATE=$(date +%Y-%m-%d)
 
 # make script nice
 ionice -c 3 -p $$ 2>&1 >/dev/null
-renice +12  -p $$ 2>&1 >/dev/null
+renice +12 -p $$ 2>&1 >/dev/null
 
-for target in $TARGETS
-do
-    # timetamp in ms
-    begin=$(date +%s%3N)
-    /usr/bin/rsync $RSYNC_OPTS --log-file=${LOGFILE}.$DATE $SOURCE $target 2>&1 >>${LOGFILE}.$DATE
-    end=$(date +%s%3N)
+for target in $TARGETS; do
+	# timetamp in ms
+	begin=$(date +%s%3N)
+	/usr/bin/rsync $RSYNC_OPTS --log-file=${LOGFILE}.$DATE $SOURCE $target 2>&1 >>${LOGFILE}.$DATE
+	end=$(date +%s%3N)
 
-    echo -e "rsync to $target took $(($end - $begin))ms" >>${LOGFILE}.$DATE
+	echo -e "rsync to $target took $(($end - $begin))ms" >>${LOGFILE}.$DATE
 done
 
 tty -s && tail ${LOGFILE}.$DATE
