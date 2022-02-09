@@ -198,7 +198,7 @@ var flow = new Flow({
   generateUniqueIdentifier: function (file){
       var relativePath = file.relativePath || file.webkitRelativePath || file.fileName || file.name;
       const uniqueIdentifier = file.size + '-' + relativePath
-      const hashUniqueIdentifier = bundle.stringToHash(uniqueIdentifier)
+      const hashUniqueIdentifier = md5(uniqueIdentifier)
       return hashUniqueIdentifier
   }
 });
@@ -391,7 +391,6 @@ function start_deposit(flow, files) {
                
             const files_list = []
             const paths = []
-            
             for (let index = 0; index < objects_list.length; index++) {
                 let element = objects_list[index];
                 let file_name = element["name"];
@@ -745,7 +744,7 @@ window.onload = function () {
 }
 
 </script>
-<script src="/vault/static/js/components/require_file.js"></script>
+<script src="/vault/static/js/components/md5_hash.js"></script>
 <script src="{{ static("digipres/js/chartalign.js") }}"></script>
 <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
 <script type="text/javascript">
