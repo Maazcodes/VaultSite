@@ -197,7 +197,8 @@ var flow = new Flow({
   allowDuplicateUploads: true,
   generateUniqueIdentifier: function (file){
       var relativePath = file.relativePath || file.webkitRelativePath || file.fileName || file.name;
-      const uniqueIdentifier = file.size + '-' + relativePath
+      // overriding uniqueIdentifier function to ensure the identifier is consistent throughout flow.js internals
+      const uniqueIdentifier = `${file.size}-${relativePath}`
       const hashUniqueIdentifier = md5(uniqueIdentifier)
       return hashUniqueIdentifier
   }
@@ -388,7 +389,6 @@ function start_deposit(flow, files) {
             response = JSON.parse(xhr.response);
             let objects_list = response["objects"] // All matched files
             let path_list = response["relative_path"]
-               
             const files_list = []
             const paths = []
             for (let index = 0; index < objects_list.length; index++) {
