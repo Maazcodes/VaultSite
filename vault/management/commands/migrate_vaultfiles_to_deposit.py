@@ -96,11 +96,10 @@ class Command(BaseCommand):
                         os.path.join(osfs_root, "chunks", flow_identifier) + "-1.tmp"
                     )
 
-                    # os.path.split returns the path in field 0 and the filename in field 1
                     deposit_file = DepositFile(
                         deposit=deposit,
                         flow_identifier=flow_identifier,
-                        name=os.path.split(file.client_filename)[1],
+                        name=os.path.basename(file.client_filename),
                         relative_path=file.client_filename,
                         size=file.size,
                         type="",
