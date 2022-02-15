@@ -41,8 +41,11 @@ export default class MovePopover extends HTMLElement {
     const selectedItemName = contextEle.selectedNodes[0].name
     const selectedItemNodeType = contextEle.selectedNodes[0].node_type
     for (let index = 0; index < this.allNodes.length; index++) {
+      // Storing parent's id with respect to child's id in childParentIdDict dictionary using node path
+      // e.g. {childId: parentId}
       const element = this.allNodes[index];
       const elementPath = element.path.split(".")
+      // extracting the second last number from node path
       var parentNodeid = elementPath.slice(elementPath.length-2, elementPath.length-1)
       this.childParentIdDict[element.id] = parentNodeid[0]
     }
@@ -54,19 +57,25 @@ export default class MovePopover extends HTMLElement {
             </ui5-button>
       <div id="parent-name" style="display:inline-block; text-align: center; width: 100%; height: 40px; vertical-align: middle; font-weight: bold; margin-top:-38px; margin-left: 16px;"></div>
     </div>
-    <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" separators="None">
+    <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" >
     ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" id="${node.id}">${node.name}</ui5-li>`).join("")}
     </ui5-list>
     <div style="display: flex; justify-content: center; align-items: center;">
       <ui5-button design="Emphasized" id="move-button" style = "margin-top: 10px; margin-left: 0px;"> MOVE HERE</ui5-button>
     </div>
     `
-    if (this.popover.style.width < "152"){
-      document.getElementById("parent-name").style.width = "82px"
-      document.getElementById("parent-name").style.height = "50px"
-    }
     var ParentElement = document.getElementById("parent-name")
+    if (this.popover.style.width < "152"){
+      ParentElement.style.width = "82px"
+      ParentElement.style.height = "50px"
+      ParentElement.style.marginLeft = "44px"
+    }
+    else{
+      ParentElement.style.width = "100%"
+      ParentElement.style.height = "40px"
+    }
     if(!!parentNode.name){
+      // if parent node name is not equal to undefined truncate it
       ParentElement.innerHTML = `${this.truncate(parentNode.name)}`
     }
     if (parentNode.id == nodePathList[0]) {
@@ -76,8 +85,9 @@ export default class MovePopover extends HTMLElement {
     }
     document.getElementById('folder-selector').addEventListener("selection-change", function (event){
       var selectedItem = event.detail.selectedItems;
+      // making destination id global so as to use in move button event listener
       globalThis.destinationId = selectedItem[0].id
-      globalThis.fileParentId = ChildParentIdDict[sourceId]
+      var fileParentId = ChildParentIdDict[sourceId]
       if (fileParentId == destinationId || sourceId == destinationId){
         // disable move button if the parent element of source element is selected OR source id == destination id
         document.getElementById("move-button").setAttribute("disabled",true)
@@ -96,7 +106,6 @@ export default class MovePopover extends HTMLElement {
       publish("NODE_CHILDREN_REQUEST", [selectedItemId,"MOVE"])
       publish("NODE_REQUEST", selectedItemId)
     })
-
     // Move Item Button
     this.button = this.querySelector("ui5-button[id='move-button']")
     this.button.addEventListener("click", function(){
@@ -110,8 +119,10 @@ export default class MovePopover extends HTMLElement {
       // Hide the selected row
       document.querySelector(`ui5-table-row[data-index = "${selectedRowIndex}"]`).style.display = "none";
       if(selectedItemNodeType!="FILE"){
+        // Update tree view
         const ParentNode = document.querySelector(`ui5-tree-item[id='${destinationId}']`)
         const SourceTreeNode = document.querySelector(`ui5-tree-item[id='${sourceId}']`)
+        // remove the source node from tree view and append it to destination node in tree view
         SourceTreeNode.parentNode.removeChild(SourceTreeNode)
         SourceTreeNode.setAttribute("path", `${$(ParentNode).attr('path') || ""}/${selectedItemName}` )
         ParentNode.appendChild(SourceTreeNode)
@@ -130,7 +141,9 @@ export default class MovePopover extends HTMLElement {
         var moveChildPath = AllNodes[0].path.split(".")
         var BackNodeId = moveChildPath.slice(moveChildPath.length-3, moveChildPath.length-2)[0]
       }
-      publish("NODE_CHILDREN_REQUEST", [BackNodeId, "MOVE"]) 
+      // Calling an api for the children of grand parent id
+      publish("NODE_CHILDREN_REQUEST", [BackNodeId, "MOVE"])
+      // Calling an api for parent node 
       publish("NODE_REQUEST", BackNodeId)  
     })
   } 

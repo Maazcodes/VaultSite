@@ -138,7 +138,7 @@ class Conductor {
   async nodeChildrenRequestHandler (nodeId){
     const { limit, ordering } = this.state.childQuery
     const action = nodeId[1]
-    const nodeId = nodeId[0]
+    var nodeId = nodeId[0]
     const nodeChildrenResponse =  await this.api.treenodes.get(null, { parent: nodeId, limit, ordering})
     publish("NODE_CHILDREN_RESPONSE", [nodeChildrenResponse.results, nodeId, action])
   }
