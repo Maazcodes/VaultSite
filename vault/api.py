@@ -504,14 +504,12 @@ def warning_deposit(request):
             list_of_matched_files.append(matched_file)
 
     unique_path_list = sorted(
-        list(
-            set(
-                map(
-                    lambda x: "/".join(x.split("/")[:-1]) + "/"
-                    if not x.endswith("/")
-                    else x,
-                    relative_path_list,
-                )
+        set(
+            map(
+                lambda x: "/".join(x.split("/")[:-1]) + "/"
+                if not x.endswith("/")
+                else x,
+                relative_path_list,
             )
         )
     )
@@ -524,7 +522,7 @@ def warning_deposit(request):
             allPathsList.append(prev_path_element + current_path_element + "/")
             prev_path_element += current_path_element + "/"
 
-    sorted_path_list = sorted(list(set(allPathsList)))
+    sorted_path_list = sorted(set(allPathsList))
 
     # Making all the values of paths as False initially in full_path_dict
     full_path_dict = {x: False for x in sorted_path_list}
@@ -606,7 +604,7 @@ def warning_deposit(request):
                 }
                 for matched_file in list_of_matched_files
             ],
-            "relative_path": sorted(list(set(list_of_path))),
+            "relative_path": sorted(set(list_of_path)),
         }
     )
 
