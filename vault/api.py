@@ -1,3 +1,4 @@
+from copyreg import constructor
 import json
 import logging
 import os
@@ -749,3 +750,18 @@ def render_tree_file_view(request):
             ]
         }
     )
+
+@csrf_exempt
+@login_required
+def move_file(request):
+    try:
+        body = json.loads(request.body)
+    except (AttributeError, TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest()
+
+    destination_id = body.get("destinationId")
+    source_id = body.get("sourceId")
+    models.TreeNode.objects.filter(id=source_id).update(parent_id=destination_id)
+    return JsonResponse({
+        'body':body
+    })

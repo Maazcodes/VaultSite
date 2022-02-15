@@ -74,6 +74,11 @@ class Conductor {
       message => this.nodesDeleteRequestHandler(message)
     )
 
+    subscribe(
+      "NODE_REQUEST",
+      message => this.nodeRequestHandler(message)
+    )
+
     window.addEventListener("popstate", this.popstateHandler.bind(this))
 
     // Subscribe the handler to the topics in topicsUntilInit.
@@ -124,10 +129,18 @@ class Conductor {
     }
   }
 
+  async nodeRequestHandler(nodeId){
+    const { limit, ordering } = this.state.childQuery
+    const nodeResponse = await this.api.treenodes.get(null, {id: nodeId, limit, ordering})
+    publish("NODE_RESPONSE", nodeResponse.results)
+  }
+
   async nodeChildrenRequestHandler (nodeId){
     const { limit, ordering } = this.state.childQuery
+    const action = nodeId[1]
+    const nodeId = nodeId[0]
     const nodeChildrenResponse =  await this.api.treenodes.get(null, { parent: nodeId, limit, ordering})
-    publish("NODE_CHILDREN_RESPONSE", nodeChildrenResponse.results)
+    publish("NODE_CHILDREN_RESPONSE", [nodeChildrenResponse.results, nodeId, action])
   }
 
   async changeDirectoryRequestHandler ({nodeId, node, path }, updateHistory = true) {

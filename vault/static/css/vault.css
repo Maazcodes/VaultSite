@@ -55,7 +55,7 @@
   margin: 0px 10px;
 }
 
-/* Popover Element*/
+/* Breadcrumbs Popover Element*/
 
 #breadcrumbs-popover-content{
   margin-left: 15px;
@@ -82,6 +82,15 @@
   font-size: 15px;
 }
 
+
+/* Move Popover Element*/
+#move-popover-content{
+  width: 300px;
+}
+
+::selection{
+  background: white;
+}
 /* The Modal (background) */
 .modal {
 	display: none;

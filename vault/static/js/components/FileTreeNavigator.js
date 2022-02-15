@@ -51,6 +51,7 @@ export default class FileTreeNavigator extends HTMLElement {
       var dynamicTree = document.getElementById("treeDynamic");
       var firstTreeElement = document.querySelectorAll("ui5-tree-item")[0];
       dynamicTree.addEventListener("item-toggle", async function(event) {
+        
         var item = event.detail.item; // get the node that is toggled
         if (item.text != firstTreeElement.text && item.expanded) {
             item.innerHTML = "";
@@ -62,7 +63,7 @@ export default class FileTreeNavigator extends HTMLElement {
         // show only subfolders after toggle
         if (!item.expanded) {
           // Request API from Conductor class for node's children
-          publish("NODE_CHILDREN_REQUEST", item.id);
+          publish("NODE_CHILDREN_REQUEST", [item.id, "TREE_VIEW"]);
         }
       })
       dynamicTree.addEventListener("item-click", async function(event) {
@@ -100,11 +101,11 @@ export default class FileTreeNavigator extends HTMLElement {
     // create tree elements after clicking on collection table or breadcrumbs
     for (let index = 0; index < nodesArray.length; index++) {
       const childNode = nodesArray[index];
-      if (childNode.node_type !== "FILE" && !document.getElementById(String(childNode.id))) {
+      if (childNode.node_type !== "FILE" && !document.querySelector(`ui5-tree-item[id='${childNode.id}']`)) {
         var newItem = document.createElement("ui5-tree-item");
         newItem.id = String(childNode.id);
         newItem.text = String(childNode.name);
-        newItem.setAttribute("path", String($(parentNode).attr('path') || "") + "/" + String(newItem.text) )
+        newItem.setAttribute("path", String($(parentNode).attr('path') || "") + "/" + String(newItem.text))
         newItem.setAttribute("has-children", "");
         parentNode.appendChild(newItem);
       }
@@ -115,9 +116,12 @@ export default class FileTreeNavigator extends HTMLElement {
   }
 
   nodeChildrenResponseHandler (nodesChildrenResponse){
-    if (nodesChildrenResponse.length > 0) {
-      var nodeParentUrlList = nodesChildrenResponse[0].parent.split("/")
-      var parentId = nodeParentUrlList[nodeParentUrlList.length-2]
+    if (nodesChildrenResponse[2] != "TREE_VIEW") {
+      return
+    }
+    var parentId = nodesChildrenResponse[1]
+    var nodesChildrenResponse = nodesChildrenResponse[0]
+    if (nodesChildrenResponse.length > 0 ) {
       var parentElement = document.getElementById(String(parentId))
       parentElement.innerHTML = `${nodesChildrenResponse.filter(node => node.node_type !== "FILE").map(node =>
                   `<ui5-tree-item text="${node.name}" path="${$(parentElement).attr('path')}/${node.name}" id="${node.id}" ${node.node_type === "FILE" ? "" : "has-children"}>

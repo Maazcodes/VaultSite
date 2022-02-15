@@ -202,7 +202,7 @@ export default class FilesList extends HTMLElement {
         props: {
           x: e.clientX,
           y: e.clientY + window.scrollY,
-          disabledOptions,
+          // disabledOptions,
           options,
           context: {
             currentRow: tr,
@@ -211,7 +211,8 @@ export default class FilesList extends HTMLElement {
                          : [ tr ],
             selectedNodes: this.state.selectedNodes.length
                          ? this.state.selectedNodes
-                         : [ node ]
+                         : [ node ],
+            nodes: this.props.nodes,
           },
           topic: "FILE_CONTEXT_MENU_ITEM_SELECTED"
         }
