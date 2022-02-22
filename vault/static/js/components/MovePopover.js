@@ -64,6 +64,10 @@ export default class MovePopover extends HTMLElement {
       <ui5-button design="Emphasized" id="move-button" style = "margin-top: 10px; margin-left: 0px;"> MOVE HERE</ui5-button>
     </div>
     `
+    const tableParentElement = document.querySelector("ui5-table")
+    const moveButton = document.getElementById("move-button")
+    // Disable move button initially
+    moveButton.setAttribute("disabled",true) 
     var ParentElement = document.getElementById("parent-name")
     if (this.popover.style.width < "152"){
       ParentElement.style.width = "82px"
@@ -90,11 +94,11 @@ export default class MovePopover extends HTMLElement {
       var fileParentId = ChildParentIdDict[sourceId]
       if (fileParentId == destinationId || sourceId == destinationId){
         // disable move button if the parent element of source element is selected OR source id == destination id
-        document.getElementById("move-button").setAttribute("disabled",true)
+        moveButton.setAttribute("disabled",true)
       }
       else{
         // enable move button if other element is selected
-        document.getElementById("move-button").removeAttribute("disabled")
+        moveButton.removeAttribute("disabled")
       }
     })   
     document.getElementById('folder-selector').addEventListener("dblclick", function(event){
@@ -117,7 +121,8 @@ export default class MovePopover extends HTMLElement {
       // Close move popover content after clicking on move button
       popoverElement.close();
       // Hide the selected row
-      document.querySelector(`ui5-table-row[data-index = "${selectedRowIndex}"]`).style.display = "none";
+      const selectedElement = document.querySelector(`ui5-table-row[data-index = "${selectedRowIndex}"]`)
+      tableParentElement.removeChild(selectedElement)
       if(selectedItemNodeType!="FILE"){
         // Update tree view
         const ParentNode = document.querySelector(`ui5-tree-item[id='${destinationId}']`)
@@ -138,7 +143,7 @@ export default class MovePopover extends HTMLElement {
       } 
       else{
         // if there are children of parent, call the grand parent id of current node and call its children after clicking on back button
-        var moveChildPath = AllNodes[0].path.split(".")
+        const moveChildPath = AllNodes[0].path.split(".")
         var BackNodeId = moveChildPath.slice(moveChildPath.length-3, moveChildPath.length-2)[0]
       }
       // Calling an api for the children of grand parent id
