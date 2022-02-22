@@ -114,7 +114,6 @@ export default class FilesList extends HTMLElement {
      */
     e.stopPropagation()
     // Set the UI5 Table component's busy flag.
-    this.table.busy = true
     const node = this.props.nodes[parseInt(this.getRowTarget(e).dataset.index)]
     publish(
       node.node_type === "FILE" ? "OPEN_FILE_REQUEST" : "CHANGE_DIRECTORY_REQUEST",
