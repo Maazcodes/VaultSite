@@ -34,7 +34,7 @@
                     <input id="total_used_quota" name="total_used_quota" type="hidden" value="{{ total_used_quota }}">
                     <div id="stats" name="stats"></div>
                     {% else %}
-                        <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
+                        <p>Create <a href="{{ url('collections', args=['']) }}">your first collection</a> to start uploading files.</p>
                     {% endif %}
                 </div>
                 <div class="small-4 columns" id="collections-chart">
