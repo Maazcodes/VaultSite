@@ -301,7 +301,7 @@ if DEPLOYMENT_ENVIRONMENT == "PROD":
 
 if DEPLOYMENT_ENVIRONMENT != "DEV":
     # informs application it's mounted on /vault, which is necessary for URL generation
-    FORCE_SCRIPT_NAME="/vault"
+    FORCE_SCRIPT_NAME = "/vault"
 
 # name of service as which to identify when creating presigned petabox content
 # URLs

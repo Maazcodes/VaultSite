@@ -47,14 +47,16 @@ from rest_framework.views import exception_handler as _exception_handler
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.mixins import (
     CreateModelMixin,
-    UpdateModelMixin,
+    DestroyModelMixin,
     ListModelMixin,
     RetrieveModelMixin,
+    UpdateModelMixin,
 )
 from rest_framework.serializers import (
     HyperlinkedModelSerializer,
     ListSerializer,
 )
+from rest_framework import status
 
 from vault.helpers import safe_parse_int
 from vault.models import (
@@ -63,6 +65,7 @@ from vault.models import (
     Organization,
     Plan,
     TreeNode,
+    TreeNodeException,
     User,
 )
 
@@ -548,8 +551,8 @@ class TreeNodeFilterSet(VaultFilterSet):
     class Meta:
         model = TreeNode
         fields = TreeNodeSerializer.Meta.fields
-        user_queryset_filter = lambda user, qs: qs.extra(
-            where=[f"path <@ '{user.organization.tree_node.path}'"]
+        user_queryset_filter = lambda user, qs: qs.filter(
+            path__descendant=user.organization.tree_node.path,
         )
 
 
@@ -643,7 +646,10 @@ class UserViewSet(VaultReadOnlyModelViewSet):
 
 
 class TreeNodeViewSet(
-    VaultReadOnlyModelViewSet, CreateModelMixin, VaultUpdateModelMixin
+    VaultReadOnlyModelViewSet,
+    CreateModelMixin,
+    VaultUpdateModelMixin,
+    DestroyModelMixin,
 ):
     queryset = TreeNode.objects.all()
     serializer_class = TreeNodeSerializer
@@ -681,6 +687,17 @@ class TreeNodeViewSet(
             return HttpResponseForbidden()
 
         return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft DELETE of Treenode."""
+        tree_node = self.get_object()
+
+        try:
+            tree_node.delete()
+        except TreeNodeException as e:
+            return Response(data=str(e), status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_200_OK)
 
 
 ###############################################################################

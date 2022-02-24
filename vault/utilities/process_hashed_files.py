@@ -128,7 +128,9 @@ def try_upload_to_pbox(deposit_file, file_path):
         )
         item_file_path = os.path.join(item_name, pbox_file_path)
         if len(item_file_path) >= 255:
-            logger.error(f"deposit file id={deposit_file.id} item_file_path length is too long: {item_file_path}")
+            logger.error(
+                f"deposit file id={deposit_file.id} item_file_path length is too long: {item_file_path}"
+            )
             return 0, None
 
         metadata = dict(

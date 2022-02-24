@@ -1,4 +1,5 @@
 PIPTOOLS_VERSION = "6.4.0"
+PYTHON_VERSION = 3.8
 
 DPS_DIR = ./DPS_dev
 FILES_DPATH = $(DPS_DIR)/files
@@ -12,6 +13,7 @@ DEV_DIRS = \
 		   $(LOGFILE_DPATH) \
 		   $(SHA_DPATH) \
 		   $(TMP_DPATH)
+VAULT_SITE_EGG_LINK = ./venv/lib/python$(PYTHON_VERSION)/site-packages/vault.egg-link
 
 export AIT_CONF = $(DPS_DIR)/vault.yml
 
@@ -32,6 +34,9 @@ requirements.dev.txt: requirements.dev.in requirements.test.txt
 	venv/bin/pip-compile --output-file $@ $<
 	venv/bin/pip-sync $@
 
+$(VAULT_SITE_EGG_LINK): requirements.dev.txt
+	venv/bin/pip install --editable .
+
 $(DEV_DIRS):
 	mkdir -p $@
 
@@ -43,21 +48,25 @@ $(AIT_CONF): $(DEV_DIRS)
 	@echo "PETABOX_SECRET: bogus-petabox-secret" >> $@
 
 .PHONY: test
-test: requirements.dev.txt $(AIT_CONF)
+test: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 	@# pass extra params on to pytest: https://stackoverflow.com/a/6273809
 	venv/bin/pytest $(filter-out $@,$(MAKECMDGOALS))
 
+.PHONY: format
+format: requirements.dev.txt
+	./venv/bin/black .
+
 .PHONY: migrate
-migrate: requirements.dev.txt $(AIT_CONF)
+migrate: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 	venv/bin/python manage.py migrate
 
 .PHONY: run
-run: requirements.dev.txt $(AIT_CONF)
-ifndef REMOTE_USER
-	@echo "ensure REMOTE_USER is set and try again"
+run: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
+ifndef HTTP_REMOTE_USER
+	@echo "ensure HTTP_REMOTE_USER is set and try again"
 	@exit 1
 endif
-	venv/bin/python ./utilities/process_chunked_files.py & venv/bin/python manage.py runserver
+	venv/bin/python ./vault/utilities/process_chunked_files.py & venv/bin/python manage.py runserver
 
 .PHONY: clean
 clean:

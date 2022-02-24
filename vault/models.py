@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 import typing
@@ -22,8 +23,16 @@ from vault.pb_utils import (
     get_presigned_url,
 )
 
+from vault import utils
+
 TEBIBYTE = 2 ** 40
 logger = logging.getLogger(__name__)
+
+
+class TreeNodeException(Exception):
+    """Raised when an invalid TreeNode operation is requested"""
+
+    pass
 
 
 class ReplicationFactor(IntegerChoices):
@@ -321,18 +330,29 @@ class DepositFile(models.Model):
     replicated_at = models.DateTimeField(blank=True, null=True)
 
 
+class DeletionAwareTreeNodeManager(models.Manager):
+    """TreeNode model manager which hides soft-deleted rows."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted=False)
+
+
 class TreeNode(models.Model):
     class Type(models.TextChoices):
-        FILE = "FILE", "File"  # A file uploaded by the user
-        FOLDER = (
-            "FOLDER",
-            "Folder",
-        )  # folder node other than collection node
-        COLLECTION = "COLLECTION", "Collection"  # collection node
-        ORGANIZATION = (
-            "ORGANIZATION",
-            "Organization",
-        )  # organization node - which will be the top level node with not parent
+        # a downloadable file
+        FILE = "FILE", "File"
+        # folder node other than collection node
+        FOLDER = "FOLDER", "Folder"
+        # top level directory of a collection
+        COLLECTION = "COLLECTION", "Collection"
+        # top level directory of an entire organization
+        ORGANIZATION = "ORGANIZATION", "Organization"
+
+    # node types which may not be deleted
+    undeletable_types = (
+        Type.COLLECTION,
+        Type.ORGANIZATION,
+    )
 
     node_type = models.CharField(choices=Type.choices, default=Type.FILE, max_length=50)
     parent = models.ForeignKey(
@@ -380,6 +400,10 @@ class TreeNode(models.Model):
         User, on_delete=models.PROTECT, blank=True, null=True
     )
     comment = models.TextField(blank=True, null=True)
+    #: True when this TreeNode is deleted
+    deleted = models.BooleanField(blank=True, default=False, null=False)
+
+    objects = DeletionAwareTreeNodeManager()
 
     class Meta:
         constraints = [
@@ -417,6 +441,41 @@ class TreeNode(models.Model):
                 exc_info=e,
             )
             return None
+
+    def delete(self, using=None, keep_parents=False):
+        """Marks this *TreeNode* and all children as deleted, but doesn't
+        actually delete the record.
+
+        Neither related records nor the underlying content are physically
+        deleted.
+
+        :py:attr:`.deleted` will not reflect the new deletion status after this
+        function returns, thus a call to :py:meth`.TreeNode.refresh_from_db`
+        may be desirable.
+
+        Parameters *using* and *keep_parents* are included for API
+        compatibility with Django's *Model.delete()*.
+
+        :raises: :py:class:`.TreeNodeException` when attempting to delete an
+            undeletable TreeNode type
+        """
+        if self.deleted:
+            logger.warning("deletion of already deleted TreeNode id=%d", self.id)
+            return
+
+        if self.node_type in self.undeletable_types:
+            raise TreeNodeException(
+                f"unable to delete TreeNode of type {self.node_type}",
+            )
+
+        TreeNode.objects.using(using).filter(path__descendant=self.path).update(
+            deleted=True, deleted_at=utils.utcnow()
+        )
+
+    def hard_delete(self):
+        """Physically deletes this :py:class:`.TreeNode` row."""
+        logger.warning("hard deletion of TreeNode id=%d", self.id)
+        super().delete()
 
 
 ###############################################################################

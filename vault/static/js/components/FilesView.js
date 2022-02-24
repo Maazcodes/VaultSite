@@ -190,8 +190,16 @@ class Conductor {
   }
 
   async nodesDeleteRequestHandler ({ nodes }) {
-    // TODO - make this work
-    setTimeout(() => publish("NODES_DELETE_RESPONSE"), 2000)
+    const results = await Promise.all(nodes.map(async (node) => {
+      const response = await this.api.treenodes.delete(node.id);
+      const error = await this.api.getResponseErrorDetail(response);
+      if (error) {
+        console.error(`Unable to delete TreeNode id=${node.id}`, error);
+      }
+      return { node, error };
+    }))
+
+    publish("NODES_DELETE_RESPONSE", { results });
   }
 }
 /******************************************************************************
@@ -212,7 +220,7 @@ export default class FilesView extends HTMLElement {
       orgId: this.getAttribute("orgId"),
       parentChildDict: JSON.parse(this.getAttribute("parentChildDict"))
     }
-    
+
     const {basePath, appPath, path, node} = this.props
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${basePath}${appPath}`

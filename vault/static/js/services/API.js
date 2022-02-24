@@ -25,6 +25,7 @@ export default class API {
       'get',
       'patch',
       'post',
+      'delete',
     ].map(k => [ k, this[k].bind(this) ])
 
     // Request the name -> url map of all available resource from the server.
@@ -97,6 +98,18 @@ export default class API {
           "content-type": APPLICATION_JSON
         },
         body: JSON.stringify(data)
+      }
+    )
+  }
+
+  async delete (resourceUrl, id) {
+    /* Make a DELETE request.
+     */
+    return await fetch(
+      `${resourceUrl}${id}/`,
+      {
+        credentials: "same-origin",
+        method: "DELETE",
       }
     )
   }

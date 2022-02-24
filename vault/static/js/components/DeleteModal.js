@@ -32,15 +32,17 @@ export default class DeleteModal extends Modal {
   }
 
   open () {
-    // Set the input to the current node.name and pre-select it.
+    // TODO: show the recursive sum of nodes in all selected subtrees to be
+    // deleted, not just the number of nodes selected in the UI.
+    // https://webarchive.jira.com/browse/WT-1191
     const numNodes = this.state.nodes.length
     this.message.textContent =
       `${numNodes} ${pluralize("item", numNodes)} will be deleted.`
     super.open()
   }
 
-  fileContextMenuItemSelectedHandler ({ value, context }) {
-    if (value !== "Delete") {
+  fileContextMenuItemSelectedHandler ({ value: context_action, context }) {
+    if (context_action !== "Delete") {
       return
     }
     this.state.nodes = context.selectedNodes
@@ -53,9 +55,16 @@ export default class DeleteModal extends Modal {
     this.setBusyState(true)
   }
 
-  nodeDeleteResponseHandler (message) {
-    // TODO - handle errors
+  nodeDeleteResponseHandler ({ results }) {
     this.setBusyState(false)
+
+    const success = results.every(({ error }) => !error);
+
+    if (!success) {
+      this.error = "An error occurred which prevented all selected files from being deleted.";
+      return;
+    }
+
     this.close()
   }
 }

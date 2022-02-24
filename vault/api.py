@@ -149,6 +149,7 @@ def org_collection_sizes(org_node_id):
             where colln.node_type = 'COLLECTION'
                   and descn.path <@ colln.path
                   and colln.path <@ Cast(%s as ltree)
+                  and descn.deleted = false
             group by colln.id
         ) stats on coll.tree_node_id = stats.id""",
         [org_root],

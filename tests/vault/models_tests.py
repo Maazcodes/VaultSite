@@ -12,7 +12,9 @@ from vault.models import (
     Collection,
     Organization,
     TreeNode,
+    TreeNodeException,
 )
+from vault import utils
 
 
 ###############################################################################
@@ -21,31 +23,6 @@ from vault.models import (
 
 
 TREE_NODE_TYPES = {"ORGANIZATION", "COLLECTION", "FOLDER", "FILE"}
-
-
-###############################################################################
-# Fixtures
-###############################################################################
-
-
-@fixture
-def treenode_stack(make_treenode):
-    """Return a complete valid TreeNode type hierarchy dict keyed by type name."""
-    # Set valid-length name values for ORGANIZATION and COLLECTION-type nodes.
-    organization_node = make_treenode(
-        node_type="ORGANIZATION", parent=None, name=prepare(Organization).name
-    )
-    collection_node = make_treenode(
-        node_type="COLLECTION", parent=organization_node, name=prepare(Collection).name
-    )
-    folder_node = make_treenode(node_type="FOLDER", parent=collection_node)
-    file_node = make_treenode(node_type="FILE", parent=folder_node)
-    return {
-        "ORGANIZATION": organization_node,
-        "COLLECTION": collection_node,
-        "FOLDER": folder_node,
-        "FILE": file_node,
-    }
 
 
 ###############################################################################
@@ -165,6 +142,136 @@ class TestTreeNode:
         assert "/" not in treenode.pbox_path
         assert treenode.content_url is None
 
+    @mark.django_db
+    def test_delete__success(
+        self,
+        treenode_stack,
+    ):
+        """TreeNode.delete basic correctness"""
+        # Given: an undeleted treenode
+        file_node = treenode_stack["FILE"]
+        assert file_node.deleted is False
+        assert file_node.deleted_at is None
+
+        # When: it's deleted
+        file_node.delete()
+        file_node.refresh_from_db()
+
+        # Then: it's actually marked as deleted
+        assert file_node.deleted is True
+        assert file_node.deleted_at is not None
+
+    @freeze_time("2022-01-01")
+    @mark.django_db
+    def test_delete__success_recursive(
+        self,
+        treenode_stack,
+    ):
+        """TreeNode.delete successfully recursively deletes nodes"""
+        # Given: undeleted folder and nested file node
+        now = utils.utcnow()
+        folder_node = treenode_stack["FOLDER"]
+        file_node = treenode_stack["FILE"]
+        assert folder_node.deleted is False
+        assert folder_node.deleted_at is None
+        assert file_node.deleted is False
+        assert file_node.deleted_at is None
+
+        # When: the folder is deleted
+        folder_node.delete()
+        folder_node.refresh_from_db()
+        file_node.refresh_from_db()
+
+        # Then: both folder and file are deleted
+        assert folder_node.deleted
+        assert folder_node.deleted_at == now
+        assert file_node.deleted
+        assert file_node.deleted_at == now
+
+    @mark.django_db
+    def test_delete__success_already_deleted(
+        self,
+        make_treenode,
+        treenode_stack,
+    ):
+        """TreeNode.delete is a noop for already deleted rows"""
+        # Given: an already deleted treenode
+        now = utils.utcnow()
+        treenode = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FILE",
+            deleted=True,
+            deleted_at=now,
+        )
+        treenode.refresh_from_db()
+        assert treenode.deleted
+        assert treenode.deleted_at == now
+
+        # When: we try to delete it again
+        treenode.delete()
+        treenode.refresh_from_db()
+
+        # Then: it's still deleted
+        assert treenode.deleted
+        assert treenode.deleted_at == now
+
+    @mark.django_db
+    def test_delete__fail_deleting_organization_and_collection(
+        self,
+        treenode_stack,
+    ):
+        """TreeNode.delete raises on delete of organization and collection treenodes"""
+        # Given: org and col-type nodes
+        org_node = treenode_stack["ORGANIZATION"]
+        col_node = treenode_stack["COLLECTION"]
+
+        # When: we try to delete either, Then: they both raise
+        with raises(TreeNodeException):
+            org_node.delete()
+        with raises(TreeNodeException):
+            col_node.delete()
+
+    @mark.django_db
+    def test_hard_delete__success(
+        self,
+        treenode_stack,
+    ):
+        """TreeNode.hard_delete correctness"""
+        # Given: an undeleted node
+        file_node = treenode_stack["FILE"]
+        file_node_id = file_node.id
+
+        # When: it's hard deleted
+        file_node.hard_delete()
+
+        # Then: it's physically removed from the db
+        with raises(TreeNode.DoesNotExist):
+            TreeNode.objects.get(pk=file_node_id)
+
+    @mark.django_db
+    def test_deletion_aware_tree_node_manager__hides_soft_deleted_nodes(
+        self,
+        treenode_stack,
+    ):
+        """DeletionAwareTreeNodeManager makes soft-deleted objects invisible"""
+        # Given: an undeleted node
+        file_node = treenode_stack["FILE"]
+        file_node_id = file_node.id
+
+        # When: it's soft deleted
+        file_node.delete()
+        file_node.refresh_from_db()
+
+        # Then: it's invisible from the default query manager...
+        with raises(TreeNode.DoesNotExist):
+            TreeNode.objects.get(pk=file_node_id)
+
+        # ... but it's not actually gone
+        file_node.refresh_from_db()
+        file_node.deleted = False
+        file_node.save()
+        TreeNode.objects.get(pk=file_node_id)
+
 
 @mark.django_db
 def test_collection_name_change_triggers_treenode_name_update(make_collection):
@@ -173,6 +280,7 @@ def test_collection_name_change_triggers_treenode_name_update(make_collection):
     # Create a collection.
     collection = make_collection()
     node = collection.tree_node
+    node.refresh_from_db()
     assert node.name == collection.name
 
     # Rename the Collection.
@@ -197,6 +305,7 @@ def test_collection_type_treenode_name_change_triggers_collection_name_update(
     # Collection post_save signal handler.
     collection = make_collection()
     node = collection.tree_node
+    node.refresh_from_db()
     assert collection.name == node.name
 
     # Rename the node.

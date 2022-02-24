@@ -33,6 +33,7 @@ export default class FilesList extends HTMLElement {
     subscribe("CHANGE_DIRECTORY", this.changeDirectoryMessageHandler.bind(this))
     subscribe("NODE_RENAME_RESPONSE", this.nodeRenameResponseMessageHandler.bind(this))
     subscribe("FILE_CONTEXT_MENU_ITEM_SELECTED", this.fileContextMenuItemSelectedMessageHandler.bind(this));
+    subscribe("NODES_DELETE_RESPONSE", this.nodesDeleteResponseHandler.bind(this));
   }
 
   nodeToUI5TableRow (node, index) {
@@ -194,8 +195,6 @@ export default class FilesList extends HTMLElement {
     const disabledOptions = [
       "Preview",
       "Move",
-      (numSelectedNodes < 2 && isDownloadable) || "Download",
-      "Delete",
     ]
 
     this.appendChild(
@@ -254,6 +253,18 @@ export default class FilesList extends HTMLElement {
         }
         break
     }
+  }
+
+  nodesDeleteResponseHandler ({ results }) {
+    const deletedNodeIds = new Set(
+      results
+        .filter(({ error }) => !error)
+        .map(({ node }) => node.id)
+    );
+
+    this.props.nodes = this.props.nodes
+      .filter(({ id }) => !deletedNodeIds.has(id));
+    this.nodesChangedHandler();
   }
 
   async loadMoreHandler (e) {

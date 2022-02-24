@@ -14,6 +14,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION _reject_null_treenode_path() RETURNS TRIGGER AS
+$$
+BEGIN
+    IF NEW.path IS NULL THEN
+        RAISE EXCEPTION 'path may not be updated to NULL';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- function to update the path of the descendants of a treenode
 CREATE OR REPLACE FUNCTION _update_descendants_treenode_path() RETURNS TRIGGER AS
@@ -30,25 +39,32 @@ $$ LANGUAGE plpgsql;
 -- calculate the path every time we insert a new treenode
 DROP TRIGGER IF EXISTS treenode_path_insert_trg ON vault_treenode;
 CREATE TRIGGER treenode_path_insert_trg
-               BEFORE INSERT ON vault_treenode
-               FOR EACH ROW
-               EXECUTE PROCEDURE _update_treenode_path();
-
+    BEFORE INSERT ON vault_treenode
+    FOR EACH ROW
+    EXECUTE PROCEDURE _update_treenode_path();
 
 -- calculate the path when updating the parent or the code
 DROP TRIGGER IF EXISTS treenode_path_update_trg ON vault_treenode;
 CREATE TRIGGER treenode_path_update_trg
-               BEFORE UPDATE ON vault_treenode
-               FOR EACH ROW
-               WHEN (OLD.parent_id IS DISTINCT FROM NEW.parent_id
-                     OR OLD.id IS DISTINCT FROM NEW.id)
-               EXECUTE PROCEDURE _update_treenode_path();
+    BEFORE UPDATE ON vault_treenode
+    FOR EACH ROW
+    WHEN (OLD.parent_id IS DISTINCT FROM NEW.parent_id
+        OR OLD.id IS DISTINCT FROM NEW.id)
+    EXECUTE PROCEDURE _update_treenode_path();
 
 
 -- if the path was updated, update the path of the descendants
 DROP TRIGGER IF EXISTS treenode_path_after_trg ON vault_treenode;
 CREATE TRIGGER treenode_path_after_trg
-               AFTER UPDATE ON vault_treenode
-               FOR EACH ROW
-               WHEN (NEW.path IS DISTINCT FROM OLD.path)
-               EXECUTE PROCEDURE _update_descendants_treenode_path();
+    AFTER UPDATE ON vault_treenode
+    FOR EACH ROW
+    WHEN (NEW.path IS DISTINCT FROM OLD.path)
+    EXECUTE PROCEDURE _update_descendants_treenode_path();
+
+-- assert modified rows can't set path to NULL
+DROP TRIGGER IF EXISTS treenode_path_prevent_null_trg ON vault_treenode;
+CREATE TRIGGER treenode_path_prevent_null_trg
+    BEFORE UPDATE ON vault_treenode
+    FOR EACH ROW
+    WHEN (NEW.path IS NULL)
+    EXECUTE PROCEDURE _reject_null_treenode_path();

@@ -5,20 +5,21 @@ from vault.models import Collection, Organization, TreeNode
 
 
 @pytest.fixture
-def no_node_org(db, super_user) -> Organization:
+def no_node_org(super_user) -> Organization:
     org = super_user.organization
     collection = Collection.objects.create(
         name="Test Collection",
         organization=org,
     )
+    # note: collection created by models.create_collection_handler() hook
     collection_node = collection.tree_node
     collection.tree_node = None
     collection.save()
-    collection_node.delete()
+    collection_node.hard_delete()
     org_node = org.tree_node
     org.tree_node = None
     org.save()
-    org_node.delete()
+    org_node.hard_delete()
 
     return org
 

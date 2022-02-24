@@ -1,5 +1,6 @@
 from django.contrib.auth.middleware import RemoteUserMiddleware
 
+
 class VaultRemoteUserMiddleware(RemoteUserMiddleware):
     """
     RemoteUserMiddleware subclass which reads a different header. This is
@@ -8,4 +9,5 @@ class VaultRemoteUserMiddleware(RemoteUserMiddleware):
     `REMOTE_USER` (a header only writeable by an upstream WSGI server), we must
     read a different header name.
     """
+
     header = "HTTP_REMOTE_USER"

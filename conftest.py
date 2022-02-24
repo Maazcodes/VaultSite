@@ -78,7 +78,11 @@ def make_staff_user(make_organization):
 
 @fixture
 def make_user(make_organization):
-    return lambda: baker.make(User, organization=make_organization())
+    def maker(organization=None):
+        organization = organization or make_organization()
+        return baker.make(User, organization=organization)
+
+    return maker
 
 
 ###############################################################################
@@ -114,3 +118,26 @@ def staff_user(make_staff_user):
 @fixture
 def user(make_user):
     return make_user()
+
+
+@fixture
+def treenode_stack(make_treenode, make_collection, make_organization):
+    """Return a complete valid TreeNode type hierarchy dict keyed by type name."""
+    organization = make_organization()
+    organization.refresh_from_db()
+    organization_node = organization.tree_node
+    organization_node.refresh_from_db()
+    collection = make_collection()
+    collection.refresh_from_db()
+    collection_node = collection.tree_node
+    collection_node.refresh_from_db()
+    folder_node = make_treenode(node_type="FOLDER", parent=collection_node)
+    folder_node.refresh_from_db()
+    file_node = make_treenode(node_type="FILE", parent=folder_node)
+    file_node.refresh_from_db()
+    return {
+        "ORGANIZATION": organization_node,
+        "COLLECTION": collection_node,
+        "FOLDER": folder_node,
+        "FILE": file_node,
+    }

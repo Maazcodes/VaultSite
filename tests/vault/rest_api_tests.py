@@ -74,7 +74,7 @@ class AuthenticatedClient(APIClient):
         # Save the user for convenience.
         self.user = user
         # Set the HTTP header required for Django RemoteUserBackend.
-        self.credentials(REMOTE_USER=user.username)
+        self.credentials(HTTP_REMOTE_USER=user.username)
 
     def get_html(self, *args, **kwargs):
         return self.get(*args, HTTP_ACCEPT="text/html", **kwargs)
@@ -766,6 +766,81 @@ def test_treenode_endpoint_partial_update_allowed(
             assert_status(
                 client, treenode2.id, {field: getattr(mock_treenode, field)}, 403
             )
+
+
+@mark.django_db
+def test_treenodes_delete__success(make_user, users, make_treenode):
+    """DELETE treenodes/:id basic correctness"""
+    # Given: a folder treenode
+    user = make_user()
+    client = AuthenticatedClient(user)
+    treenodes = [user.organization.tree_node]
+    for node_type in ("COLLECTION", "FOLDER", "FILE"):
+        treenodes.append(make_treenode(parent=treenodes[-1], node_type=node_type))
+    folder_node = treenodes[2]
+    file_node = treenodes[3]
+
+    # When: DELETE
+    response = client.delete(endpoint("treenodes", folder_node.id))
+
+    # Then: the folder node and its children are deleted
+    folder_node.refresh_from_db()
+    file_node.refresh_from_db()
+    assert response.status_code == 200
+    assert folder_node.deleted
+    assert file_node.deleted
+
+
+@mark.django_db
+def test_treenodes_delete__already_deleted(make_user, users, make_treenode):
+    """DELETE treenodes/:id returns 404 on already soft-deleted treenodes"""
+    # Given: a soft-deleted folder subtree
+    user = make_user()
+    client = AuthenticatedClient(user)
+    treenodes = [user.organization.tree_node]
+    for node_type in ("COLLECTION", "FOLDER", "FILE"):
+        treenodes.append(make_treenode(parent=treenodes[-1], node_type=node_type))
+    folder_node = treenodes[2]
+    file_node = treenodes[3]
+
+    folder_node.refresh_from_db()
+    folder_node.delete()
+
+    folder_node.refresh_from_db()
+    file_node.refresh_from_db()
+    assert folder_node.deleted
+    assert file_node.deleted
+
+    # When: DELETE
+    response = client.delete(endpoint("treenodes", folder_node.id))
+
+    # Then: the folder node and its children are deleted
+    folder_node.refresh_from_db()
+    file_node.refresh_from_db()
+    assert response.status_code == 404
+    assert folder_node.deleted
+    assert file_node.deleted
+
+
+@mark.django_db
+def test_treenodes_delete__undeletable_node_types(make_user, users, make_treenode):
+    """DELETE treenodes/:id returns bad request on undeletable node types"""
+    # Given: a collection treenode
+    user = make_user()
+    client = AuthenticatedClient(user)
+    treenodes = [user.organization.tree_node]
+    for node_type in ("COLLECTION", "FOLDER", "FILE"):
+        treenodes.append(make_treenode(parent=treenodes[-1], node_type=node_type))
+    collection_node = treenodes[1]
+
+    # When: DELETE
+    response = client.delete(endpoint("treenodes", collection_node.id))
+
+    # Then: bad request
+    collection_node.refresh_from_db()
+    assert response.status_code == 400
+    assert response.data == "unable to delete TreeNode of type COLLECTION"
+    assert collection_node.deleted is False
 
 
 #### retrieve endpoint __depth param tests ####
