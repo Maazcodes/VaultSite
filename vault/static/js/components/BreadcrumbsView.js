@@ -48,8 +48,8 @@ export default class BreadcrumbsView extends HTMLElement {
         </ol>
       </ui5-popover>
       `
-      var popoverOpener = document.getElementById("openPopoverButton");
-	    var breadcrumbsPopover = document.getElementById("breadcrumbs-popover-content");
+      const popoverOpener = document.getElementById("openPopoverButton");
+	    const breadcrumbsPopover = document.getElementById("breadcrumbs-popover-content");
       popoverOpener.addEventListener("click", function() {
         breadcrumbsPopover.showAt(popoverOpener);
       });

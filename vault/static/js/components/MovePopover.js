@@ -30,27 +30,25 @@ export default class MovePopover extends HTMLElement {
   }
 
   render (){
-    var contextEle = this.contextElement
-    var sourceId = contextEle.selectedNodes[0].id 
-    var nodePath = contextEle.selectedNodes[0].path
-    var parentNode = this._parentNode
-    var nodePathList = nodePath.split(".")
+    const contextEle = this.contextElement
+    const sourceId = contextEle.selectedNodes[0].id 
+    const nodePath = contextEle.selectedNodes[0].path
+    const parentNode = this._parentNode
+    const nodePathList = nodePath.split(".")
     const AllNodes = this.allNodes
     const popoverElement = this.popover
-    const selectedRowIndex = contextEle.selectedRows[0].attributes[0].value
-    const selectedItemName = contextEle.selectedNodes[0].name
-    const selectedItemNodeType = contextEle.selectedNodes[0].node_type
-    for (let index = 0; index < this.allNodes.length; index++) {
-      // Storing parent's id with respect to child's id in childParentIdDict dictionary using node path
-      // e.g. {childId: parentId}
-      const element = this.allNodes[index];
+    
+    this.allNodes.forEach((element)=>{
       const elementPath = element.path.split(".")
       // extracting the second last number from node path
-      var parentNodeid = elementPath.slice(elementPath.length-2, elementPath.length-1)
+      const parentNodeid = elementPath.slice(elementPath.length-2, elementPath.length-1)
+      // Storing parent's id with respect to child's id in childParentIdDict dictionary using node path
+      // e.g. {childId: parentId}
       this.childParentIdDict[element.id] = parentNodeid[0]
-    }
-    var ChildParentIdDict = this.childParentIdDict
-    var ParentNodeId = this.parentNodeId
+    })
+    const ChildParentIdDict = this.childParentIdDict
+    const ParentNodeId = this.parentNodeId
+    const fileParentId = ChildParentIdDict[sourceId]
     this.popover.innerHTML = `
     <div id="heading-part">
       <ui5-button design="Default" id="back-button"> <div style='font-size:20px; color: black;'><b>&#8617;</b></div>
@@ -58,25 +56,28 @@ export default class MovePopover extends HTMLElement {
       <div id="parent-name" style="display:inline-block; text-align: center; width: 100%; height: 40px; vertical-align: middle; font-weight: bold; margin-top:-38px; margin-left: 16px;"></div>
     </div>
     <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" >
-    ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" id="${node.id}">${node.name}</ui5-li>`).join("")}
+    ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" path="${node.path}" id="${node.id}">${node.name}</ui5-li>`).join("")}
     </ui5-list>
     <div style="display: flex; justify-content: center; align-items: center;">
       <ui5-button design="Emphasized" id="move-button" style = "margin-top: 10px; margin-left: 0px;"> MOVE HERE</ui5-button>
     </div>
     `
-    const tableParentElement = document.querySelector("ui5-table")
+    
     const moveButton = document.getElementById("move-button")
     // Disable move button initially
     moveButton.setAttribute("disabled",true) 
-    var ParentElement = document.getElementById("parent-name")
+    const ParentElement = document.getElementById("parent-name")
     if (this.popover.style.width < "152"){
-      ParentElement.style.width = "82px"
-      ParentElement.style.height = "50px"
-      ParentElement.style.marginLeft = "44px"
+      if (ParentElement.classList.contains("style-for-general-width")){
+        ParentElement.classList.remove("style-for-general-width")
+      }
+      ParentElement.classList.add("style-for-less-width")
     }
     else{
-      ParentElement.style.width = "100%"
-      ParentElement.style.height = "40px"
+      if (ParentElement.classList.contains("style-for-less-width")){
+        ParentElement.classList.remove("style-for-less-width")
+      }
+      ParentElement.classList.add("style-for-general-width")
     }
     if(!!parentNode.name){
       // if parent node name is not equal to undefined truncate it
@@ -87,37 +88,35 @@ export default class MovePopover extends HTMLElement {
       document.getElementById("back-button").setAttribute("disabled",true)
       ParentElement.innerHTML = 'Collections'  
     }
-    document.getElementById('folder-selector').addEventListener("selection-change", function (event){
-      var selectedItem = event.detail.selectedItems;
-      // making destination id global so as to use in move button event listener
-      globalThis.destinationId = selectedItem[0].id
-      var fileParentId = ChildParentIdDict[sourceId]
-      if (fileParentId == destinationId || sourceId == destinationId){
-        // disable move button if the parent element of source element is selected OR source id == destination id
-        moveButton.setAttribute("disabled",true)
-      }
-      else{
-        // enable move button if other element is selected
-        moveButton.removeAttribute("disabled")
-      }
-    })   
-    document.getElementById('folder-selector').addEventListener("dblclick", function(event){
-      var selectedItemId = event.target.id
-      if (sourceId == selectedItemId){
-        // No action if double clicked on the source element
-        return
-      }
-      publish("NODE_CHILDREN_REQUEST", [selectedItemId,"MOVE"])
-      publish("NODE_REQUEST", selectedItemId)
-    })
+    
+    // folder selector
+    this.folderSelectorEventHandler(moveButton, fileParentId, sourceId)
+
     // Move Item Button
+    this.moveButtonEventHandler(contextEle, nodePathList, sourceId, popoverElement)
+    
+    // Back Button
+    this.backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes)
+  } 
+
+  moveButtonEventHandler(contextEle, nodePathList, sourceId, popoverElement){
+    const tableParentElement = document.querySelector("ui5-table")
     this.button = this.querySelector("ui5-button[id='move-button']")
-    this.button.addEventListener("click", function(){
-      let xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/move_file");
-      xhr.setRequestHeader("Content-Type", "application/json");
-      let payload = {"sourceId": sourceId.toString(), "destinationId": destinationId}
-      xhr.send(JSON.stringify(payload))
+    this.button.addEventListener("click", async function(){
+      const selectedRowIndex = contextEle.selectedRows[0].attributes[0].value
+      const selectedItemName = contextEle.selectedNodes[0].name
+      const selectedItemNodeType = contextEle.selectedNodes[0].node_type
+      const destinationId = destinationPathList.slice(-1)[0]
+      let payload = {"sourceNodePath": nodePathList, "destinationNodePath": destinationPathList}
+      let options = {
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      }
+      let response = await fetch("/api/move_file", options)
+      if (response.status >= 400){        
+        console.log('Server error - response status', response.status)
+      }      
       // Close move popover content after clicking on move button
       popoverElement.close();
       // Hide the selected row
@@ -134,25 +133,58 @@ export default class MovePopover extends HTMLElement {
       }
     }
     )
-    // Back Button
+  }
+
+  folderSelectorEventHandler(moveButton, fileParentId, sourceId){
+    const folderSelectorElement = document.getElementById('folder-selector')
+    folderSelectorElement.addEventListener("selection-change", function (event){
+      const selectedItem = event.detail.selectedItems;
+      globalThis.destinationPathList = selectedItem[0].getAttribute("path").split(".")
+      // destinationpath = destinationPathList
+      // this.destinationPath = destinationPathList
+      // making destination id global so as to use in move button event listener
+      globalThis.destinationId = destinationPathList.slice(-1)[0]
+      
+      if (fileParentId == destinationId || sourceId == destinationId){
+        // disable move button if the parent element of source element is selected OR source id == destination id
+        moveButton.setAttribute("disabled",true)
+      }
+      else{
+        // enable move button if other element is selected
+        moveButton.removeAttribute("disabled")
+      }
+    })   
+    folderSelectorElement.addEventListener("dblclick", function(event){
+      const selectedItemId = event.target.id
+      if (sourceId == selectedItemId){
+        // No action if double clicked on the source element
+        return
+      }
+      publish("NODE_CHILDREN_REQUEST", {nodeId: selectedItemId, action: "MOVE"})
+      publish("NODE_REQUEST", selectedItemId)
+    })
+  }
+
+  backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes){
     this.backButton = this.querySelector("ui5-button[id='back-button']")
+    let BackNodeId = ""
     this.backButton.addEventListener("click", function(){
       if (AllNodes.length == 0){
         // if there is no children of parent, call the parent id of the current node and call its children after clicking on back button
-        var BackNodeId = ChildParentIdDict[ParentNodeId]
+        BackNodeId = ChildParentIdDict[ParentNodeId]
       } 
       else{
         // if there are children of parent, call the grand parent id of current node and call its children after clicking on back button
         const moveChildPath = AllNodes[0].path.split(".")
-        var BackNodeId = moveChildPath.slice(moveChildPath.length-3, moveChildPath.length-2)[0]
+        BackNodeId = moveChildPath.slice(moveChildPath.length-3, moveChildPath.length-2)[0]
       }
       // Calling an api for the children of grand parent id
-      publish("NODE_CHILDREN_REQUEST", [BackNodeId, "MOVE"])
+      publish("NODE_CHILDREN_REQUEST", {nodeId: BackNodeId, action: "MOVE"})
       // Calling an api for parent node 
       publish("NODE_REQUEST", BackNodeId)  
     })
-  } 
-    
+  }
+  
   fileContextMenuItemSelectedHandler ({ value, context }) {
     if (value !== "Move") {
       return
@@ -167,13 +199,13 @@ export default class MovePopover extends HTMLElement {
     this.render()
   }
 
-  moveChildrenResponseHandler (moveChildrenResponse){
-    if (moveChildrenResponse[2] != "MOVE") {
-      this.parentNodeId = moveChildrenResponse[1]
+  moveChildrenResponseHandler ({childResponse, nodeId, action}){
+    if (action != "MOVE") {
+      this.parentNodeId = nodeId
       return
     }
-    this.parentNodeId = moveChildrenResponse[1]
-    var moveChildrenResponse = moveChildrenResponse[0]
+    this.parentNodeId = nodeId
+    const moveChildrenResponse = childResponse
     this.allNodes = moveChildrenResponse
     this.render()
   }

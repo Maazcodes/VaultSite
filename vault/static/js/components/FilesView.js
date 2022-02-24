@@ -135,12 +135,10 @@ class Conductor {
     publish("NODE_RESPONSE", nodeResponse.results)
   }
 
-  async nodeChildrenRequestHandler (nodeId){
+  async nodeChildrenRequestHandler ({nodeId, action}){
     const { limit, ordering } = this.state.childQuery
-    const action = nodeId[1]
-    var nodeId = nodeId[0]
     const nodeChildrenResponse =  await this.api.treenodes.get(null, { parent: nodeId, limit, ordering})
-    publish("NODE_CHILDREN_RESPONSE", [nodeChildrenResponse.results, nodeId, action])
+    publish("NODE_CHILDREN_RESPONSE", {childResponse: nodeChildrenResponse.results, nodeId: nodeId, action: action})
   }
 
   async changeDirectoryRequestHandler ({nodeId, node, path }, updateHistory = true) {

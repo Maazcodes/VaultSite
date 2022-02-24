@@ -193,7 +193,8 @@ export default class FilesList extends HTMLElement {
     // TODO - implement these
     const disabledOptions = [
       "Preview",
-      "Move",
+      (numSelectedNodes < 2) || "Move",
+      (numSelectedNodes < 2 && isDownloadable) || "Download",
     ]
 
     this.appendChild(

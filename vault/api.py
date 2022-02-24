@@ -751,17 +751,22 @@ def render_tree_file_view(request):
         }
     )
 
+
 @csrf_exempt
 @login_required
 def move_file(request):
+    user_org = request.user.organization.tree_node
     try:
         body = json.loads(request.body)
-    except (AttributeError, TypeError, json.JSONDecodeError):
+        destination_path = body.get("destinationNodePath")
+        source_path = body.get("sourceNodePath")
+    except:
         return HttpResponseBadRequest()
-
-    destination_id = body.get("destinationId")
-    source_id = body.get("sourceId")
+    
+    if int(source_path[0]) == user_org.id and int(destination_path[0]) == user_org.id:
+        destination_id = int(destination_path[-1]) 
+        source_id = int(source_path[-1])
+    else:
+        return HttpResponseBadRequest()
     models.TreeNode.objects.filter(id=source_id).update(parent_id=destination_id)
-    return JsonResponse({
-        'body':body
-    })
+    return JsonResponse({"body": body})
