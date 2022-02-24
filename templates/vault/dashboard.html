@@ -34,7 +34,7 @@
 <div class="dashboard-col">
     <div class="dashboard-card" id="dashboard-collections">
         <div class="dashboard-card-head">
-            Collections (<a href="{{ url("collections") }}">Create New</a>)
+            Collections (<a href="{{ url('collections', args=['']) }}">Create New</a>)
         </div>
         <span class="spinner small"></span>
         <div class="dashboard-list"></div>
@@ -628,8 +628,8 @@
         var latest = stats.recentReport || stats.latestReport || {};
 
         if (collectionStats) {
-            let collectionUrl = "{{ url("collection", args=(0,)) }}";
-            collectionUrl = collectionUrl.replace("/0", "/" + collectionId);
+            let collectionUrl = "{{ url("collections", args=(0,)) }}";
+            collectionUrl = collectionUrl.replace("/0", "/" + collectionsSummary[collectionId].name);
 
             $("#dashboard-statistics-title").empty().append([
                 $("<span>").text("Collection Statistics"),
