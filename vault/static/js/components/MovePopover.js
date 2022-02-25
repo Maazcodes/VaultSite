@@ -103,6 +103,7 @@ export default class MovePopover extends HTMLElement {
     const selectedRowIndex = contextElement.selectedRows[0].attributes[0].value
     const selectedItemName = contextElement.selectedNodes[0].name
     const selectedItemNodeType = contextElement.selectedNodes[0].node_type
+    const basePath = contextElement.basePath
     this.button = this.querySelector("ui5-button[id='move-button']")
     this.button.addEventListener("click", async function(){
       
@@ -113,7 +114,7 @@ export default class MovePopover extends HTMLElement {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
       }
-      let response = await fetch("/api/move_file", options)
+      let response = await fetch(`${basePath}/api/move_file`, options)
       if (response.status >= 400){        
         console.error('Server error - response status', response.status)
       }      
