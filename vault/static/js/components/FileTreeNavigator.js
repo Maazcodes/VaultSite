@@ -116,7 +116,7 @@ export default class FileTreeNavigator extends HTMLElement {
   }
 
   nodeChildrenResponseHandler ({childResponse, nodeId, action}){
-    if (action != "TREE_VIEW") {
+    if (action !== "TREE_VIEW") {
       return
     }
     const parentId = nodeId

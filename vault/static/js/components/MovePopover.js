@@ -1,4 +1,5 @@
 import { subscribe, publish } from "../lib/pubsub.js"
+const STRING_TRUNCATION_THRESHOLD = 17
 export default class MovePopover extends HTMLElement {
   constructor(){
     super()
@@ -8,6 +9,8 @@ export default class MovePopover extends HTMLElement {
     this.childParentIdDict = {}
     this._parentNode = {}
     this.selectedNodeParentId = ""
+    this.nodePathList = []
+    this.sourceId = ""
   }
   connectedCallback () {
     this.innerHTML = `
@@ -31,13 +34,10 @@ export default class MovePopover extends HTMLElement {
 
   render (){
     const contextEle = this.contextElement
-    const sourceId = contextEle.selectedNodes[0].id 
-    const nodePath = contextEle.selectedNodes[0].path
+    this.sourceId = contextEle.selectedNodes[0].id 
     const parentNode = this._parentNode
-    const nodePathList = nodePath.split(".")
-    const AllNodes = this.allNodes
-    const popoverElement = this.popover
-    
+    this.nodePathList = contextEle.selectedNodes[0].path.split(".")
+    const AllNodes = this.allNodes    
     this.allNodes.forEach((element)=>{
       const elementPath = element.path.split(".")
       // extracting the second last number from node path
@@ -48,12 +48,12 @@ export default class MovePopover extends HTMLElement {
     })
     const ChildParentIdDict = this.childParentIdDict
     const ParentNodeId = this.parentNodeId
-    const fileParentId = ChildParentIdDict[sourceId]
+    const fileParentId = ChildParentIdDict[this.sourceId]
     this.popover.innerHTML = `
     <div id="heading-part">
       <ui5-button design="Default" id="back-button"> <div style='font-size:20px; color: black;'><b>&#8617;</b></div>
             </ui5-button>
-      <div id="parent-name" style="display:inline-block; text-align: center; width: 100%; height: 40px; vertical-align: middle; font-weight: bold; margin-top:-38px; margin-left: 16px;"></div>
+      <div id="move-popover-container" style="display:inline-block; text-align: center; width: 100%; height: 40px; vertical-align: middle; font-weight: bold; margin-top:-38px; margin-left: 16px;"></div>
     </div>
     <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" >
     ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" path="${node.path}" id="${node.id}">${node.name}</ui5-li>`).join("")}
@@ -62,50 +62,50 @@ export default class MovePopover extends HTMLElement {
       <ui5-button design="Emphasized" id="move-button" style = "margin-top: 10px; margin-left: 0px;"> MOVE HERE</ui5-button>
     </div>
     `
-    
     const moveButton = document.getElementById("move-button")
     // Disable move button initially
     moveButton.setAttribute("disabled",true) 
-    const ParentElement = document.getElementById("parent-name")
+    const ParentElement = document.getElementById("move-popover-container")
     if (this.popover.style.width < "152"){
-      if (ParentElement.classList.contains("style-for-general-width")){
-        ParentElement.classList.remove("style-for-general-width")
+      if (ParentElement.classList.contains("move-popover-container-general")){
+        ParentElement.classList.remove("move-popover-container-general")
       }
-      ParentElement.classList.add("style-for-less-width")
+      ParentElement.classList.add("move-popover-container-narrow")
     }
     else{
-      if (ParentElement.classList.contains("style-for-less-width")){
-        ParentElement.classList.remove("style-for-less-width")
+      if (ParentElement.classList.contains("move-popover-container-narrow")){
+        ParentElement.classList.remove("move-popover-container-narrow")
       }
-      ParentElement.classList.add("style-for-general-width")
+      ParentElement.classList.add("move-popover-container-general")
     }
     if(!!parentNode.name){
       // if parent node name is not equal to undefined truncate it
-      ParentElement.innerHTML = `${this.truncate(parentNode.name)}`
+      ParentElement.innerHTML = this.truncate(parentNode.name)
     }
-    if (parentNode.id == nodePathList[0]) {
+    if (parentNode.id == this.nodePathList[0]) {
       // disable back button if the parent id == org id
       document.getElementById("back-button").setAttribute("disabled",true)
       ParentElement.innerHTML = 'Collections'  
     }
     
     // folder selector
-    this.folderSelectorEventHandler(moveButton, fileParentId, sourceId)
+    this.folderSelectorEventHandler(moveButton, fileParentId)
 
     // Move Item Button
-    this.moveButtonEventHandler(contextEle, nodePathList, sourceId, popoverElement)
+    this.moveButtonEventHandler(this.popover, this.contextElement, this.sourceId, this.nodePathList)
     
     // Back Button
     this.backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes)
   } 
 
-  moveButtonEventHandler(contextEle, nodePathList, sourceId, popoverElement){
+  moveButtonEventHandler(popover, contextElement, sourceId, nodePathList){
     const tableParentElement = document.querySelector("ui5-table")
+    const selectedRowIndex = contextElement.selectedRows[0].attributes[0].value
+    const selectedItemName = contextElement.selectedNodes[0].name
+    const selectedItemNodeType = contextElement.selectedNodes[0].node_type
     this.button = this.querySelector("ui5-button[id='move-button']")
     this.button.addEventListener("click", async function(){
-      const selectedRowIndex = contextEle.selectedRows[0].attributes[0].value
-      const selectedItemName = contextEle.selectedNodes[0].name
-      const selectedItemNodeType = contextEle.selectedNodes[0].node_type
+      
       const destinationId = destinationPathList.slice(-1)[0]
       let payload = {"sourceNodePath": nodePathList, "destinationNodePath": destinationPathList}
       let options = {
@@ -115,10 +115,10 @@ export default class MovePopover extends HTMLElement {
       }
       let response = await fetch("/api/move_file", options)
       if (response.status >= 400){        
-        console.log('Server error - response status', response.status)
+        console.error('Server error - response status', response.status)
       }      
       // Close move popover content after clicking on move button
-      popoverElement.close();
+      popover.close();
       // Hide the selected row
       const selectedElement = document.querySelector(`ui5-table-row[data-index = "${selectedRowIndex}"]`)
       tableParentElement.removeChild(selectedElement)
@@ -135,17 +135,16 @@ export default class MovePopover extends HTMLElement {
     )
   }
 
-  folderSelectorEventHandler(moveButton, fileParentId, sourceId){
+  folderSelectorEventHandler(moveButton, fileParentId){
     const folderSelectorElement = document.getElementById('folder-selector')
     folderSelectorElement.addEventListener("selection-change", function (event){
       const selectedItem = event.detail.selectedItems;
       globalThis.destinationPathList = selectedItem[0].getAttribute("path").split(".")
-      // destinationpath = destinationPathList
-      // this.destinationPath = destinationPathList
+     
       // making destination id global so as to use in move button event listener
       globalThis.destinationId = destinationPathList.slice(-1)[0]
       
-      if (fileParentId == destinationId || sourceId == destinationId){
+      if (fileParentId == destinationId || this.sourceId == destinationId){
         // disable move button if the parent element of source element is selected OR source id == destination id
         moveButton.setAttribute("disabled",true)
       }
@@ -156,7 +155,7 @@ export default class MovePopover extends HTMLElement {
     })   
     folderSelectorElement.addEventListener("dblclick", function(event){
       const selectedItemId = event.target.id
-      if (sourceId == selectedItemId){
+      if (this.sourceId == selectedItemId){
         // No action if double clicked on the source element
         return
       }
@@ -184,7 +183,7 @@ export default class MovePopover extends HTMLElement {
       publish("NODE_REQUEST", BackNodeId)  
     })
   }
-  
+
   fileContextMenuItemSelectedHandler ({ value, context }) {
     if (value !== "Move") {
       return
@@ -200,7 +199,7 @@ export default class MovePopover extends HTMLElement {
   }
 
   moveChildrenResponseHandler ({childResponse, nodeId, action}){
-    if (action != "MOVE") {
+    if (action !== "MOVE") {
       this.parentNodeId = nodeId
       return
     }
@@ -216,7 +215,7 @@ export default class MovePopover extends HTMLElement {
   }
 
   truncate(input) {
-   if (input.length > 17) {
+   if (input.length > STRING_TRUNCATION_THRESHOLD) {
       return input.substring(0, 14) + '...';
    }
    return input;

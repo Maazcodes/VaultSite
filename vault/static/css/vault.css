@@ -91,13 +91,13 @@
   background: white;
 }
 
-.style-for-less-width{
+.move-popover-container-narrow{
   width: 82px;
   height: 50px;
   margin-left: 44px;
 }
 
-.style-for-general-width{
+.move-popover-container-general{
   width: 100%;
   height: 40px;
 }
