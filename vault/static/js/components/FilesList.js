@@ -213,7 +213,6 @@ export default class FilesList extends HTMLElement {
                          ? this.state.selectedNodes
                          : [ node ],
             nodes: this.props.nodes,
-            basePath:this.props.basePath
           },
           topic: "FILE_CONTEXT_MENU_ITEM_SELECTED"
         }

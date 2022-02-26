@@ -1,5 +1,6 @@
 import { subscribe, publish } from "../lib/pubsub.js"
 const STRING_TRUNCATION_THRESHOLD = 17
+const APPLICATION_JSON = "application/json"
 export default class MovePopover extends HTMLElement {
   constructor(){
     super()
@@ -24,6 +25,7 @@ export default class MovePopover extends HTMLElement {
       </div>
     `
     this.popover = this.querySelector("ui5-popover[id='move-popover-content']")
+    
     subscribe("NODE_CHILDREN_RESPONSE", this.moveChildrenResponseHandler.bind(this))
     subscribe("NODE_RESPONSE", this.nodeResponseHandler.bind(this))
     subscribe(
@@ -56,7 +58,7 @@ export default class MovePopover extends HTMLElement {
       <div id="move-popover-container" style="display:inline-block; text-align: center; width: 100%; height: 40px; vertical-align: middle; font-weight: bold; margin-top:-38px; margin-left: 16px;"></div>
     </div>
     <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" >
-    ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" path="${node.path}" id="${node.id}">${node.name}</ui5-li>`).join("")}
+    ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" id="${node.id}" url="${node.url}">${node.name}</ui5-li>`).join("")}
     </ui5-list>
     <div style="display: flex; justify-content: center; align-items: center;">
       <ui5-button design="Emphasized" id="move-button" style = "margin-top: 10px; margin-left: 0px;"> MOVE HERE</ui5-button>
@@ -92,29 +94,31 @@ export default class MovePopover extends HTMLElement {
     this.folderSelectorEventHandler(moveButton, fileParentId)
 
     // Move Item Button
-    this.moveButtonEventHandler(this.popover, this.contextElement, this.sourceId, this.nodePathList)
+    this.moveButtonEventHandler(this.popover, this.contextElement, this.sourceId)
     
     // Back Button
     this.backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes)
   } 
 
-  moveButtonEventHandler(popover, contextElement, sourceId, nodePathList){
+  moveButtonEventHandler(popover, contextElement, sourceId){
     const tableParentElement = document.querySelector("ui5-table")
     const selectedRowIndex = contextElement.selectedRows[0].attributes[0].value
     const selectedItemName = contextElement.selectedNodes[0].name
     const selectedItemNodeType = contextElement.selectedNodes[0].node_type
-    const basePath = contextElement.basePath
+    const sourceNodeUrl = contextElement.selectedNodes[0].url    
     this.button = this.querySelector("ui5-button[id='move-button']")
     this.button.addEventListener("click", async function(){
-      
-      const destinationId = destinationPathList.slice(-1)[0]
-      let payload = {"sourceNodePath": nodePathList, "destinationNodePath": destinationPathList}
+      let payload = {parent: destinationNodeUrl}
       let options = {
-        method: 'POST', 
-        headers: {'Content-Type': 'application/json'},
+        credentials: "same-origin",
+        method: 'PATCH', 
+        headers: {
+          "Accept": APPLICATION_JSON,
+          'Content-Type': APPLICATION_JSON
+        },
         body: JSON.stringify(payload)
       }
-      let response = await fetch(`${basePath}/api/move_file`, options)
+      let response = await fetch(sourceNodeUrl, options)
       if (response.status >= 400){        
         console.error('Server error - response status', response.status)
       }      
@@ -140,11 +144,10 @@ export default class MovePopover extends HTMLElement {
     const folderSelectorElement = document.getElementById('folder-selector')
     folderSelectorElement.addEventListener("selection-change", function (event){
       const selectedItem = event.detail.selectedItems;
-      globalThis.destinationPathList = selectedItem[0].getAttribute("path").split(".")
-     
+      globalThis.destinationNodeUrl = selectedItem[0].getAttribute("url")
+      globalThis.destinationNodeName = selectedItem[0].textContent
       // making destination id global so as to use in move button event listener
-      globalThis.destinationId = destinationPathList.slice(-1)[0]
-      
+      globalThis.destinationId = selectedItem[0].id
       if (fileParentId == destinationId || this.sourceId == destinationId){
         // disable move button if the parent element of source element is selected OR source id == destination id
         moveButton.setAttribute("disabled",true)
