@@ -4,6 +4,8 @@ cssselect
 lxml
 model_bakery
 playwright
+pylint
+pylint-django
 pytest
 pytest-django
 pytest-docker
