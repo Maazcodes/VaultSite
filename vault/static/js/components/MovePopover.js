@@ -121,6 +121,7 @@ export default class MovePopover extends HTMLElement {
       let response = await fetch(sourceNodeUrl, options)
       if (response.status >= 400){        
         console.error('Server error - response status', response.status)
+        return
       }      
       // Close move popover content after clicking on move button
       popover.close();
