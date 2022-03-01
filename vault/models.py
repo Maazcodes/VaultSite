@@ -25,7 +25,7 @@ from vault.pb_utils import (
 
 from vault import utils
 
-TEBIBYTE = 2 ** 40
+TEBIBYTE = 2**40
 logger = logging.getLogger(__name__)
 
 

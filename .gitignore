@@ -10,3 +10,9 @@ dist
 build
 
 postgres-data
+
+# CI stuff
+.coverage
+coverage.xml
+pytest.xml
+pylint.json

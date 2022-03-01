@@ -6,9 +6,12 @@ model_bakery
 playwright
 pylint
 pylint-django
+pylint-gitlab
 pytest
+pytest-cov
 pytest-django
 pytest-docker
 pytest-playwright
 tox
 freezegun==1.1.0
+black

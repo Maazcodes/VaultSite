@@ -4,6 +4,8 @@
 #
 #    pip-compile --output-file=requirements.test.txt requirements.test.in
 #
+anybadge==1.8.0
+    # via pylint-gitlab
 appdirs==1.4.4
     # via
     #   -c requirements.txt
@@ -13,7 +15,9 @@ asgiref==3.4.1
     #   -c requirements.txt
     #   django
 astroid==2.9.3
-    # via pylint
+    # via
+    #   pylint
+    #   pylint-gitlab
 attrs==21.2.0
     # via
     #   jsonschema
@@ -23,6 +27,8 @@ backports.entry-points-selectable==1.1.1
     # via virtualenv
 bcrypt==3.2.0
     # via paramiko
+black==22.1.0
+    # via -r requirements.test.in
 certifi==2021.10.8
     # via
     #   -c requirements.txt
@@ -37,10 +43,14 @@ charset-normalizer==2.0.7
     # via
     #   -c requirements.txt
     #   requests
+click==8.0.4
+    # via black
 contextlib2==21.6.0
     # via
     #   -c requirements.txt
     #   schema
+coverage[toml]==6.3.2
+    # via pytest-cov
 cryptography==35.0.0
     # via paramiko
 cssselect==1.1.0
@@ -95,6 +105,8 @@ idna==3.3
     # via
     #   -c requirements.txt
     #   requests
+importlib-metadata==4.11.2
+    # via pylint-gitlab
 iniconfig==1.1.1
     # via pytest
 internetarchive==2.1.0
@@ -102,11 +114,14 @@ internetarchive==2.1.0
     #   -c requirements.txt
     #   -r requirements.in
 isort==5.10.1
-    # via pylint
+    # via
+    #   pylint
+    #   pylint-gitlab
 jinja2==3.0.3
     # via
     #   -c requirements.txt
     #   -r requirements.in
+    #   pylint-gitlab
 jsonpatch==1.32
     # via
     #   -c requirements.txt
@@ -118,26 +133,39 @@ jsonpointer==2.2
 jsonschema==3.2.0
     # via docker-compose
 lazy-object-proxy==1.7.1
-    # via astroid
+    # via
+    #   astroid
+    #   pylint-gitlab
 lxml==4.7.1
     # via -r requirements.test.in
 markupsafe==2.0.1
     # via
     #   -c requirements.txt
     #   jinja2
+    #   pylint-gitlab
 mccabe==0.6.1
-    # via pylint
+    # via
+    #   pylint
+    #   pylint-gitlab
 model-bakery==1.3.3
     # via -r requirements.test.in
+mypy-extensions==0.4.3
+    # via black
 packaging==21.3
     # via
+    #   anybadge
+    #   pylint-gitlab
     #   pytest
     #   tox
 paramiko==2.8.0
     # via docker
+pathspec==0.9.0
+    # via black
 platformdirs==2.4.0
     # via
+    #   black
     #   pylint
+    #   pylint-gitlab
     #   virtualenv
 playwright==1.16.1
     # via
@@ -163,26 +191,34 @@ pylint==2.12.2
     # via
     #   -r requirements.test.in
     #   pylint-django
+    #   pylint-gitlab
     #   pylint-plugin-utils
 pylint-django==2.5.2
+    # via -r requirements.test.in
+pylint-gitlab==1.0.0
     # via -r requirements.test.in
 pylint-plugin-utils==0.7
     # via pylint-django
 pynacl==1.4.0
     # via paramiko
 pyparsing==3.0.6
-    # via packaging
+    # via
+    #   packaging
+    #   pylint-gitlab
 pyrsistent==0.18.0
     # via jsonschema
 pytest==6.2.5
     # via
     #   -r requirements.test.in
     #   pytest-base-url
+    #   pytest-cov
     #   pytest-django
     #   pytest-docker
     #   pytest-playwright
 pytest-base-url==1.4.2
     # via pytest-playwright
+pytest-cov==3.0.0
+    # via -r requirements.test.in
 pytest-django==4.4.0
     # via -r requirements.test.in
 pytest-docker==0.10.3
@@ -249,8 +285,13 @@ texttable==1.6.4
 toml==0.10.2
     # via
     #   pylint
+    #   pylint-gitlab
     #   pytest
     #   tox
+tomli==2.0.1
+    # via
+    #   black
+    #   coverage
 tox==3.24.4
     # via -r requirements.test.in
 tqdm==4.62.3
@@ -260,8 +301,10 @@ tqdm==4.62.3
 typing-extensions==4.0.0
     # via
     #   astroid
+    #   black
     #   playwright
     #   pylint
+    #   pylint-gitlab
 urllib3==1.26.7
     # via
     #   -c requirements.txt
@@ -276,7 +319,13 @@ websocket-client==0.59.0
 websockets==10.1
     # via playwright
 wrapt==1.13.3
-    # via astroid
+    # via
+    #   astroid
+    #   pylint-gitlab
+zipp==3.7.0
+    # via
+    #   importlib-metadata
+    #   pylint-gitlab
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

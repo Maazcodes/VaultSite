@@ -1,4 +1,2 @@
 -r requirements.test.in
 -c requirements.test.txt
-ansible
-black

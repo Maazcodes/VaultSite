@@ -16,6 +16,7 @@ Use Docker-Dev for a quicker setup.
 ```
 cd path/to/project
 utilities/dev-postgres.sh start
+make setup
 make migrate
 AIT_CONF=./DPS_dev/vault.yml ./venv/bin/python manage.py createsuperuser
 REMOTE_USER=<your-superuser-name> make run
@@ -65,7 +66,7 @@ Vault is deployed using
 [ait-ansible](https://git.archive.org/archive-it/ait-ansible). So that we
 always understand exactly what changes we're deploying, deployments must be
 made targeting a specific git ref (i.e., a hash, tag, or branch name), which we
-do using the `vault_git_ref` ansible var. Example:
+do using the `git_ref` ansible var. Example:
 
 ```sh
 # - be ssh'd onto a machine in-cluster
@@ -75,7 +76,7 @@ do using the `vault_git_ref` ansible var. Example:
 pwd
 ./git.archive.org/archive-it/ait-ansible
 
-# git refs are provided via the `vault_git_ref` var
-ansible-playbook --ask-vault-password -i qa setup_vault_site.yml --extra-vars vault_git_ref=eec824149cc850e094dd92921e4af0f8f13ee380
+# git refs are provided via the `git_ref` var
+ansible-playbook --ask-vault-password -i qa setup_vault_site.yml --extra-vars git_ref=eec824149cc850e094dd92921e4af0f8f13ee380
 # ...
 ```
