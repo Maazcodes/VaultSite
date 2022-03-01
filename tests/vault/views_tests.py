@@ -1,4 +1,5 @@
 from django.http import Http404
+from django.core.files.uploadedfile import SimpleUploadedFile
 from model_bakery import baker
 import pytest
 
@@ -66,3 +67,208 @@ def test_collection(rf):
     request.user = user
     response = views.collection(request, collection.id)
     assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_deposit_compat(rf):
+    user = baker.make("vault.User", _fill_optional=["organization"])
+
+    # method
+    request = rf.get(f"/deposit/compat")
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 405, "do not allow GET"
+
+    # incomplete request
+    request = rf.post(f"/deposit/compat")
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 501, "missing client field"
+
+    # incomplete request
+    data = {"client": "DOAJ_CLI"}
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 400, "incomplete request"
+
+    # create org and collection to send data to
+    collection = baker.make("Collection", organization=user.organization)
+
+    # incomplete request
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 400, "incomplete request"
+
+    # complete but bogus hash
+    uploaded_file = SimpleUploadedFile("a.txt", b"a", content_type="text/plain")
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "size": 1,
+        "sha256sum": "gotcha",
+        "dir_field": uploaded_file,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 409
+
+    # missing file
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "size": "",
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 400, "missing file should fail"
+
+    # bogus file data
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "size": "",
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "file_field": "...",
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 400, "should fail on bogus file data"
+
+    # complete but bogus size; yields 200, since DOAJ does not supply size
+    uploaded_file = SimpleUploadedFile("a.txt", b"a", content_type="text/plain")
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "size": 1000,
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "dir_field": uploaded_file,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 200, "complete request should be ok"
+
+    # complete request, without size
+    uploaded_file = SimpleUploadedFile("a.txt", b"a", content_type="text/plain")
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "dir_field": uploaded_file,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 200, "complete request should succeed, even w/o size"
+
+    # complete request, with size
+    uploaded_file = SimpleUploadedFile("a.txt", b"a", content_type="text/plain")
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "size": 1,
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "dir_field": uploaded_file,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 200, "complete request should succeed"
+
+    # complete request, using "file_field" for file (like DOAJ supposedly does)
+    uploaded_file = SimpleUploadedFile("a.txt", b"a", content_type="text/plain")
+    data = {
+        "client": "DOAJ_CLI",
+        "collection": collection.id,
+        "organization": collection.organization_id,
+        "directories": "a.txt",
+        "size": "",
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "file_field": uploaded_file,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 200, "complete request should succeed"
+
+    # script similar to what DOAJ might be doing
+    # def upload_package(self, sha256sum):
+
+    #     url = app.config.get("PRESERVATION_URL")
+    #     username = app.config.get("PRESERVATION_USERNAME")
+    #     password = app.config.get("PRESERVATION_PASSWD")
+    #     collection_dict = app.config.get("PRESERVATION_COLLECTION")
+    #     params = collection_dict[self.__owner]
+    #     collection = params[0]
+    #     collection_id = params[1]
+
+    #     file_name = os.path.basename(self.tar_file)
+
+    #     # payload for upload request
+    #     payload = {
+    #         'directories': file_name,
+    #         'org': 'DOAJ',
+    #         'client': 'DOAJ_CLI',
+    #         'username': 'doaj_uploader',
+    #         'size': '',
+    #         'organization': '1',
+    #         'orgname': 'DOAJ',
+    #         'collection': collection_id,
+    #         'collname': collection,
+    #         'sha256sum': sha256sum
+    #     }
+    #     app.logger.info(payload)
+
+    #     headers = {}
+    #     # get the file to upload
+    #     try:
+    #         with open(self.tar_file, "rb") as f:
+    #             files = {'file_field': (file_name, f)}
+    #             response = requests.post(url, headers=headers, auth=(username, password), files=files, data=payload)
+    #     except (IOError, Exception) as exp:
+    #         app.logger.exception("Error opening the tar file")
+    #         raise PreservationException("Error Uploading tar file to IA server")
+
+    #     return response
+
+    uploaded_file = SimpleUploadedFile("a.txt", b"a", content_type="text/plain")
+    data = {
+        "directories": "a.txt",
+        "org": "DOAJ",
+        "client": "DOAJ_CLI",
+        "username": "doaj_uploader",
+        "size": "",
+        "organization": collection.organization_id,
+        "orgname": "DOAJ",
+        "collection": collection.id,
+        "collname": collection.name,
+        "sha256sum": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+        "file_field": uploaded_file,
+    }
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = user
+    response = views.deposit_compat(request)
+    assert response.status_code == 200, "complete doaj-style request should succeed"

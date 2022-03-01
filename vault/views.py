@@ -1,23 +1,30 @@
-from collections import defaultdict
 import datetime
 import json
 import logging
+import os
+import random
+import tempfile
+import time
+from collections import defaultdict
 from functools import reduce
 from itertools import chain
 from typing import Union
 
+import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
-from django.db.models import Max, Q, Sum, Count
+from django.db.models import Count, Max, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from fs.osfs import OSFS
 
 import requests
 
@@ -387,6 +394,174 @@ def validate_collection(request):
     if _collection.organization != user_org:
         raise Http404
     return collection_id
+
+
+@login_required
+@csrf_exempt
+def deposit_compat(request):
+    """
+    Compatibility deposit for "curl-DOAJ.sh" and similar upload methods, using
+    flow/deposit workflow on the server side.
+
+    This endpoint succeeds, if all the required fields are supplied. It does not
+    fail, if extra, unused fields are received.
+
+    If a file with the same name is pushed to the same organization and
+    collection, there is no logic here to handle force overwrites, we simple
+    create a new deposit. Duplication may or may not be solved by successive
+    layers of vault.
+
+    Expected to work with: c59ae05:vault/utilities/curl-DOAJ.sh and https://is.gd/OLydc8
+
+    curl ...
+        --user    $USER                                 # admin:admin
+        --form    client=DOAJ_CLI
+        --form    size=$size_bytes                      # file size
+        --form    directories=$filepath                 # file path (no directory, actually)
+        --form    organization=$ORGANIZATION_ID         # 1
+        --form    collection=$COLLECTION_ID             # 2
+        --form    file_field=$EMPTY                     # "{}"
+        --form    dir_field=@$filepath                  # == file data
+        --form    webkitRelativePath=$filepath          # == directories
+        --form    sha256sum=$SHA_256_SUM                # SHA256
+        --cookie  $COOKIEJAR --cookie-jar $COOKIEJAR    # ...
+        --referer $UPLOADER                             # URL of upload form
+        $UPLOADER'                                      # URL of upload form
+
+    We need to accept curl requests coming from "curl-DOAJ.sh" - on success, a
+    JSON response is sent back (per curl call, one per file); pretty-printed:
+
+        {
+          "files": {
+            "name": "README.md",
+            "sha256": "9d9b266cf8247e0ad868a717c99b73ab11ce6f7b7b3a44b39f1c695fdd41942e"
+          }
+        }
+
+    The "curl-DOAJ.sh" script treats a non-zero exit code from curl as an
+    error; but it does not check HTTP status codes (e.g. no --fail or
+    --fail-with-body); it also treats an zero length response body as an error.
+    For compatibility, on failure, we return a suitable HTTP status code, but keep a
+    zero length body (even though some diagnostics would be nice).
+
+    Open question(s):
+
+    * [ ] [reporting] Do we need a DepositReport here? Since "curl-DOAJ.sh" issues multiple
+          requests to this endpoint, we do not know how many files we need to
+          consider for a single deposit. Or should be just create a report and
+          overwrite/update on each request?
+    * [ ] [force overwrite] How about the client uploading a new file with the
+          same name to the same organization/collection? We should overwrite, but how
+          can we detect that? Uploads go to a few stages before they end up in
+          "storage" and treenode tables are updated? If a user uploads two different
+          files with the same name in quick succession, how do we handle that?
+    """
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    if request.POST.get("client") != "DOAJ_CLI":
+        # Limit usage to the DOAJ client for now. Remove this to allow other
+        # clients to use this endpoint.
+        return HttpResponse(status=501)
+
+    # This is like "validate_collection", but we use zero-body responses (so
+    # curl-DOAJ.sh considers errors here as failure).
+    if not request.user.organization:
+        return HttpResponse(status=400)
+    collection_id = request.POST.get("collection", None)
+    if not collection_id:
+        return HttpResponse(status=400)
+    try:
+        collection = models.Collection.objects.get(pk=collection_id)
+        if collection.organization != request.user.organization:
+            return HttpResponse(status=400)
+    except models.Collection.DoesNotExist:
+        return HttpResponse(status=400)
+
+    # "curl-DOAJ.sh" uses "dir_field", whereas doaj upload python script
+    # (https://is.gd/OLydc8) uses "file_field".
+    filekey = "file_field" if "file_field" in request.FILES else "dir_field"
+
+    filenames = request.POST.get("directories", "").split(",")
+    if len(filenames) == 0:
+        return HttpResponse(status=400)
+    filename = filenames[0]
+    try:
+        sha256sum = request.POST["sha256sum"]
+        _ = request.FILES[filekey]
+    except (ValueError, KeyError):
+        return HttpResponse(status=400)
+
+    # Web uploads use https://github.com/flowjs/flow.js/ for uploads, using
+    # flow identifiers; we only have a dummy identifier: unique and can be
+    # generated with stdlib. Example: 'compat-1646859646-28990082667'
+    dummy_flow_identifier = "compat-{}-{}".format(
+        int(time.time()), random.randrange(1e10, 9e10)
+    )
+
+    # Write out file so that "process_chunked_files.py" will pick it up. We use
+    # chunk subdir, but we only really have one chunk per file.
+    with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
+        chunk_path = os.path.join(str(request.user.organization.id), "chunks")
+        with tmp_fs.makedirs(chunk_path, recreate=True) as chunk_fs:
+            tf = f"{dummy_flow_identifier}.uploading"
+            fout = chunk_fs.openbin(tf, mode="a")
+            for chunk in request.FILES[filekey].chunks():
+                fout.write(chunk)
+            fout.flush()
+            os.fsync(fout.fileno())
+            fout.close()
+            # the vault/utilities/process_chunked_files.py will look for
+            # [flow-id]-[#].tmp files
+            dst = f"{dummy_flow_identifier}-1.tmp"
+            chunk_fs.move(tf, dst, overwrite=True)
+            # DOAJ has confirmed they are not providing `size`, so we substitute.
+            size = chunk_fs.getsize(dst)
+            if sha256sum != chunk_fs.hash(dst, "sha256"):
+                return HttpResponse(status=409)  # CONFLICT
+
+    # > I think we should make a new Deposit for every call to your endpoint;
+    # so 1 new Deposit and 1 new DepositFile
+    deposit = models.Deposit.objects.create(
+        organization_id=request.user.organization.id,
+        collection_id=collection_id,
+        user=request.user,
+        state=models.DepositFile.State.UPLOADED,
+        uploaded_at=timezone.now(),
+    )
+    deposit_file_form = forms.RegisterDepositFileForm(
+        {
+            "flow_identifier": dummy_flow_identifier,
+            "name": os.path.basename(filename),
+            # despite the name, "relative_path" can be an absolute path as
+            # well, depending on what is passed to the upload script.
+            "relative_path": filename,
+            "size": size,
+        }
+    )
+    if not deposit_file_form.is_valid():
+        return HttpResponse(status=400)
+    df = models.DepositFile.objects.create(
+        deposit=deposit,
+        **deposit_file_form.cleaned_data,
+        state=models.DepositFile.State.UPLOADED,
+        uploaded_at=timezone.now(),
+    )
+    if settings.SLACK_WEBHOOK:
+        try:
+            org = request.user.organization
+            msg = f"<@avdempsey> {org.name} used the new deposit uploader."
+            requests.post(settings.SLACK_WEBHOOK, data=json.dumps({"text": msg}))
+        except Exception:
+            pass
+    return JsonResponse(
+        {
+            "files": {
+                "name": filename,
+                "sha256": sha256sum,
+            },
+        }
+    )
 
 
 #

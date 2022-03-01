@@ -24,6 +24,7 @@ urlpatterns = [
     path("reports/fixity/<int:report_id>", views.fixity_report, name="fixity_report"),
     path("deposit", views.deposit, name="deposit"),
     path("deposit/web", views.deposit_web, name="deposit_web"),
+    path("deposit/compat", views.deposit_compat, name="deposit_compat"),
     path("deposit/cli", views.deposit_cli, name="deposit_cli"),
     path("deposit/mail", views.deposit_mail, name="deposit_mail"),
     path("deposit/flow", views.deposit_flow, name="deposit_flow"),
