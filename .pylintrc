@@ -1,0 +1,19 @@
+[MASTER]
+
+# List of plugins (as comma separated values of python module names) to load,
+# usually to register additional checkers.
+load-plugins=pylint_django
+
+django-settings-module=vault_site.settings
+
+
+[BASIC]
+
+# Good variable names which should always be accepted, separated by a comma.
+good-names=i,
+           j,
+           k,
+           e,
+           ex,
+           Run,
+           _
