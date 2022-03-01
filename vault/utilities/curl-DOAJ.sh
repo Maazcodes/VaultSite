@@ -1,7 +1,7 @@
 #!/bin/bash
 
 helpme() {
-    msg='
+	msg='
 # Name: curl-DOAJ.sh
 #
 # Arguments:
@@ -27,8 +27,8 @@ helpme() {
 # NOTE: Set DISABLED to "0" to upload!
 #
 #'
-echo "$msg"
-exit
+	echo "$msg"
+	exit
 }
 
 set -o noglob
@@ -77,74 +77,69 @@ curl_command='curl --globoff --insecure --silent --show-error
                 --form    sha256sum=$SHA_256_SUM
                 --cookie  $COOKIEJAR --cookie-jar $COOKIEJAR
                 --referer $UPLOADER $UPLOADER'
- 
 
 fsize() {
-    local size=0
-    size=$(wc -c "$1")
-    echo ${size% *}
+	local size=0
+	size=$(wc -c "$1")
+	echo ${size% *}
 }
 
 shasum() {
-    local filepath="$1"
-    local hash=
-    hash=$(sha256sum $filepath)
-    if [[ "$hash" =~ ^[0-9a-fA-F]+ ]]; then
-       hash=${BASH_REMATCH[0]}
-    fi
-    echo -n "$hash"
+	local filepath="$1"
+	local hash=
+	hash=$(sha256sum $filepath)
+	if [[ "$hash" =~ ^[0-9a-fA-F]+ ]]; then
+		hash=${BASH_REMATCH[0]}
+	fi
+	echo -n "$hash"
 }
 
 IFS=$'\n'
 
-if [ -d "$PATHSPEC" ]
-then
-    FILES=$(find ${PATHSPEC})
+if [ -d "$PATHSPEC" ]; then
+	FILES=$(find ${PATHSPEC})
 else
-    FILES=$PATHSPEC
+	FILES=$PATHSPEC
 fi
 
-for filepath in $FILES
-do
-    if [[ -f "$filepath" ]] && [[ -r "$filepath" ]]
-    then
-         size_bytes=$(fsize "$filepath")
-         SHA_256_SUM=$(shasum "$filepath")
-         
-         #
-         # In the Django views.py, the --form options are accessible as:
-         #
-         #    request.POST.get("sha256sum", "")
-         #
-         # The dir_field is actually a list that can be iterated:
-         #
-         #    files = request.FILES.getlist(dir_field)
-         #        for f in files:
-         #            ...
-         #
-         #    With attributes: f.name f.size
-         #
-        
-        if [[ "$DISABLED" -eq 0 ]]
-            then
-                json=$(eval $curl_command)
-            
-                if [ $? -gt 0 ]; then
-                    echo "$filepath : Transfer FAILED!:\n$json"
-                else
-                    #echo "$filepath : $size_bytes Bytes sent."
-                    if [ ${#json} -eq 0 ]; then
-                        echo "$filepath : Transfer FAILED!!"
-                        echo "Try using the --location-trusted option"
-                    else
-                        echo "$json"
-                    fi
-                fi
-        else
-            echo "$filepath $size_bytes Bytes. sha256sum: $SHA_256_SUM"
-        fi
+for filepath in $FILES; do
+	if [[ -f "$filepath" ]] && [[ -r "$filepath" ]]; then
+		size_bytes=$(fsize "$filepath")
+		SHA_256_SUM=$(shasum "$filepath")
 
-    else
-        echo "*** Invalid file: $(file $filepath)"
-    fi
+		#
+		# In the Django views.py, the --form options are accessible as:
+		#
+		#    request.POST.get("sha256sum", "")
+		#
+		# The dir_field is actually a list that can be iterated:
+		#
+		#    files = request.FILES.getlist(dir_field)
+		#        for f in files:
+		#            ...
+		#
+		#    With attributes: f.name f.size
+		#
+
+		if [[ "$DISABLED" -eq 0 ]]; then
+			json=$(eval $curl_command)
+
+			if [ $? -gt 0 ]; then
+				echo "$filepath : Transfer FAILED!:\n$json"
+			else
+				#echo "$filepath : $size_bytes Bytes sent."
+				if [ ${#json} -eq 0 ]; then
+					echo "$filepath : Transfer FAILED!!"
+					echo "Try using the --location-trusted option"
+				else
+					echo "$json"
+				fi
+			fi
+		else
+			echo "$filepath $size_bytes Bytes. sha256sum: $SHA_256_SUM"
+		fi
+
+	else
+		echo "*** Invalid file: $(file $filepath)"
+	fi
 done
