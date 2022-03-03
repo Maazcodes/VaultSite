@@ -636,7 +636,6 @@ def render_web_components_file_view(request, path):
             collection_treenode_id_list, collection_id_list
         )
     }
-    print("collection id dict", collection_id_dict)
 
     node_dict = {
         "id": node.id,
