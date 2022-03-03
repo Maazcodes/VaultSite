@@ -5,7 +5,7 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 Examples:
 Function views
     1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+    2. Add a URL to urlpatterns:  path('', views.ome, name='home')
 Class-based views
     1. Add an import:  from other_app.views import Home
     2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
@@ -28,7 +28,11 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("dashboard", views.dashboard, name="dashboard"),
     path("create_collection", views.create_collection, name="create_collection"),
-    re_path("collections/(?P<path>.*)", views.render_web_components_file_view, name="collections"),
+    re_path(
+        "^collections/(?P<path>.*)",
+        views.render_web_components_file_view,
+        name="collections",
+    ),
     path("reports/<int:report_id>", views.report, name="report"),
     path("deposit", views.deposit, name="deposit"),
     path("deposit/web", views.deposit_web, name="deposit_web"),

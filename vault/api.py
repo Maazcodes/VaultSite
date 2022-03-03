@@ -752,4 +752,3 @@ def render_tree_file_view(request):
             ]
         }
     )
-
