@@ -114,7 +114,6 @@ export default class FilesList extends HTMLElement {
      */
     e.stopPropagation()
     // Set the UI5 Table component's busy flag.
-    this.table.busy = true
     const node = this.props.nodes[parseInt(this.getRowTarget(e).dataset.index)]
     publish(
       node.node_type === "FILE" ? "OPEN_FILE_REQUEST" : "CHANGE_DIRECTORY_REQUEST",
@@ -194,7 +193,8 @@ export default class FilesList extends HTMLElement {
     // TODO - implement these
     const disabledOptions = [
       "Preview",
-      "Move",
+      (numSelectedNodes < 2) || "Move",
+      (numSelectedNodes < 2 && isDownloadable) || "Download",
     ]
 
     this.appendChild(
@@ -202,7 +202,7 @@ export default class FilesList extends HTMLElement {
         props: {
           x: e.clientX,
           y: e.clientY + window.scrollY,
-          disabledOptions,
+          // disabledOptions,
           options,
           context: {
             currentRow: tr,
@@ -211,7 +211,8 @@ export default class FilesList extends HTMLElement {
                          : [ tr ],
             selectedNodes: this.state.selectedNodes.length
                          ? this.state.selectedNodes
-                         : [ node ]
+                         : [ node ],
+            nodes: this.props.nodes,
           },
           topic: "FILE_CONTEXT_MENU_ITEM_SELECTED"
         }

@@ -1,3 +1,4 @@
+from copyreg import constructor
 import json
 import logging
 import os
@@ -724,6 +725,8 @@ def hashed_status(request):
     return JsonResponse(
         {
             "hashed_files": state_count[models.DepositFile.State.HASHED],
+            "replicated_files": state_count[models.DepositFile.State.REPLICATED],
+            "errored_files": state_count[models.DepositFile.State.ERROR],
             "total_files": total_files,
             "file_queue": state_count[models.DepositFile.State.UPLOADED],
         }

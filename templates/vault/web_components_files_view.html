@@ -51,7 +51,7 @@
   <h2>Not Found</h2>
   {% else %}
   <vault-files-view base-path="{{ request.META.get('SCRIPT_NAME', '') }}"
-                    app-path="/meta/files2"
+                    app-path="/collections"
                     path='{{ path | tojson }}'
                     node='{{ node | tojson2 }}'
                     orgId = '{{ org_id | tojson }}'

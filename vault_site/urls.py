@@ -5,7 +5,7 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 Examples:
 Function views
     1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+    2. Add a URL to urlpatterns:  path('', views.ome, name='home')
 Class-based views
     1. Add an import:  from other_app.views import Home
     2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
@@ -28,8 +28,11 @@ urlpatterns = [
     path("", views.index, name="index"),
     path("dashboard", views.dashboard, name="dashboard"),
     path("create_collection", views.create_collection, name="create_collection"),
-    path("collections", views.collections, name="collections"),
-    path("collections/<int:collection_id>", views.collection, name="collection"),
+    re_path(
+        "^collections/(?P<path>.*)",
+        views.render_web_components_file_view,
+        name="collections",
+    ),
     path("reports/<int:report_id>", views.report, name="report"),
     path("deposit", views.deposit, name="deposit"),
     path("deposit/web", views.deposit_web, name="deposit_web"),
@@ -37,14 +40,7 @@ urlpatterns = [
     path("deposit/mail", views.deposit_mail, name="deposit_mail"),
     path("deposit/flow", views.deposit_flow, name="deposit_flow"),
     path("deposit/<int:deposit_id>", views.deposit_report, name="deposit_report"),
-    # path('deposit/debug', views.deposit_debug, name='deposit_debug'),
     path("deposit/ait", views.deposit_ait, name="deposit_ait"),
-    re_path(r"^meta/files/(?P<path>.*)", views.render_file_view, name="files"),
-    re_path(
-        r"^meta/files2/(?P<path>.*)",
-        views.render_web_components_file_view,
-        name="files2",
-    ),
     path("administration", views.administration, name="administration"),
     path("administration/plan", views.administration_plan, name="administration_plan"),
     path(

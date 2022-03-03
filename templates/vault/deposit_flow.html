@@ -141,7 +141,7 @@
             </div>
         </div>
         {% else %}
-            <p>Create <a href="{{ url("collections") }}">your first collection</a> to start uploading files.</p>
+            <p>Create <a href="{{ url('collections', args=['']) }}">your first collection</a> to start uploading files.</p>
         {% endif %}
     </div>
     <div class="small-4 columns" style=" display: inline;" id="collections-chart">
@@ -267,9 +267,10 @@ function deposit_status(time) {
     xhr.onloadend = function() {
         if (xhr.status == 200) {
 		    res = JSON.parse(xhr.response);
-            let message = "Processing Files: " + res["hashed_files"] + "/"  + res["total_files"] + ", Processing Queue: " + res["file_queue"] +  '<div class="loader"></div>';
+            let processing = res["hashed_files"] + res["replicated_files"]  + res["errored_files"];
+            let message = "Processing Files: " + processing + "/"  + res["total_files"] + ", Processing Queue: " + res["file_queue"] +  '<div class="loader"></div>';
             document.querySelector('#flow-stats').innerHTML = message;
-            if (res["hashed_files"] < res["total_files"]) {
+            if (processing < res["total_files"]) {
                 setTimeout(function(){
                 deposit_status(time + 1) }, 1000);
             }
