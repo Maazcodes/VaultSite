@@ -1,6 +1,5 @@
 
 import { publish, subscribe } from "../lib/pubsub.js"
-const APPLICATION_JSON = "application/json"
 export default class FileDetails extends HTMLElement {
   constructor () {
     super()
@@ -116,40 +115,31 @@ export default class FileDetails extends HTMLElement {
   async tabSelectHandler (e) {
     const {node,basePath,collectionIdDict} = this.props
     const showDetails = e.detail.tabIndex === 0
-
     this.detailsEl.classList[showDetails ? "remove" : "add"]("hidden")
     this.activityEl.classList[showDetails ? "add" : "remove"]("hidden")
-    if(node.node_type == "COLLECTION"){
-      
-      let payload = {
-          "collectionId": collectionIdDict[node.id],
-      }
-      let options = {
-        credentials: "same-origin",
-        method: 'POST', 
-        headers: {
-          "Accept": APPLICATION_JSON,
-          'Content-Type': APPLICATION_JSON
-        },
-        body: JSON.stringify(payload)
-      }
-      const response = await(await fetch(`${basePath}/api/get_events`, options)).json()
-      if (response.status >= 400){        
-        console.error('Server error - response status', response.status)
+
+    if(node.node_type === "COLLECTION"){
+      let collectionId = collectionIdDict[node.id]
+      const response = await fetch(`${basePath}/api/get_events/${collectionId}`)
+      .then(data=>data.json())
+      .catch((error)=>
+      {
+        console.error("Server error ", error)
         return
-      } 
+      })
       let events = response["formatted_events"]
       if (events.length!=0){
         events.forEach((event)=>{
         document.getElementById("events-container").innerHTML += `
         <ui5-card class="small" style="margin-bottom: 1rem">
           <div class="content" >
-              ${Object.keys(event).map(k => `<div class="content-group" style = "margin: 1rem;">
+              ${Object.keys(event).map(k=> k!== "Event Id"?`<div class="content-group" style = "margin: 1rem;">
               <ui5-title level="H6" style="margin-bottom: 0.5rem;">${k}</ui5-title>
               <ui5-label>${event[k]}</ui5-label>
-              </div>`).join("")}  
+              </div>`:"").join("")}  
+              <ui5-link class="view-details-link" href = "${basePath}/${(event["Event Type"] === "Deposit" || event["Event Type"] === "Migration")?"deposit":"reports"}/${event["Event Id"]}" target = "_blank">View Details</ui5-link>
           </div>
-        </ui5-card>`
+      </ui5-card>`
       })
       } else{
         document.getElementById("events-container").innerHTML = "No Events Available"

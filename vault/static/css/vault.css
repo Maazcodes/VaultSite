@@ -102,6 +102,10 @@
   height: 40px;
 }
 
+.view-details-link{
+  margin: 0rem 0rem 1rem 1rem;
+}
+
 /* The Modal (background) */
 .modal {
 	display: none;

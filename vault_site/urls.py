@@ -77,7 +77,7 @@ urlpatterns = [
         api.flow_chunk,
         name="api_flow_chunk",
     ),
-    path("api/get_events", api.get_events, name="api_get_events"),
+    path("api/get_events/<collection_id>", api.get_events, name="api_get_events"),
     path("api/register_deposit", api.register_deposit, name="api_register_deposit"),
     path("api/deposit_status", api.hashed_status, name="api_deposit_status"),
     path("api/warning_deposit", api.warning_deposit, name="api_warning_deposit"),

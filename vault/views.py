@@ -617,26 +617,8 @@ def render_web_components_file_view(request, path):
         parent_child_dict[child.parent_id].append(child)
 
     organization_node = request.user.organization
-    collection_id_list = [
-        collection.id
-        for collection in models.Collection.objects.filter(
-            organization=organization_node
-        ).order_by("id")
-    ]
-    collection_treenode_id_list = [
-        collection.id
-        for collection in models.TreeNode.objects.filter(
-            node_type="COLLECTION", parent=organization_node.tree_node
-        ).order_by("id")
-    ]
-
-    collection_id_dict = {
-        coll_treenode_id: coll_table_id
-        for coll_treenode_id, coll_table_id in zip(
-            collection_treenode_id_list, collection_id_list
-        )
-    }
-
+    collections = models.Collection.objects.filter(organization=organization_node)
+    node_collections = {c.tree_node_id: c.id for c in collections}
     node_dict = {
         "id": node.id,
         "node_type": node.node_type,
@@ -650,7 +632,7 @@ def render_web_components_file_view(request, path):
         request,
         "vault/web_components_files_view.html",
         {
-            "collection_id_dict": collection_id_dict,
+            "node_collections": node_collections,
             "node": node_dict,
             "path": f"/{path}",
             "org_id": org_id,

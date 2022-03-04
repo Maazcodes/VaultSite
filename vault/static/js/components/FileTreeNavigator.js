@@ -69,7 +69,7 @@ export default class FileTreeNavigator extends HTMLElement {
       dynamicTree.addEventListener("item-click", async function(event) {
         const nodeItem = event.detail.item; // get the node that is clicked
         const nodeItemId = nodeItem.id;
-        const nodePublishPath = $(nodeItem).attr('path');
+        let nodePublishPath = $(nodeItem).attr('path');
         if (nodeItem.text == firstTreeElement.text) {
           // publish path for first tree element
           nodePublishPath = "/"

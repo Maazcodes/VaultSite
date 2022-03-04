@@ -34,7 +34,7 @@ from vault.forms import (
     RegisterDepositFileForm,
 )
 
-
+DATE_FORMAT = "%B %-d, %Y"
 ExtendedJsonResponse = partial(JsonResponse, encoder=ExtendedJSONEncoder)
 
 logger = logging.getLogger(__name__)
@@ -753,15 +753,9 @@ def render_tree_file_view(request):
         }
     )
 
-@csrf_exempt
-@login_required
-def get_events(request):
+
+def get_events(request, collection_id):
     user_org = request.user.organization
-    try:
-        body = json.loads(request.body)
-        collection_id = body.get("collectionId")
-    except:
-        return HttpResponseBadRequest()
 
     collection_node = get_object_or_404(
         models.Collection, id=collection_id, organization=user_org
@@ -774,22 +768,23 @@ def get_events(request):
         error_count=Count("pk", filter=Q(files__state=models.DepositFile.State.ERROR)),
     )
 
-    def event_sort(event: Union[models.Deposit, models.Report]):
+    def extract_event_sort_key(event: Union[models.Deposit, models.Report]):
         if isinstance(event, models.Deposit):
             return event.registered_at
         else:
             return event.started_at
 
     formatted_events = []
-    events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
+    events = sorted(chain(deposits, reports), key=extract_event_sort_key, reverse=True)
     for event in events:
         if isinstance(event, models.Deposit):
             formatted_events.append(
                 {
+                    "Event Id": event.id,
                     "Event Type": "Migration" if 15 <= event.id <= 96 else "Deposit",
-                    "Started": event.registered_at.strftime("%B %-d, %Y"),
+                    "Started": event.registered_at.strftime(DATE_FORMAT),
                     "File Count": event.file_count,
-                    "Completed": event.hashed_at.strftime("%B %-d, %Y")
+                    "Completed": event.hashed_at.strftime(DATE_FORMAT)
                     if event.hashed_at
                     else "--",
                     "Total Size": event.total_size,
@@ -799,9 +794,10 @@ def get_events(request):
         elif isinstance(event, models.Report):
             formatted_events.append(
                 {
+                    "Event Id": event.id,
                     "Event Type": event.get_report_type_display(),
-                    "Started": event.started_at.strftime("%B %-d, %Y"),
-                    "Completed": event.ended_at.strftime("%B %-d, %Y"),
+                    "Started": event.started_at.strftime(DATE_FORMAT),
+                    "Completed": event.ended_at.strftime(DATE_FORMAT),
                     "File Count": event.file_count,
                     "Error Count": event.error_count,
                     "Total Size": event.total_size,
