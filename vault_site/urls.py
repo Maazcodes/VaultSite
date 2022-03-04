@@ -1,18 +1,5 @@
-"""vault_site URL Configuration
+"""vault_site URL Configuration"""
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/3.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.ome, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
 from django.urls import (
     include,
@@ -20,7 +7,7 @@ from django.urls import (
     re_path,
 )
 
-from vault import api, views
+from vault import api, views, fixity_api
 
 from vault.rest_api import router as rest_api_router
 
@@ -83,5 +70,25 @@ urlpatterns = [
     path("api/warning_deposit", api.warning_deposit, name="api_warning_deposit"),
     # Include the Django Rest Framework API routes.
     path("api/", include(rest_api_router.urls)),
+    re_path(
+        r"^fixitter/files/(?P<org_id>\d+)/(?P<path>.*)",
+        fixity_api.list_files,
+        name="fixitter_files",
+    ),
+    path(
+        "fixitter/shafs/<int:org_id>/<sha256_sum>",
+        fixity_api.stream_from_shafs,
+        name="fixitter_shafs",
+    ),
+    path(
+        "fixitter/run/<int:org_id>/<collection_name>/<token>",
+        fixity_api.run_collection_name,
+        name="fixitter_run",
+    ),
+    path(
+        "fixitter/postback/<int:org_id>/<int:collection_id>/<token>",
+        fixity_api.postback,
+        name="fixitter_postback",
+    ),
     path("admin/", admin.site.urls),
 ]

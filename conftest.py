@@ -68,10 +68,8 @@ def make_organization(make_plan):
 
 
 @fixture
-def make_fixity_report():
-    report_type = Report.ReportType.FIXITY
-    report_json = json.loads(
-        """
+def fixity_report_json_body():
+    return """
 {
     "collectionName" : "1_Parent",
     "startTime" : "2022-03-05T20:39:51.986Z",
@@ -243,7 +241,12 @@ def make_fixity_report():
     ]
 }
     """
-    )
+
+
+@fixture
+def make_fixity_report(fixity_report_json_body):
+    report_type = Report.ReportType.FIXITY
+    report_json = json.loads(fixity_report_json_body)
     return lambda **kwargs: baker.make(
         Report, report_type=report_type, report_json=report_json, **kwargs
     )

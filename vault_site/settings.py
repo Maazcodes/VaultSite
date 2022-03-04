@@ -29,6 +29,10 @@ Environment Variables
     * ``STATIC_ROOT`` -- path to directory root of static assets
     * ``PETABOX_SECRET`` -- secret key shared with petabox used for signing
       content URLs for downloads
+    * ``FIXITY_API_KEY`` -- preshared auth key accepted by the vault-site
+      fixity API
+    * ``FIXITTER_API_KEY`` -- preshared auth key accepted by the fixity
+      checking service
 """
 
 import os
@@ -309,3 +313,10 @@ PETABOX_SERVICE_NAME = "dps-vault"
 
 # time after issuance before presigned petabox URLs expire
 PETABOX_URL_SIGNATURE_EXPIRATION_SECS = 30 * 60
+
+# Preshared auth key accepted by the vault-site fixity API
+FIXITY_API_KEY = conf.get("FIXITY_API_KEY", "FIXITY_API_KEY")
+# Base URL for fixity-checking service
+FIXITTER_URL_PREFIX = "https://webdata.archive-it.org/jobman"
+# Preshared auth key accepted by the fixity checking service
+FIXITTER_API_KEY = conf.get("FIXITTER_API_KEY", "FIXITTER_API_KEY")
