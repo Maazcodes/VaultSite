@@ -8,6 +8,7 @@ from vault.models import (
     Geolocation,
     Organization,
     Plan,
+    Report,
     TreeNode,
     User,
 )
@@ -62,6 +63,58 @@ def make_organization(make_plan):
         return organization
 
     return maker
+
+
+@fixture
+def make_fixity_report():
+    report_type = Report.ReportType.FIXITY
+    report_json = """
+    {
+        "collectionName" : "1_Parent",
+        "startTime" : "2022-03-04T21:31:48.330Z",
+        "endTime" : "2022-03-04T21:31:51.143Z",
+        "fileCount" : 5,
+        "totalSize" : 671366,
+        "errorCount" : 0,
+        "files" : [
+            {
+                "filename" : "Image3.png",
+                "checkTime" : "2022-03-04T21:31:48.330Z",
+                "initialCheckTime" : "2022-03-04T21:31:48.330Z",
+                "previousCheckTime" : "2022-03-04T21:31:48.330Z",
+                "size" : 172346,
+                "success" : true,
+                "checksums" : [
+                    "md5:a9fafff10a78d9595c65b83f6128fd90",
+                    "sha1:5c24e50d12d95964ac733ef829cd7e17d6ae6ac5",
+                    "sha256:10957d6ef7b791d65894760bddcc86526e8aff91bdc3913ea95d4c70382e0562"
+                ],
+                "sources" : [
+                    {
+                        "source" : "VAULT",
+                        "region" : "us-west-2",
+                        "type" : "prior"
+                    },
+                    {
+                        "source" : "PBOX",
+                        "region" : "us-west-1",
+                        "type" : "generated",
+                        "location" : "https://archive.org/serve/DPS-VAULT-QA-1-20211115-00001/Deposit:172/Image3.png"
+                    },
+                    {
+                        "source" : "VAULT",
+                        "region" : "us-west-2",
+                        "type" : "generated",
+                        "location" : "https://wbgrp-vault-site-qa.us.archive.org/vault/fixitter/shafs/1/10957d6ef7b791d65894760bddcc86526e8aff91bdc3913ea95d4c70382e0562"
+                    }
+                ]
+            }
+        ]
+    }
+    """
+    return lambda **kwargs: baker.make(
+        Report, report_type=report_type, report_json=report_json, **kwargs
+    )
 
 
 @fixture

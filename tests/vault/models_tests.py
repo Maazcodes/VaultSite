@@ -11,6 +11,7 @@ from pytest import (
 from vault.models import (
     Collection,
     Organization,
+    Report,
     TreeNode,
     TreeNodeException,
 )
@@ -271,6 +272,28 @@ class TestTreeNode:
         file_node.deleted = False
         file_node.save()
         TreeNode.objects.get(pk=file_node_id)
+
+
+class TestReport:
+    """Tests for the Report model"""
+
+    @mark.django_db
+    def test_fixity_report_json_is_deferred(
+        self, django_assert_num_queries, make_fixity_report
+    ):
+        """Check DeferredJSONReportManager defers loading of the report_json field until
+        it is explicitly called."""
+        report = make_fixity_report()
+        with django_assert_num_queries(1):
+            # Django runs one query to fetch the report...
+            rep = Report.objects.get(pk=report.pk)
+            # ...and no further query is needed to read the report_type field value.
+            str(rep.report_type)
+        with django_assert_num_queries(2):
+            # Django runs one query to fetch the report...
+            rep = Report.objects.get(pk=report.pk)
+            # ...and a second query to fetch the report_json field value.
+            str(rep.report_json)
 
 
 @mark.django_db
