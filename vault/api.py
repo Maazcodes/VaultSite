@@ -756,7 +756,6 @@ def render_tree_file_view(request):
 
 def get_events(request, collection_id):
     user_org = request.user.organization
-
     collection_node = get_object_or_404(
         models.Collection, id=collection_id, organization=user_org
     )
@@ -775,10 +774,12 @@ def get_events(request, collection_id):
             return event.started_at
 
     formatted_events = []
+    deposit_events = []
+    fixity_events = []
     events = sorted(chain(deposits, reports), key=extract_event_sort_key, reverse=True)
     for event in events:
         if isinstance(event, models.Deposit):
-            formatted_events.append(
+            deposit_events.append(
                 {
                     "Event Id": event.id,
                     "Event Type": "Migration" if 15 <= event.id <= 96 else "Deposit",
@@ -792,7 +793,7 @@ def get_events(request, collection_id):
                 }
             )
         elif isinstance(event, models.Report):
-            formatted_events.append(
+            fixity_events.append(
                 {
                     "Event Id": event.id,
                     "Event Type": event.get_report_type_display(),
@@ -803,4 +804,10 @@ def get_events(request, collection_id):
                     "Total Size": event.total_size,
                 }
             )
-    return JsonResponse({"formatted_events": formatted_events})
+    formatted_events = list(chain(deposit_events, fixity_events))
+    return JsonResponse(
+        {
+            "formatted_events": formatted_events,
+            "deposit_events":deposit_events,
+            "fixity_events":fixity_events,
+            })
