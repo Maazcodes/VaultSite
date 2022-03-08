@@ -134,6 +134,17 @@ class Collection(models.Model):
         ]
 
 
+class DeferredJSONReportManager(models.Manager):
+    """Report model manager which defers load of report_json field.
+
+    The report_json can be large (particularly for large collections). There are several
+    cases where we load all reports for a Collection or Organization.
+    """
+
+    def get_queryset(self):
+        return super().get_queryset().defer("report_json")
+
+
 class Report(models.Model):
     class ReportType(models.TextChoices):
         FIXITY = "FIXITY", "Fixity"
@@ -153,6 +164,11 @@ class Report(models.Model):
     missing_location_count = models.PositiveBigIntegerField()
     mismatch_count = models.PositiveBigIntegerField()
     avg_replication = models.PositiveSmallIntegerField()
+    # report_json format see conftest.py:make_fixity_report()
+    report_json = models.JSONField(blank=True, null=True)
+    report_json_version = models.PositiveSmallIntegerField(blank=True, null=True)
+
+    objects = DeferredJSONReportManager()
 
     def __str__(self):
         return f"{self.report_type}-{self.collection.pk}-{self.started_at}"
@@ -434,7 +450,7 @@ class TreeNode(models.Model):
                 settings.PETABOX_URL_SIGNATURE_EXPIRATION_SECS,
             )
         except InvalidPetaboxPath as e:
-            logger.warn(
+            logger.warning(
                 "TreeNode id=%d has an invalid pbox_path=%s",
                 self.id,
                 self.pbox_path,

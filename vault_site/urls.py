@@ -34,6 +34,7 @@ urlpatterns = [
         name="collections",
     ),
     path("reports/<int:report_id>", views.report, name="report"),
+    path("reports/fixity/<int:report_id>", views.fixity_report, name="fixity_report"),
     path("deposit", views.deposit, name="deposit"),
     path("deposit/web", views.deposit_web, name="deposit_web"),
     path("deposit/cli", views.deposit_cli, name="deposit_cli"),

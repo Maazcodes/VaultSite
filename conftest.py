@@ -1,3 +1,5 @@
+import json
+
 from pytest import fixture
 
 from django.conf import settings
@@ -8,6 +10,7 @@ from vault.models import (
     Geolocation,
     Organization,
     Plan,
+    Report,
     TreeNode,
     User,
 )
@@ -62,6 +65,188 @@ def make_organization(make_plan):
         return organization
 
     return maker
+
+
+@fixture
+def make_fixity_report():
+    report_type = Report.ReportType.FIXITY
+    report_json = json.loads(
+        """
+{
+    "collectionName" : "1_Parent",
+    "startTime" : "2022-03-05T20:39:51.986Z",
+    "endTime" : "2022-03-05T20:40:00.394Z",
+    "fileCount" : 5,
+    "totalSize" : 671366,
+    "errorCount" : 0,
+    "files" : [
+        {
+            "filename" : "Image3.png",
+            "id" : "treeNode-10286",
+            "depositTime" : "2021-11-15T08:12:18.358Z",
+            "checkTime" : "2022-03-05T20:39:51.986Z",
+            "size" : 172346,
+            "success" : true,
+            "canonicalChecksums" : [
+                "md5:a9fafff10a78d9595c65b83f6128fd90",
+                "sha1:5c24e50d12d95964ac733ef829cd7e17d6ae6ac5",
+                "sha256:10957d6ef7b791d65894760bddcc86526e8aff91bdc3913ea95d4c70382e0562"
+            ],
+            "sources" : [
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior",
+                    "time" : "2021-11-15T08:12:18.358Z"
+                },
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior"
+                },
+                {
+                    "source" : "PBOX",
+                    "region" : "us-west-1",
+                    "type" : "generated",
+                    "location" : "https://archive.org/serve/DPS-VAULT-QA-1-20211115-00001/Deposit:172/Image3.png"
+                }
+            ]
+        },
+        {
+            "filename" : "Parent/Child/GrandChild/Image6.png",
+            "id" : "treeNode-10285",
+            "depositTime" : "2021-11-15T14:27:49.587Z",
+            "checkTime" : "2022-03-05T20:39:52.103Z",
+            "size" : 254775,
+            "success" : true,
+            "canonicalChecksums" : [
+                "md5:31958cfed58b6448f3c91128ed477fdf",
+                "sha1:7e047f8f72ac75822f382e442bd81abc56bae287",
+                "sha256:848c3b5047a4af53987de6e289c7b04825cce08d70b61d0ea47439492874a3f7"
+            ],
+            "sources" : [
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior",
+                    "time" : "2021-11-15T14:27:49.587Z"
+                },
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior"
+                },
+                {
+                    "source" : "PBOX",
+                    "region" : "us-west-1",
+                    "type" : "generated",
+                    "location" : "https://archive.org/serve/DPS-VAULT-QA-1-20211115-00001/Deposit:161/Parent/Child/GrandChild/Image6.png"
+                }
+            ]
+        },
+        {
+            "filename" : "Parent/Child/Image4.png",
+            "id" : "treeNode-10282",
+            "depositTime" : "2021-11-15T14:27:49.583Z",
+            "checkTime" : "2022-03-05T20:39:52.733Z",
+            "size" : 41768,
+            "success" : true,
+            "canonicalChecksums" : [
+                "md5:1e5588c89eeea88ebb6d21aa8b632c76",
+                "sha1:7ba73fa5fcc1cb578e3ad0ef8b50eab27a0e2d9b",
+                "sha256:bb2173f973c59f78c153737e8b66b708acd88ef8e33c59780f085832b47662b9"
+            ],
+            "sources" : [
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior",
+                    "time" : "2021-11-15T14:27:49.583Z"
+                },
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior"
+                },
+                {
+                    "source" : "PBOX",
+                    "region" : "us-west-1",
+                    "type" : "generated",
+                    "location" : "https://archive.org/serve/DPS-VAULT-QA-1-20211115-00001/Deposit:161/Parent/Child/Image4.png"
+                }
+            ]
+        },
+        {
+            "filename" : "Parent/Image125.png",
+            "id" : "treeNode-10280",
+            "depositTime" : "2021-11-15T14:27:49.084Z",
+            "checkTime" : "2022-03-05T20:39:53.419Z",
+            "size" : 30131,
+            "success" : true,
+            "canonicalChecksums" : [
+                "md5:bbcfff9e9af70d1bbf0e551a0141b7eb",
+                "sha1:57210cc44f2de7983b255f05bd4292d584b4cda9",
+                "sha256:2c5406dea32af691fc20e229907a73c703ff3248018814f890a6db220e97ccab"
+            ],
+            "sources" : [
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior",
+                    "time" : "2021-11-15T14:27:49.084Z"
+                },
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior"
+                },
+                {
+                    "source" : "PBOX",
+                    "region" : "us-west-1",
+                    "type" : "generated",
+                    "location" : "https://archive.org/serve/DPS-VAULT-QA-1-20211115-00001/Deposit:161/Parent/Image125.png"
+                }
+            ]
+        },
+        {
+            "filename" : "Parent/Image3.png",
+            "id" : "treeNode-10283",
+            "depositTime" : "2021-11-15T14:27:49.161Z",
+            "checkTime" : "2022-03-05T20:39:52.208Z",
+            "size" : 172346,
+            "success" : true,
+            "canonicalChecksums" : [
+                "md5:a9fafff10a78d9595c65b83f6128fd90",
+                "sha1:5c24e50d12d95964ac733ef829cd7e17d6ae6ac5",
+                "sha256:10957d6ef7b791d65894760bddcc86526e8aff91bdc3913ea95d4c70382e0562"
+            ],
+            "sources" : [
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior",
+                    "time" : "2021-11-15T14:27:49.161Z"
+                },
+                {
+                    "source" : "VAULT",
+                    "region" : "us-west-2",
+                    "type" : "prior"
+                },
+                {
+                    "source" : "PBOX",
+                    "region" : "us-west-1",
+                    "type" : "generated",
+                    "location" : "https://archive.org/serve/DPS-VAULT-QA-1-20211115-00001/Deposit:161/Parent/Image3.png"
+                }
+            ]
+        }
+    ]
+}
+    """
+    )
+    return lambda **kwargs: baker.make(
+        Report, report_type=report_type, report_json=report_json, **kwargs
+    )
 
 
 @fixture
