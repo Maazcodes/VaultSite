@@ -164,6 +164,7 @@ class Report(models.Model):
     missing_location_count = models.PositiveBigIntegerField()
     mismatch_count = models.PositiveBigIntegerField()
     avg_replication = models.PositiveSmallIntegerField()
+    # report_json format see conftest.py:make_fixity_report()
     report_json = models.JSONField(blank=True, null=True)
     report_json_version = models.PositiveSmallIntegerField(blank=True, null=True)
 
