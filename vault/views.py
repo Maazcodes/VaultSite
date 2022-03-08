@@ -250,6 +250,38 @@ def deposit_report(request, deposit_id):
 
 
 @login_required
+def fixity_report(request, report_id):
+    org_id = request.user.organization_id
+    rep = get_object_or_404(
+        models.Report, pk=report_id, collection__organization_id=org_id
+    )
+    coll = rep.collection
+    checked_files = 0
+    total_size = 0
+    successful_checks = 0
+    failed_checks = 0
+    for file in rep.report_json["files"]:
+        checked_files += 1
+        total_size += file["size"]
+        if file["success"]:
+            successful_checks += 1
+        else:
+            failed_checks += 1
+    return TemplateResponse(
+        request,
+        "vault/fixity_report.html",
+        {
+            "collection": coll,
+            "report": rep,
+            "checked_files": checked_files,
+            "total_size": total_size,
+            "successful_checks": successful_checks,
+            "failed_checks": failed_checks,
+        },
+    )
+
+
+@login_required
 def deposit(request):
     return redirect("deposit_flow")
 
