@@ -19,7 +19,7 @@ utilities/dev-postgres.sh start
 make setup
 make migrate
 AIT_CONF=./DPS_dev/vault.yml ./venv/bin/python manage.py createsuperuser
-REMOTE_USER=<your-superuser-name> make run
+HTTP_REMOTE_USER=<your-superuser-name> make run
 # in a separate shell:
 make test
 ```
