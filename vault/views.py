@@ -251,9 +251,13 @@ def deposit_report(request, deposit_id):
 
 @login_required
 def fixity_report(request, report_id):
+    """Display a fixity report."""
     org_id = request.user.organization_id
     rep = get_object_or_404(
-        models.Report, pk=report_id, collection__organization_id=org_id
+        models.Report,
+        pk=report_id,
+        collection__organization_id=org_id,
+        report_type=models.Report.ReportType.FIXITY,
     )
     coll = rep.collection
     checked_files = 0
