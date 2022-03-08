@@ -569,8 +569,10 @@
                 {#$("<span>").addClass("dashboard-list-item-sub").text(" (" + report.collection_name + ")"),#}
             ]).click(function () {
                 let report_url;
-                if (report.model === "Report") {
+                if (report.model === "REPORT") {
                     report_url = "{{ url("report", args=(0,)) }}";
+                } else if (report.model === "FIXITY") {
+                    report_url = "{{ url("fixity_report", args=(0,)) }}"
                 } else {
                     report_url = "{{ url("deposit_report", args=(0,)) }}";
                 }

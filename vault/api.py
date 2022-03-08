@@ -84,7 +84,7 @@ def reports(request):
                 {
                     "id": event.id,
                     "reportType": event.get_report_type_display(),
-                    "model": "Report",
+                    "model": event.report_type,
                     "endedAt": event.started_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
                     "collection_id": event.collection_id,
                 }
