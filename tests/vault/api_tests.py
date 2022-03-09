@@ -172,6 +172,7 @@ class TestWarningDepositApi:
         )
         return (user, collection, parent_folder, child_folder)
 
+
 @pytest.mark.django_db
 class TestEventsApi:
     """
@@ -196,7 +197,7 @@ class TestEventsApi:
         response = api.get_events(request, collection.id)
         return response
 
-    def test_fixity_events(self,rf):
+    def test_fixity_events(self, rf):
         user, collection = self.create_collection()
         self.create_fixity_event(collection)
         response = self.request_response(rf, collection, user)
@@ -210,11 +211,11 @@ class TestEventsApi:
         )
         return (user, collection)
 
-    def deposit_files_in_db(self,user, collection):
+    def deposit_files_in_db(self, user, collection):
         deposit = baker.make(
             "Deposit", user=user, organization=user.organization, collection=collection
         )
-        deposit_file = baker.make("DepositFile", deposit=deposit, _quantity = 5)
-    
+        deposit_file = baker.make("DepositFile", deposit=deposit, _quantity=5)
+
     def create_fixity_event(self, collection):
-        fixity_event = baker.make("Report", collection = collection, _quantity = 1)
+        fixity_event = baker.make("Report", collection=collection, _quantity=1)

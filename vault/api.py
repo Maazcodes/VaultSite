@@ -816,7 +816,7 @@ def get_events(request, collection_id):
 
 def is_migration(event_id):
     """
-    Deposits records between 15 and 96 on production environment are 
+    Deposits records between 15 and 96 on production environment are
     migrated files from the old system into the new system.
     """
     return 15 <= event_id <= 96
