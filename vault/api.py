@@ -782,7 +782,7 @@ def get_events(request, collection_id):
             deposit_events.append(
                 {
                     "Event Id": event.id,
-                    "Event Type": "Migration" if 15 <= event.id <= 96 else "Deposit",
+                    "Event Type": "Migration" if is_migration(event.id) else "Deposit",
                     "Started": event.registered_at.strftime(DATE_FORMAT),
                     "File Count": event.file_count,
                     "Completed": event.hashed_at.strftime(DATE_FORMAT)
@@ -808,6 +808,14 @@ def get_events(request, collection_id):
     return JsonResponse(
         {
             "formatted_events": formatted_events,
-            "deposit_events":deposit_events,
-            "fixity_events":fixity_events,
-            })
+            "deposit_events": deposit_events,
+            "fixity_events": fixity_events,
+        }
+    )
+
+
+def is_migration(event_id):
+    """
+    Deposits records between 15 and 96 on production environment are migrating files uploaded by the old system into the new system.
+    """
+    return 15 <= event_id <= 96
