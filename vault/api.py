@@ -5,10 +5,10 @@ import os
 from collections import defaultdict
 from functools import partial
 from itertools import chain
-
+from django.db.models import Max, Q, Sum, Count
 import fs.errors
 from fs.osfs import OSFS
-
+from typing import Union
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max
@@ -34,7 +34,7 @@ from vault.forms import (
     RegisterDepositFileForm,
 )
 
-
+DATE_FORMAT = "%B %-d, %Y"
 ExtendedJsonResponse = partial(JsonResponse, encoder=ExtendedJSONEncoder)
 
 logger = logging.getLogger(__name__)
@@ -752,3 +752,71 @@ def render_tree_file_view(request):
             ]
         }
     )
+
+
+def get_events(request, collection_id):
+    user_org = request.user.organization
+    collection_node = get_object_or_404(
+        models.Collection, id=collection_id, organization=user_org
+    )
+    collection_node_id = collection_node.id
+    reports = models.Report.objects.filter(collection=collection_node_id)
+    deposits = models.Deposit.objects.filter(collection=collection_node).annotate(
+        file_count=Count("files"),
+        total_size=Coalesce(Sum("files__size"), 0),
+        error_count=Count("pk", filter=Q(files__state=models.DepositFile.State.ERROR)),
+    )
+
+    def extract_event_sort_key(event: Union[models.Deposit, models.Report]):
+        if isinstance(event, models.Deposit):
+            return event.registered_at
+        else:
+            return event.started_at
+
+    formatted_events = []
+    deposit_events = []
+    fixity_events = []
+    events = sorted(chain(deposits, reports), key=extract_event_sort_key, reverse=True)
+    for event in events:
+        if isinstance(event, models.Deposit):
+            deposit_events.append(
+                {
+                    "Event Id": event.id,
+                    "Event Type": "Migration" if is_migration(event.id) else "Deposit",
+                    "Started": event.registered_at.strftime(DATE_FORMAT),
+                    "File Count": event.file_count,
+                    "Completed": event.hashed_at.strftime(DATE_FORMAT)
+                    if event.hashed_at
+                    else "--",
+                    "Total Size": event.total_size,
+                    "Error Count": event.error_count,
+                }
+            )
+        elif isinstance(event, models.Report):
+            fixity_events.append(
+                {
+                    "Event Id": event.id,
+                    "Event Type": event.get_report_type_display(),
+                    "Started": event.started_at.strftime(DATE_FORMAT),
+                    "Completed": event.ended_at.strftime(DATE_FORMAT),
+                    "File Count": event.file_count,
+                    "Error Count": event.error_count,
+                    "Total Size": event.total_size,
+                }
+            )
+    formatted_events = list(chain(deposit_events, fixity_events))
+    return JsonResponse(
+        {
+            "formatted_events": formatted_events,
+            "deposit_events": deposit_events,
+            "fixity_events": fixity_events,
+        }
+    )
+
+
+def is_migration(event_id):
+    """
+    Deposits records between 15 and 96 on production environment are 
+    migrated files from the old system into the new system.
+    """
+    return 15 <= event_id <= 96

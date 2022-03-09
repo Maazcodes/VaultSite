@@ -652,6 +652,9 @@ def render_web_components_file_view(request, path):
         # Get all the objects from TreeNode whose parent id matches in node path list
         parent_child_dict[child.parent_id].append(child)
 
+    organization_node = request.user.organization
+    collections = models.Collection.objects.filter(organization=organization_node)
+    node_collections = {c.tree_node_id: c.id for c in collections}
     node_dict = {
         "id": node.id,
         "node_type": node.node_type,
@@ -665,6 +668,7 @@ def render_web_components_file_view(request, path):
         request,
         "vault/web_components_files_view.html",
         {
+            "node_collections": node_collections,
             "node": node_dict,
             "path": f"/{path}",
             "org_id": org_id,

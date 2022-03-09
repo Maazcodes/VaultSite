@@ -229,9 +229,10 @@ export default class FilesView extends HTMLElement {
       path: JSON.parse(this.getAttribute("path")),
       node: JSON.parse(this.getAttribute("node")),
       orgId: this.getAttribute("orgId"),
-      parentChildDict: JSON.parse(this.getAttribute("parentChildDict"))
+      parentChildDict: JSON.parse(this.getAttribute("parentChildDict")),
+      collectionIdDict: JSON.parse(this.getAttribute("collectionIdDict"))
     }
-
+    
     const {basePath, appPath, path, node} = this.props
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${basePath}${appPath}`
@@ -288,7 +289,9 @@ export default class FilesView extends HTMLElement {
     // Init the FileDetails component and append it to the last column.
     this.fileDetails = Object.assign(new FileDetails(), {
       props: {
-        node:node
+        node:node,
+        basePath: basePath,
+        collectionIdDict: this.props.collectionIdDict
       }
     })
     this.querySelector("#file-details-container")

@@ -1,10 +1,13 @@
 
 import { publish, subscribe } from "../lib/pubsub.js"
-
 export default class FileDetails extends HTMLElement {
   constructor () {
     super()
-    this.props = { node: undefined }
+    this.props = { 
+      node: undefined, 
+      basePath: "",
+      collectionIdDict: {}
+    }
   }
 
   connectedCallback () {
@@ -28,7 +31,6 @@ export default class FileDetails extends HTMLElement {
 
   render () {
     const { node } = this.props
-
     if (!node || node.node_type === "ORGANIZATION") {
       this.innerHTML = `
         <p>
@@ -58,17 +60,16 @@ export default class FileDetails extends HTMLElement {
       </div>
 
       <div class="activity hidden">
-        TODO
+      <div id="events-container" style="height: 420px; overflow-y: scroll;"></div>
       </div>    
     `
-
     this.querySelector("button.close")
         .addEventListener("click", this.hide.bind(this))
 
     this.tabContainer = this.querySelector("ui5-tabcontainer")
     this.detailsEl = this.querySelector(".details")
     this.activityEl = this.querySelector(".activity")
-
+    
     this.tabContainer.addEventListener("click", e => e.stopPropagation())
     this.tabContainer.addEventListener("tab-select", this.tabSelectHandler.bind(this))
   }
@@ -111,10 +112,39 @@ export default class FileDetails extends HTMLElement {
     }
   }
 
-  tabSelectHandler (e) {
+  async tabSelectHandler (e) {
+    const {node,basePath,collectionIdDict} = this.props
     const showDetails = e.detail.tabIndex === 0
     this.detailsEl.classList[showDetails ? "remove" : "add"]("hidden")
     this.activityEl.classList[showDetails ? "add" : "remove"]("hidden")
+
+    if(node.node_type === "COLLECTION"){
+      let collectionId = collectionIdDict[node.id]
+      const response = await fetch(`${basePath}/api/get_events/${collectionId}`)
+      .then(data=>data.json())
+      .catch((error)=>
+      {
+        console.error("Server error ", error)
+        return
+      })
+      let events = response["formatted_events"]
+      if (events.length!=0){
+        events.forEach((event)=>{
+        document.getElementById("events-container").innerHTML += `
+        <ui5-card class="small" style="margin-bottom: 1rem">
+          <div class="content" >
+              ${Object.keys(event).map(k=> k!== "Event Id"?`<div class="content-group" style = "margin: 1rem;">
+              <ui5-title level="H6" style="margin-bottom: 0.5rem;">${k}</ui5-title>
+              <ui5-label>${event[k]}</ui5-label>
+              </div>`:"").join("")}  
+              <ui5-link class="view-details-link" href = "${basePath}/${(event["Event Type"] === "Deposit" || event["Event Type"] === "Migration")?"deposit":"reports"}/${event["Event Id"]}" target = "_blank">View Details</ui5-link>
+          </div>
+      </ui5-card>`
+      })
+      } else{
+        document.getElementById("events-container").innerHTML = "No Events Available"
+      }
+    }
   }
 
   changeDirectoryHandler (node) {

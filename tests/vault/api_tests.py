@@ -171,3 +171,50 @@ class TestWarningDepositApi:
             "TreeNode", node_type="FOLDER", parent=parent_folder, name="child"
         )
         return (user, collection, parent_folder, child_folder)
+
+@pytest.mark.django_db
+class TestEventsApi:
+    """
+    Test cases for deposits events and fixity events
+    API path: api/get_events
+    """
+
+    def test_deposit_events(self, rf):
+        user, collection = self.create_collection()
+        self.deposit_files_in_db(user, collection)
+        response = self.request_response(rf, collection, user)
+        deposit_events = json.loads(response.content)["deposit_events"]
+        assert len(Organization.objects.all()) == 1
+        assert len(Collection.objects.all()) == 1
+        assert len(deposit_events) == 1
+
+    def request_response(self, rf, collection, user):
+        request = rf.get(
+            reverse("api_get_events", kwargs={"collection_id": collection.id}),
+        )
+        request.user = user
+        response = api.get_events(request, collection.id)
+        return response
+
+    def test_fixity_events(self,rf):
+        user, collection = self.create_collection()
+        self.create_fixity_event(collection)
+        response = self.request_response(rf, collection, user)
+        fixity_events = json.loads(response.content)["fixity_events"]
+        assert len(fixity_events) == 1
+
+    def create_collection(self):
+        user = baker.make("vault.User", _fill_optional=["organization"])
+        collection = baker.make(
+            "Collection", organization=user.organization, name="Test 1"
+        )
+        return (user, collection)
+
+    def deposit_files_in_db(self,user, collection):
+        deposit = baker.make(
+            "Deposit", user=user, organization=user.organization, collection=collection
+        )
+        deposit_file = baker.make("DepositFile", deposit=deposit, _quantity = 5)
+    
+    def create_fixity_event(self, collection):
+        fixity_event = baker.make("Report", collection = collection, _quantity = 1)
