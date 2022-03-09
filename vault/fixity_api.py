@@ -114,7 +114,7 @@ def stream_from_shafs(request, org_id, sha256_sum):
 def run_collection(request, org, collection, token):
     collection_name = f"{org.id}_{collection.name}"
     base = settings.FIXITTER_URL_PREFIX
-    api_key = settings.FIXITY_API_KEY
+    api_key = settings.FIXITTER_API_KEY
     fixitter_url = f"{base}/run/VaultFixityCheck?apikey={api_key}"
     url_prefix = request.build_absolute_uri().split("/run/", 1)[0]
     file_list_url = f"{url_prefix}/files/{org.id}/{collection.name}"
