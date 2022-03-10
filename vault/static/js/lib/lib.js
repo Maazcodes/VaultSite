@@ -14,3 +14,14 @@ export function humanBytes (bytes, decPlaces = 3) {
 }
 
 export const pluralize = (s, num = 2, suffix = "s") => num > 1 ? s + suffix : s
+
+export function toTitleCase(text){
+    if (text.includes("_")){
+      text = text.replaceAll("_", " ")
+    }
+    let textArray = text.split(" ")
+    // Eg: pre_deposit_modified_at ---> Pre Deposit Modified At
+    return textArray.map(word=> {
+      return word[0].toUpperCase() + word.slice(1, word.length)
+    }).join(" ")
+  }

@@ -652,9 +652,32 @@ def render_web_components_file_view(request, path):
         # Get all the objects from TreeNode whose parent id matches in node path list
         parent_child_dict[child.parent_id].append(child)
 
-    organization_node = request.user.organization
-    collections = models.Collection.objects.filter(organization=organization_node)
+    org = request.user.organization
+    collections = models.Collection.objects.filter(organization=org)
     node_collections = {c.tree_node_id: c.id for c in collections}
+
+    # show total size of each collection
+    collection_node_size = {}
+    collection_nodes = org_node.children.all()  # all collections are org children
+    for collection_node in collection_nodes:
+        collection_size = models.TreeNode.objects.filter(
+            path__descendant=collection_node.path
+        ).aggregate(
+            total_size=Coalesce(Sum("size"), 0),
+        )
+        collection_node_size[collection_node.id] = collection_size
+
+    # show total size of each folder
+    folder_node_size = {}
+    folders = models.TreeNode.objects.filter(
+        node_type="FOLDER", path__descendant=org_node.path
+    )
+    for folder in folders:
+        folder_size = models.TreeNode.objects.filter(
+            path__descendant=folder.path
+        ).aggregate(total_size=Coalesce(Sum("size"), 0))
+        folder_node_size[folder.id] = folder_size
+
     node_dict = {
         "id": node.id,
         "node_type": node.node_type,
@@ -669,6 +692,8 @@ def render_web_components_file_view(request, path):
         "vault/web_components_files_view.html",
         {
             "node_collections": node_collections,
+            "folder_node_size": folder_node_size,
+            "collection_node_size": collection_node_size,
             "node": node_dict,
             "path": f"/{path}",
             "org_id": org_id,

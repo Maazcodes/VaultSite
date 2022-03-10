@@ -229,11 +229,13 @@ export default class FilesView extends HTMLElement {
       path: JSON.parse(this.getAttribute("path")),
       node: JSON.parse(this.getAttribute("node")),
       orgId: this.getAttribute("orgId"),
+      collectionIdDict: JSON.parse(this.getAttribute("collectionIdDict")),
       parentChildDict: JSON.parse(this.getAttribute("parentChildDict")),
-      collectionIdDict: JSON.parse(this.getAttribute("collectionIdDict"))
+      collectionNodeSize: JSON.parse(this.getAttribute("collectionNodeSize")),
+      folderNodeSize: JSON.parse(this.getAttribute("folderNodeSize"))
     }
-    
-    const {basePath, appPath, path, node} = this.props
+
+    const {basePath, appPath, path, node, collectionNodeSize, folderNodeSize} = this.props
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${basePath}${appPath}`
     // Instantiate the Conductor with the current paths.
@@ -291,7 +293,9 @@ export default class FilesView extends HTMLElement {
       props: {
         node:node,
         basePath: basePath,
-        collectionIdDict: this.props.collectionIdDict
+        collectionIdDict: this.props.collectionIdDict,
+        collectionNodeSize: collectionNodeSize,
+        folderNodeSize: folderNodeSize,
       }
     })
     this.querySelector("#file-details-container")

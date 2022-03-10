@@ -84,7 +84,7 @@ NUMERIC_FIELD_CLASSES = (
 )
 
 TEXT_FIELD_CLASSES = (CharField, TextField, TextChoices)
-
+DATE_TIME_FORMAT = "%B %-d, %Y %H:%M:%S UTC"
 
 ###############################################################################
 # Exception Handler
@@ -216,24 +216,44 @@ class TreeNodeSerializer(VaultHyperlinkedModelSerializer):
     class Meta:
         model = TreeNode
         fields = [
-            "id",
-            "comment",
-            "file_type",
-            "modified_at",
             "name",
             "node_type",
-            "parent",
-            "path",
-            "pre_deposit_modified_at",
-            "sha1_sum",
-            "sha256_sum",
+            "file_type",
             "size",
             "uploaded_at",
+            "pre_deposit_modified_at",
+            "modified_at",
             "uploaded_by",
+            "md5_sum",
+            "sha1_sum",
+            "sha256_sum",
+            "id",
+            "comment",
+            "parent",
+            "path",
             "url",
             "content_url",
         ]
         read_only_fields = ["content_url"]
+
+    def to_representation(self, instance):
+        representation = super(TreeNodeSerializer, self).to_representation(instance)
+        representation["uploaded_at"] = (
+            instance.uploaded_at.strftime(DATE_TIME_FORMAT)
+            if instance.uploaded_at
+            else ""
+        )
+        representation["modified_at"] = (
+            instance.modified_at.strftime(DATE_TIME_FORMAT)
+            if instance.modified_at
+            else ""
+        )
+        representation["pre_deposit_modified_at"] = (
+            instance.pre_deposit_modified_at.strftime(DATE_TIME_FORMAT)
+            if instance.pre_deposit_modified_at
+            else ""
+        )
+        return representation
 
     @classmethod
     def setup_eager_loading(cls, queryset):

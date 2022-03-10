@@ -144,6 +144,54 @@
 	cursor: pointer;
   }
 
+  .copy-hash-btn{
+    font-size: inherit;
+    width: 91px;
+    height: 22px;
+    margin-bottom: -2px;
+    margin-left: 5px;
+    display: inline-block;
+    margin-top: 9px;
+    vertical-align: super;
+  }
+
+  .tooltipElement {
+    position: relative;
+    display: inline-block;
+    width: 91px;
+  }
+
+  .tooltipElement .tooltiptext {
+    visibility: hidden;
+    width: 140px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    z-index: 1;
+    bottom: 150%;
+    opacity: 0;
+    margin-left: -13px;
+    transition: opacity 0.3s;
+  }
+
+  .tooltipElement .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 43%;
+    left: 18%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+  }
+
+  .tooltipElement:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+  }
+
   /* Files View */
   /* button style reset */
   vault-files-view button {

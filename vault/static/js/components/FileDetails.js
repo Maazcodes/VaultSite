@@ -1,12 +1,15 @@
 
 import { publish, subscribe } from "../lib/pubsub.js"
+import {humanBytes, toTitleCase } from "../lib/lib.js"
 export default class FileDetails extends HTMLElement {
   constructor () {
     super()
-    this.props = { 
-      node: undefined, 
+    this.props = {
+      node: undefined,
       basePath: "",
-      collectionIdDict: {}
+      collectionIdDict: {},
+      collectionNodeSize: {},
+      folderNodeSize:{}
     }
   }
 
@@ -40,36 +43,54 @@ export default class FileDetails extends HTMLElement {
       return
     }
 
+    const contentUrl = node?.content_url
+    const attributesToExclude = ["id", "comment", "url", "path", "parent", "content_url"]
+    const nodeKeys = Object.keys(node).filter(key=> !attributesToExclude.includes(key))
     this.innerHTML = `
       <h2>
         <span class="name ${node.node_type}">${node.name}</span>
         <button class="close">x</button>
       </h2>
 
-      <ui5-tabcontainer class="full-width" collapsed fixed show-overflow>
+      <ui5-tabcontainer class="full-width" collapsed fixed>
         <ui5-tab text="Details" selected></ui5-tab>
         <ui5-tab text="Activity" collapsed></ui5-tab>
       </ui5-tabcontainer>
 
       <div class="details">
-        <dl style="font-size: 0.8rem;">
-          ${Object.keys(node).sort().map(
-            k => node[k] === null ? null : `<dt>${k}</dt><dd>${k == "uploaded_by" ? node[k].username : node[k]}</dd>`
-          ).filter(s => s !== null).join("")}
-        </dl>
+        <dl style="font-size: 0.8rem;">` + this.detailSection(nodeKeys) +
+          `</dl>
       </div>
-
       <div class="activity hidden">
       <div id="events-container" style="height: 420px; overflow-y: scroll;"></div>
       </div>    
+      ${contentUrl?`<ui5-button design="Default" id="download-file-btn">Download</ui5-button>`: ""}
     `
-    this.querySelector("button.close")
-        .addEventListener("click", this.hide.bind(this))
+    if(!!contentUrl){
+      document.getElementById("download-file-btn").addEventListener("click", function(){
+        window.open(contentUrl, "_blank")
+      })
+    }
 
+    if(!!document.querySelector(".copy-hash-btn")){
+      const copyButtons = document.querySelectorAll(".copy-hash-btn")
+      copyButtons.forEach(element=>{
+        const previousElementId = $(element).prev().attr("id")
+        element.addEventListener("click", ()=> {
+          const hashData = element.getAttribute("data")
+          navigator.clipboard.writeText(hashData)
+          document.getElementById(previousElementId).innerHTML = "Text Copied";
+        })
+        element.addEventListener("mouseout", ()=>{
+          document.getElementById(previousElementId).innerHTML = "Copy Text";
+        })
+      })
+    }
+    this.querySelector("button.close").addEventListener("click", this.hide.bind(this))
     this.tabContainer = this.querySelector("ui5-tabcontainer")
     this.detailsEl = this.querySelector(".details")
     this.activityEl = this.querySelector(".activity")
-    
+
     this.tabContainer.addEventListener("click", e => e.stopPropagation())
     this.tabContainer.addEventListener("tab-select", this.tabSelectHandler.bind(this))
   }
@@ -93,6 +114,51 @@ export default class FileDetails extends HTMLElement {
   attributeChangedCallback (name, oldValue, newValue) {
     this.props[name] = JSON.parse(newValue)
     this.render()
+  }
+
+  detailSection(nodeKeys){
+    const { node, collectionNodeSize, folderNodeSize} = this.props
+    let str = ""
+    nodeKeys.forEach(key => {
+          if (node[key] !== null){
+            if(key === "uploaded_by"){
+              str += `<dt>${toTitleCase(key)}</dt><dd>${node[key].username}</dd>`
+            }
+            else if (key.endsWith("sum")){
+              // For hash elements
+              const hashString = key.slice(0,key.length-4).toUpperCase()
+              str += `
+                      <dt style="margin-bottom: -29px;">${hashString}</dt>
+                      <dd style="display: inline-block;">${node[key].slice(0,8)}</dd>
+                      <div class="tooltipElement">
+                        <span class="tooltiptext" id="hover-text-${hashString.slice(hashString.length-1,)}">Copy Text</span>
+                      <div class="copy-hash-btn" data="${node[key]}" ><img src="/vault/static/favicon/copyIcon.png" alt="Copy Icon" style="height: 20px; width: 20px; cursor: pointer;"></div>
+                      </div>
+                      `
+            }
+            else if(key === "node_type"){
+              str += `<dt>Type</dt><dd>${node[key]}</dd>`
+            }
+            else if (key === "size"){
+                str+=`<dt>${toTitleCase(key)}</dt><dd>${humanBytes(node[key])}</dd>`
+            }
+            else{
+              str+=`<dt>${toTitleCase(key)}</dt><dd>${node[key]}</dd>`
+            }
+          } else{
+            if(key === "size"){
+              if(node.node_type === "COLLECTION" && !!collectionNodeSize[node.id]){
+                // display total size of collection
+                str+=`<dt>${toTitleCase(key)}</dt><dd>${humanBytes(collectionNodeSize[node.id]["total_size"])}</dd>`
+              }
+              else if(node.node_type === "FOLDER"){
+                // display total size of folder
+                str+=`<dt>${toTitleCase(key)}</dt><dd>${humanBytes(folderNodeSize[node.id]["total_size"])}</dd>`
+              }
+            }
+          }
+        })
+    return str
   }
 
   fileRowSelectedHandler (message) {
