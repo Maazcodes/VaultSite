@@ -170,7 +170,7 @@ def postback(request, org_id, collection_id, token):
     body = json.loads(request.body)
     report_url = body["reportUrl"]
     api_key = settings.FIXITTER_API_KEY
-    response = requests.get(report_url, params={"apikey": api_key})
+    response = requests.get(report_url, params={"apikey": api_key, "format": "json"})
     report_json = response.json()
 
     # pylint: disable=invalid-name

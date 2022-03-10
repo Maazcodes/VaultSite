@@ -32,7 +32,7 @@ def test_postback(m_get, rf, make_collection, fixity_report_json_body):
 
     m_get.assert_called_once_with(
         "cool-report-url",
-        params={"apikey": "FIXITTER_API_KEY"},
+        params={"apikey": "FIXITTER_API_KEY", "format": "json"},
     )
 
     all_reports = list(models.Report.objects.all())
