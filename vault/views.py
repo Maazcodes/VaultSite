@@ -656,27 +656,15 @@ def render_web_components_file_view(request, path):
     collections = models.Collection.objects.filter(organization=org)
     node_collections = {c.tree_node_id: c.id for c in collections}
 
-    # show total size of each collection
-    collection_node_size = {}
-    collection_nodes = org_node.children.all()  # all collections are org children
-    for collection_node in collection_nodes:
-        collection_size = models.TreeNode.objects.filter(
-            path__descendant=collection_node.path
-        ).aggregate(
-            total_size=Coalesce(Sum("size"), 0),
-        )
-        collection_node_size[collection_node.id] = collection_size
-
-    # show total size of each folder
-    folder_node_size = {}
-    folders = models.TreeNode.objects.filter(
-        node_type="FOLDER", path__descendant=org_node.path
-    )
-    for folder in folders:
-        folder_size = models.TreeNode.objects.filter(
-            path__descendant=folder.path
-        ).aggregate(total_size=Coalesce(Sum("size"), 0))
-        folder_node_size[folder.id] = folder_size
+    id_sizes = org_node.agregate_descendant_sizes__do_not_use()
+    folder_node_size = {
+        f.id: {"total_size": f.total_size} for f in id_sizes if f.node_type == "FOLDER"
+    }
+    collection_node_size = {
+        f.id: {"total_size": f.total_size}
+        for f in id_sizes
+        if f.node_type == "COLLECTION"
+    }
 
     node_dict = {
         "id": node.id,

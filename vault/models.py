@@ -493,6 +493,36 @@ class TreeNode(models.Model):
         logger.warning("hard deletion of TreeNode id=%d", self.id)
         super().delete()
 
+    def agregate_descendant_sizes__do_not_use(self):
+        """Calculates aggregated sums of all the sizes of all FOLDER- and
+        COLLECTION-type subtrees contained under this node. Results are
+        returned as an iterable of objects each containing attributes:
+
+        * id -- id of a given subtree root
+        * node_type -- type of subtree root; one of (FOLDER, COLLECTION)
+        * total_size -- agregate size of subtree in bytes
+
+        :deprecated:
+
+        To be deleted after the completion of
+        https://webarchive.jira.com/browse/WT-1172
+        """
+        return TreeNode.objects.raw(
+            """
+            SELECT
+                root.id,
+                root.node_type,
+                CAST(COALESCE(SUM(descn.size), 0) AS bigint) AS total_size
+            FROM vault_treenode root, vault_treenode descn
+            WHERE root.node_type IN ('FOLDER', 'COLLECTION')
+            AND descn.path <@ root.path
+            AND root.path <@ Cast(%s as ltree)
+            AND descn.deleted = false
+            GROUP BY root.id
+            """,
+            [self.path],
+        )
+
 
 ###############################################################################
 # Signal Handlers
