@@ -42,16 +42,17 @@ test:
       codequality: $PYLINT_REPORT
       cobertura: coverage.xml
 
-qa-deploy:
-  stage: deploy
-  variables:
-    ENV: qa
-    GIT_REF: $CI_COMMIT_BRANCH
-    PLAYBOOK: setup_vault_site.yml
-  trigger:
-    project: archive-it/ait-ansible
-    branch: master
-    strategy: depend
-  rules:
-   # Run this job when commits are pushed or merged to the default branch
-   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+# (mwilson) automatic deploys disabled while QA is pinned to release branch
+#qa-deploy:
+#  stage: deploy
+#  variables:
+#    ENV: qa
+#    GIT_REF: $CI_COMMIT_BRANCH
+#    PLAYBOOK: setup_vault_site.yml
+#  trigger:
+#    project: archive-it/ait-ansible
+#    branch: master
+#    strategy: depend
+#  rules:
+#   # Run this job when commits are pushed or merged to the default branch
+#   - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
