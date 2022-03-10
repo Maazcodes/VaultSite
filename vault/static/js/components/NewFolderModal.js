@@ -31,6 +31,7 @@ export default class NewFolderModal extends Modal {
       this.newCtaMenuItemSelectedHandler.bind(this)
     )
 
+    subscribe("CHANGE_DIRECTORY", this.changeDirectoryHandler.bind(this))
     subscribe(
       "CREATE_FOLDER_RESPONSE",
       this.createFolderResponseHandler.bind(this)
@@ -46,8 +47,13 @@ export default class NewFolderModal extends Modal {
 
   submitHandler (nameInputMap) {
     const name = nameInputMap.get("name").value
-    publish("CREATE_FOLDER_REQUEST", { name })
+    const parentNode = this.state.node
+    publish("CREATE_FOLDER_REQUEST", { name, parentNode })
     this.setBusyState(true)
+  }
+
+  changeDirectoryHandler ({ node}) {
+    this.state.node = node;
   }
 
   createFolderResponseHandler ({ error }) {

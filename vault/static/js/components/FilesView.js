@@ -21,7 +21,7 @@ import BreadcrumbsView from "./BreadcrumbsView.js";
  *****************************************************************************/
 class Conductor {
   constructor ({ basePath, appPath, path, node }) {
-    const API_BASE_PATH = `${basePath}/api/`
+    const API_BASE_PATH = `${window.location.origin}${basePath}/api/`
 
     // The initial node is rendered outside of DRF so doesn't include a url
     // property. So manually add it here.
@@ -176,11 +176,11 @@ class Conductor {
     }
   }
 
-  async createFolderRequestHandler ({ name }) {
+  async createFolderRequestHandler ({ name, parentNode}) {
     const response = await this.api.treenodes.post({
       name,
       node_type: "FOLDER",
-      parent: this.node.url
+      parent: parentNode.url
     })
 
     const error = await this.api.getResponseErrorDetail(response)
@@ -190,7 +190,7 @@ class Conductor {
     // current view.
     // TODO - this more efficiently.
     if (!error) {
-      publish("CHANGE_DIRECTORY_REQUEST", { node: this.node,  path: this.path })
+      publish("CHANGE_DIRECTORY_REQUEST", { node: parentNode,  path: this.path })
     }
   }
 

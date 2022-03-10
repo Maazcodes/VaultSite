@@ -60,11 +60,12 @@ export default class FileDetails extends HTMLElement {
       <div class="details">
         <dl style="font-size: 0.8rem;">` + this.detailSection(nodeKeys) +
           `</dl>
+        ${contentUrl?`<ui5-button design="Default" id="download-file-btn">Download</ui5-button>`: ""}
       </div>
       <div class="activity hidden">
       <div id="events-container" style="height: 420px; overflow-y: scroll;"></div>
       </div>    
-      ${contentUrl?`<ui5-button design="Default" id="download-file-btn">Download</ui5-button>`: ""}
+      
     `
     if(!!contentUrl){
       document.getElementById("download-file-btn").addEventListener("click", function(){
@@ -183,8 +184,8 @@ export default class FileDetails extends HTMLElement {
     const showDetails = e.detail.tabIndex === 0
     this.detailsEl.classList[showDetails ? "remove" : "add"]("hidden")
     this.activityEl.classList[showDetails ? "add" : "remove"]("hidden")
-
-    if(node.node_type === "COLLECTION"){
+    if(node.node_type === "COLLECTION" && !showDetails){
+      // call api only when Activity tab is clicked
       let collectionId = collectionIdDict[node.id]
       const response = await fetch(`${basePath}/api/get_events/${collectionId}`)
       .then(data=>data.json())
