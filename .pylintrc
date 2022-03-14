@@ -20,7 +20,8 @@ good-names=i,
            e,
            ex,
            Run,
-           _
+           _,
+           rf
 
 [MESSAGES CONTROL]
 disable=missing-module-docstring,

@@ -37,13 +37,13 @@
                     <br />
                     <strong>Report Completed</strong>: {{ report.ended_at.strftime("%Y-%m-%d %H:%M:%S") }} UTC
                     <br />
-                    <strong>Files Checked</strong>: {{ checked_files }}
+                    <strong>Files Checked</strong>: {{ report.file_count }}
                     <br />
-                    <strong>Successful Checks</strong>: {{ successful_checks }}
+                    <strong>Successful Checks</strong>: {{ report.file_count - report.error_count }}
                     <br />
-                    <strong>Failed Checks</strong>: {{ failed_checks }}
+                    <strong>Failed Checks</strong>: {{ report.error_count }}
                     <br />
-                    <strong>Total Size</strong>: {{ total_size|filesizeformat(binary=True) }}
+                    <strong>Total Size</strong>: {{ report.total_size|filesizeformat(binary=True) }}
                     <br />
                 </p>
                 <div id="report-chart"></div>
@@ -54,13 +54,13 @@
             <nav>
                 <ul class="pagination">
                     <li class="page-item">
-                        <a onclick="showAllStates()">All ({{ checked_files }})</a>
+                        <a onclick="showAllStates()">All ({{ report.file_count }})</a>
                     </li>
                     <li class="page-item">
-                        <a onclick="filterState('.report-card-success')">Successful Checks ({{ successful_checks }})</a>
+                        <a onclick="filterState('.report-card-success')">Successful Checks ({{ report.file_count - report.error_count }})</a>
                     </li>
                     <li class="page-item">
-                        <a onclick="filterState('.report-card-error')">Error ({{ failed_checks }})</a>
+                        <a onclick="filterState('.report-card-error')">Error ({{ report.error_count }})</a>
                     </li>
                 </ul>
             </nav>
@@ -77,11 +77,33 @@
                             <br />
                             <strong>Deposit Time</strong>: {{ file.depositTime }}
                             <br />
-                            <strong>MD5</strong>: {{ file.canonicalChecksums[0][4:] }}
-                            <br />
-                            <strong>SHA1</strong>: {{ file.canonicalChecksums[1][5:] }}
-                            <br />
-                            <strong>SHA256</strong>: {{ file.canonicalChecksums[2][7:] }}
+                            {% if file.canonicalChecksums is defined %}
+                                {% for checksum in file.canonicalChecksums %}
+                                    {% if checksum[:3] == "md5" %}
+                                        <strong>MD5</strong>: {{ checksum[4:] }}
+                                        <br />
+                                    {% elif checksum[:4] == "sha1" %}
+                                        <strong>SHA1</strong>: {{ checksum[5:] }}
+                                        <br />
+                                    {% elif checksum[:6] == "sha256" %}
+                                        <strong>SHA256</strong>: {{ checksum[7:] }}
+                                        <br />
+                                    {% elif checksum[:6] == "length" %}
+                                        <strong>Length</strong>: {{ checksum[7:] }}
+                                    {% else %}
+                                        <strong>Other</strong>: {{ checksum }}
+                                        <br />
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                            {% if file.missingLocations is defined %}
+                                <strong>Missing Locations Count</strong>: {{ file.missingLocations|length }}
+                                <br />
+                            {% endif %}
+                            {% if file.mismatchGroups is defined %}
+                                <strong>Mismatch Checksum Count</strong>: {{ file.mismatchGroups|length - 1 }}
+                                <br />
+                            {% endif %}
                         </div>
                     </div>
                     {% if loop.last %}
@@ -120,8 +142,8 @@
        }
     }
     $(function() {
-        const successCount = {{ successful_checks }};
-        const errorCount = {{ failed_checks }};
+        const successCount = {{ report.file_count - report.error_count }};
+        const errorCount = {{ report.error_count }};
 
         chartalign.register("#report-chart", function (width, height) {
             return $("<canvas></canvas>").attr("width", width).attr("height", height);

@@ -172,6 +172,7 @@ def postback(request, org_id, collection_id, token):
     api_key = settings.FIXITTER_API_KEY
     response = requests.get(report_url, params={"apikey": api_key, "format": "json"})
     report_json = response.json()
+    report_errors = report_json.get("errors", {})
 
     # pylint: disable=invalid-name
     TODO = 0
@@ -186,8 +187,8 @@ def postback(request, org_id, collection_id, token):
         collection_total_size=TODO,
         collection_file_count=TODO,
         error_count=report_json["errorCount"],
-        missing_location_count=TODO,
-        mismatch_count=TODO,
+        missing_location_count=report_errors.get("missingLocationCount", 0),
+        mismatch_count=report_errors.get("mismatchCount", 0),
         avg_replication=TODO,
         report_json=report_json,
         report_json_version=FIXITY_REPORT_JSON_VERSION,

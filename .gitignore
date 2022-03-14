@@ -16,3 +16,6 @@ postgres-data
 coverage.xml
 pytest.xml
 pylint.json
+
+# http commands for manual tests
+rest.http
