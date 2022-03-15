@@ -59,8 +59,9 @@ destroy)
 	docker rm --force ${container_name}
 	;;
 psql)
+    shift
 	if [[ $container_exists -eq 0 ]] && [[ "${container_running}" == "true" ]]; then
-		docker exec -it vault-postgres /usr/bin/psql --host=localhost --user="${POSTGRES_USER}"
+		docker exec -it vault-postgres /usr/bin/psql --host=localhost --user="${POSTGRES_USER}" $@
 	fi
 	;;
 help | -h)

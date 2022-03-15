@@ -395,7 +395,14 @@ class TreeNode(models.Model):
         db_index=True,
     )
 
-    size = models.PositiveBigIntegerField(blank=True, null=True)
+    #: For FILE: the size of the underlying content in bytes.
+    #: For FOLDER, COLLECTION, ORGANIZATION: the sum of the size of all nodes
+    #: in the subtree.
+    size = models.PositiveBigIntegerField(blank=True, default=0, null=True)
+    #: For FOLDER, COLLECTION, ORGANIZATION: the count of all FILEs in the
+    #: subtree. For FILEs: 1; this is set automatically by trigger. See
+    #: PLPGSQL function: ``_do_treenode_set_new_file_count``
+    file_count = models.PositiveBigIntegerField(blank=True, default=0, null=False)
     file_type = models.CharField(max_length=255, blank=True, null=True)
     # TODO (mwilson): expand/remove char limit:
     # https://webarchive.jira.com/browse/WT-1167

@@ -17,6 +17,8 @@ Use Docker-Dev for a quicker setup.
 cd path/to/project
 utilities/dev-postgres.sh start
 make setup
+# set up git pre-commit hook; optional, but recommended
+make .git/hooks/pre-commit
 make migrate
 AIT_CONF=./DPS_dev/vault.yml ./venv/bin/python manage.py createsuperuser
 HTTP_REMOTE_USER=<your-superuser-name> make run

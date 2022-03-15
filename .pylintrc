@@ -1,3 +1,7 @@
+# see: https://pylint.pycqa.org/en/latest/messages/messages_list.html
+# see: https://pylint.pycqa.org/en/latest/technical_reference/features.html
+# see: https://www.getcodeflow.com/pylint-configuration.html
+
 [MASTER]
 
 # List of plugins (as comma separated values of python module names) to load,
@@ -17,3 +21,8 @@ good-names=i,
            ex,
            Run,
            _
+
+[MESSAGES CONTROL]
+disable=missing-module-docstring,
+        missing-function-docstring,
+        missing-class-docstring

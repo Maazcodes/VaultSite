@@ -1,16 +1,14 @@
 from django.core.exceptions import FieldError
+from django.db.transaction import atomic
+import django.db
 
 from freezegun import freeze_time
-from model_bakery.baker import prepare
 from pytest import (
-    fixture,
     mark,
     raises,
 )
 
 from vault.models import (
-    Collection,
-    Organization,
     Report,
     TreeNode,
     TreeNodeException,
@@ -272,6 +270,511 @@ class TestTreeNode:
         file_node.deleted = False
         file_node.save()
         TreeNode.objects.get(pk=file_node_id)
+
+
+class TestTreeNodeAccountingTriggers:
+    """Test case for create/update/delete file accounting triggers"""
+
+    @mark.django_db
+    def test_creation_basic_success(self, treenode_stack):
+        """New TreeNode hierarchy is created with correct size and file_count"""
+        # only a file count of 2 because collection and org aren't counted
+        # by the file accounting triggers
+        assert treenode_stack["ORGANIZATION"].file_count == 2
+        assert treenode_stack["COLLECTION"].file_count == 2
+        assert treenode_stack["FOLDER"].file_count == 1
+        assert treenode_stack["FILE"].file_count == 1
+
+        assert treenode_stack["ORGANIZATION"].size == 420
+        assert treenode_stack["COLLECTION"].size == 420
+        assert treenode_stack["FOLDER"].size == 420
+        assert treenode_stack["FILE"].size == 420
+
+    @mark.django_db
+    def test_creation_complex_hierarchy(self, treenode_stack, make_treenode):
+        """complex TreeNode hierarchy is created correctly"""
+        # Given: a treenode hierarchy
+        assert treenode_stack["FOLDER"].file_count == 1
+        assert treenode_stack["FILE"].file_count == 1
+        assert treenode_stack["FOLDER"].size == 420
+        assert treenode_stack["FILE"].size == 420
+        folder = treenode_stack["FOLDER"]
+
+        # When: a new folder and file are added
+        folder2 = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FOLDER",
+        )
+        make_treenode(
+            parent=folder2,
+            node_type="FILE",
+            size=42,
+        )
+
+        # Then: the hierarchy reflects the new nodes
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder2.size == 42
+        assert folder2.file_count == 1
+        assert folder.size == 462
+        assert folder.file_count == 3
+
+    @mark.django_db
+    def test_deletion_basic_success(self, treenode_stack):
+        """TreeNode deletion triggers updates to ancestors' size and file_count"""
+        # only a file count of 2 because collection and org aren't counted
+        # by the file accounting triggers
+        assert treenode_stack["ORGANIZATION"].file_count == 2
+        assert treenode_stack["ORGANIZATION"].size == 420
+
+        treenode_stack["FILE"].hard_delete()
+
+        treenode_stack["ORGANIZATION"].refresh_from_db()
+        assert treenode_stack["ORGANIZATION"].file_count == 1
+        assert treenode_stack["ORGANIZATION"].size == 0
+
+    @mark.django_db
+    def test_deletion_nested_folders(self, treenode_stack, make_treenode):
+        """TreeNode hard deletion independent of other files"""
+        # folder
+        # └── folder2
+        #     └── file2
+        folder = treenode_stack["FOLDER"]
+        folder2 = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FOLDER",
+        )
+        file2 = make_treenode(
+            parent=folder2,
+            node_type="FILE",
+            size=7,
+        )
+        file2.refresh_from_db()
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder2.file_count == 1
+        assert folder2.size == 7
+        assert folder.file_count == 3
+        assert folder.size == 427
+
+        folder2.hard_delete()
+        with raises(TreeNode.DoesNotExist):
+            file2.refresh_from_db()
+
+        folder.refresh_from_db()
+        assert folder.size == 420
+        assert folder.file_count == 1
+
+    @mark.django_db
+    def test_deletion_nested_correctness(self, treenode_stack, make_treenode):
+        """TreeNode hard deletion independent of other files"""
+        # Given: a complex file hierarchy
+        # folder
+        # ├── file
+        # └── folder2
+        #     └── file2
+        file = treenode_stack["FILE"]
+        folder = treenode_stack["FOLDER"]
+        folder2 = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FOLDER",
+        )
+        file2 = make_treenode(
+            parent=folder2,
+            node_type="FILE",
+            size=42,
+        )
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder2.size == 42
+        assert folder2.file_count == 1
+        assert folder.size == 462
+        assert folder.file_count == 3
+
+        # When: a file in the hierarchy is removed
+        # folder
+        # ├── XXXX
+        # └── folder2
+        #     └── file2
+        file.hard_delete()
+        folder.refresh_from_db()
+        folder2.refresh_from_db()
+        file2.refresh_from_db()
+
+        # Then: its direct parent is updated
+        assert folder.size == 42
+        assert folder.file_count == 2
+        # ... and so is its distant ancestor
+        assert folder2.size == 42
+        assert folder2.file_count == 1
+        # ... but its cousin file isn't affected
+        assert file2.size == 42
+
+    @mark.django_db
+    def test_soft_delete_success(self, treenode_stack):
+        """TreeNode soft deletion produces correct accounting"""
+        # Given: a node hierarchy
+        folder = treenode_stack["FOLDER"]
+        file = treenode_stack["FILE"]
+        assert folder.file_count == 1
+        assert folder.size == 420
+
+        # When: a file is soft-deleted
+        file.delete()
+        file.refresh_from_db()
+        assert file.deleted
+
+        # Then: the accounting changes propagate to the ancestor
+        folder.refresh_from_db()
+        assert folder.size == 0
+        assert folder.file_count == 0
+
+    @mark.django_db
+    def test_soft_delete_one_file_among_multiple(
+        self,
+        treenode_stack,
+        make_treenode,
+    ):
+        """TreeNode soft deletion doesn't affect sibling files"""
+        # Given: a node hierarchy with two files
+        # folder
+        # ├── file
+        # └── file2
+        folder = treenode_stack["FOLDER"]
+        file = treenode_stack["FILE"]
+        file2 = make_treenode(parent=folder, node_type="FILE", size=42)
+        folder.refresh_from_db()
+        assert folder.file_count == 2
+        assert folder.size == 462
+
+        # When: one file is deleted
+        # folder
+        # ├── XXXX
+        # └── file2
+        file.delete()
+        file.refresh_from_db()
+        assert file.deleted
+
+        # Then: ancestor accounting is correct and sibling file is unaffected
+        folder.refresh_from_db()
+        file2.refresh_from_db()
+        assert folder.size == 42
+        assert folder.file_count == 1
+        assert file2.size == 42
+
+    @mark.django_db
+    def test_soft_delete_folder(
+        self,
+        treenode_stack,
+        make_treenode,
+    ):
+        """TreeNode folder soft deletion produces correct accounting"""
+        # Given: a complex file hierarchy
+        # folder
+        # ├── file
+        # └── folder2
+        #     └── file2
+        file = treenode_stack["FILE"]
+        folder = treenode_stack["FOLDER"]
+        folder2 = make_treenode(
+            parent=treenode_stack["FOLDER"],
+            node_type="FOLDER",
+        )
+        file2 = make_treenode(
+            parent=folder2,
+            node_type="FILE",
+            size=42,
+        )
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder2.size == 42
+        assert folder2.file_count == 1
+        assert folder.size == 462
+        assert folder.file_count == 3
+
+        # When: a nested folder is deleted
+        # folder
+        # ├── file
+        # └── XXXXXXX
+        #     └── file2
+        folder2.delete()
+        folder2.refresh_from_db()
+        assert folder2.deleted
+
+        # Then: ancestral accounting is correct...
+        folder.refresh_from_db()
+        file.refresh_from_db()
+        assert folder.size == 420
+        assert folder.file_count == 1
+
+        # ...changes recurse to descendant...
+        file2.refresh_from_db()
+        assert file2.deleted
+        assert (
+            file2.size == 42
+        ), "size of recursively soft-deleted file shouldn't change"
+
+        # ...and file sibling to deleted folder is unaffected
+        file.refresh_from_db()
+        assert not file.deleted
+        assert file.size == 420
+
+    @mark.django_db
+    def test_move_file(self, treenode_stack, make_treenode):
+        """TreeNode file move produces correct accounting"""
+        # Given: a complex node hierarchy
+        # folder
+        # ├── file
+        # └── folder2
+        folder = treenode_stack["FOLDER"]
+        file = treenode_stack["FILE"]
+        folder2 = make_treenode(
+            parent=folder,
+            node_type="FOLDER",
+        )
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert file.size == 420
+        assert folder.size == 420
+        assert folder.file_count == 2
+        assert folder2.file_count == 0
+
+        # When: file is moved between folders
+        # folder
+        # └── folder2
+        #     └── file
+        file.parent = folder2
+        file.save()
+        file.refresh_from_db()
+        assert file.parent_id == folder2.id
+
+        # Then:  old and new parent folder have correct accounting
+        folder.refresh_from_db()
+        folder2.refresh_from_db()
+        assert file.size == 420
+        assert file.file_count == 1
+        assert folder.file_count == 2
+        assert folder.size == 420
+        assert folder2.size == 420
+        assert folder2.file_count == 1
+
+        # When: the file is moved back to its original folder
+        # folder
+        # ├── file
+        # └── folder2
+        file.parent = folder
+        file.save()
+        file.refresh_from_db()
+        assert file.parent_id == folder.id
+
+        # Then: all accounting is back to where we began
+        folder.refresh_from_db()
+        folder2.refresh_from_db()
+        assert file.size == 420
+        assert file.file_count == 1
+        assert folder.file_count == 2
+        assert folder.size == 420
+        assert folder2.size == 0
+        assert folder2.file_count == 0
+
+    @mark.django_db
+    def test_move_folder(self, treenode_stack, make_treenode):
+        """TreeNode folder move produces correct accounting"""
+        # Given: a nested node hierarchy
+        # folder
+        # └── folder2
+        #     └── folder3
+        #         └── file2
+        folder = treenode_stack["FOLDER"]
+        folder2 = make_treenode(
+            parent=folder,
+            node_type="FOLDER",
+        )
+        folder3 = make_treenode(
+            parent=folder2,
+            node_type="FOLDER",
+        )
+        file2 = make_treenode(
+            parent=folder3,
+            node_type="FILE",
+            size=7,
+        )
+        file2.refresh_from_db()
+        folder3.refresh_from_db()
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder.size == 427
+        assert folder.file_count == 4
+        assert folder2.size == 7
+        assert folder2.file_count == 2
+        assert folder3.size == 7
+        assert folder3.file_count == 1
+        assert file2.size == 7
+
+        # When: folder is moved
+        # folder
+        # ├── folder2
+        # └── folder3
+        #     └── file2
+        folder3.parent = folder
+        folder3.save()
+
+        # Then: all accounting is correct
+        folder.refresh_from_db()
+        folder2.refresh_from_db()
+        folder3.refresh_from_db()
+        file2.refresh_from_db()
+        assert folder.size == 427
+        assert folder.file_count == 4
+        assert folder2.size == 0
+        assert folder2.file_count == 0
+        assert folder3.size == 7
+        assert folder3.file_count == 1
+        assert file2.size == 7
+
+    @mark.django_db
+    def test_move_only_folder(self, treenode_stack, make_treenode):
+        """Treenode empty folder move produces correct accounting"""
+        # Given: a nested node hierarchy
+        # folder
+        # └── folder2
+        #     └── folder3
+        folder = treenode_stack["FOLDER"]
+        folder2 = make_treenode(
+            parent=folder,
+            node_type="FOLDER",
+        )
+        folder3 = make_treenode(
+            parent=folder2,
+            node_type="FOLDER",
+        )
+        folder3.refresh_from_db()
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder.size == 420
+        assert folder.file_count == 3
+        assert folder2.size == 0
+        assert folder2.file_count == 1
+        assert folder3.size == 0
+        assert folder3.file_count == 0
+
+        # When: an empty folder is moved
+        # folder
+        # ├── folder2
+        # └── folder3
+        folder3.parent = folder
+        folder3.save()
+
+        # Then: all accounting is correct
+        folder3.refresh_from_db()
+        folder2.refresh_from_db()
+        folder.refresh_from_db()
+        assert folder.size == 420
+        assert folder.file_count == 3
+        assert folder2.size == 0
+        assert folder2.file_count == 0
+        assert folder3.size == 0
+        assert folder3.file_count == 0
+
+    @mark.django_db
+    def test_size_change(self, treenode_stack):
+        """Treenode file size change produces correct results"""
+        # Given: a file in a folder
+        folder = treenode_stack["FOLDER"]
+        file = treenode_stack["FILE"]
+        assert file.size == 420
+        assert folder.size == 420
+        assert folder.file_count == 1
+
+        # When: the size of the file changes
+        file.size = 7
+        file.save()
+
+        # Then: the size change is reflected on the parent folder
+        folder.refresh_from_db()
+        assert folder.size == 7
+        assert folder.file_count == 1
+
+    @mark.django_db
+    def test_reject_folder_size_change(self, treenode_stack):
+        """Treenode file size change is rejected on non-FILEs"""
+        # Given: a folder
+        folder = treenode_stack["FOLDER"]
+        assert folder.size == 420
+
+        # When: a size change is attempted on the folder
+        # Then: the change is rejected...
+        with atomic():
+            # note: atomic() tx block required for isolation because pg
+            # exceptions foul the current transaction
+            with raises(django.db.InternalError) as e:
+                folder.size = 7
+                folder.save()
+            assert "size of non-FILE nodes may not be explicitly modified" in str(e)
+
+        # ...and the folder size is unchanged
+        folder.refresh_from_db()
+        assert folder.size == 420
+
+    @mark.django_db
+    def test_reject_multiple_managed_attr_changes(self, treenode_stack, make_treenode):
+        """Treenode rejects changes to more than one managed attribute"""
+        # Managed attributes: `deleted`, `parent_id`, `size`
+
+        # Given: a TreeNode
+        collection = treenode_stack["COLLECTION"]
+        file = treenode_stack["FILE"]
+        folder2 = make_treenode(parent=collection, node_type="FOLDER")
+
+        # When: two managed attributes change
+        file.size = 42
+        file.deleted = True
+
+        # Then: the change is rejected by trigger
+        with atomic():
+            with raises(django.db.InternalError):
+                file.save()
+
+        # RESET
+        file.refresh_from_db()
+        assert file.size == 420
+
+        # When: two other managed attributes change
+        file.size = 42
+        file.parent = folder2
+
+        # Then: the change is rejected by trigger
+        with atomic():
+            with raises(django.db.InternalError):
+                file.save()
+
+        # RESET
+        file.refresh_from_db()
+        assert file.size == 420
+
+        # When: three managed attributes change
+        file.size = 42
+        file.deleted = True
+        file.parent = folder2
+
+        # Then: the change is rejected by trigger
+        with atomic():
+            with raises(django.db.InternalError):
+                file.save()
+
+    @mark.django_db
+    def test_accept_no_managed_attr_changes(self, treenode_stack):
+        """Treenode tolerates change to zero managed attributes"""
+        # Managed attributes: `deleted`, `parent_id`, `size`
+
+        # Given: a TreeNode FILE
+        file = treenode_stack["FILE"]
+
+        # When: a non-managed attribute changes
+        file.comment = "foobarbaz"
+
+        # Then: the change is accepted by postgres
+        file.save()
 
 
 class TestReport:

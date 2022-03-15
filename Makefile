@@ -58,6 +58,9 @@ $(AIT_CONF): $(DEV_DIRS)
 	@echo "STATIC_ROOT: $(STATIC_ROOT_DPATH)" >> $@
 	@echo "PETABOX_SECRET: bogus-petabox-secret" >> $@
 
+.git/hooks/pre-commit:
+	ln -s $(realpath ./dev/pre-commit) $@
+
 .PHONY: test
 test: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 ifeq ($(ENV),LOCAL)

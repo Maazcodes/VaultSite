@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# pre-commit.sh
+# -------------
+# An optional script which runs checks on code before commits.
+
+make test
+#make lint
+make ck-format

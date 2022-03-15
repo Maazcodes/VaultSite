@@ -22,11 +22,6 @@ from vault.models import (
 
 
 @fixture
-def make_collection():
-    return lambda **kwargs: baker.make(Collection, **kwargs)
-
-
-@fixture
 def make_geolocation():
     return lambda **kwargs: baker.make(Geolocation, **kwargs)
 
@@ -38,18 +33,6 @@ def make_plan(geolocation):
         plan.default_geolocations.set([geolocation])
         plan.save()
         return plan
-
-    return maker
-
-
-@fixture
-def make_treenode():
-    def maker(parent, node_type="FILE", **kwargs):
-        # Enforce valid-length default names for ORGANIZATION and COLLECTION-type node.
-        model = {"ORGANIZATION": Organization, "COLLECTION": Collection}.get(node_type)
-        if model and "name" not in kwargs:
-            kwargs["name"] = baker.prepare(model).name
-        return baker.make(TreeNode, parent=parent, node_type=node_type, **kwargs)
 
     return maker
 
@@ -253,6 +236,42 @@ def make_fixity_report(fixity_report_json_body):
 
 
 @fixture
+def make_collection(make_treenode):
+    def maker(parent_node=None, **kwargs):
+        if parent_node is None:
+            parent_node = make_treenode(
+                parent=None,
+                node_type=TreeNode.Type.ORGANIZATION,
+            )
+
+        collection_node = make_treenode(
+            parent=parent_node,
+            node_type=TreeNode.Type.COLLECTION,
+        )
+        collection_node.refresh_from_db()
+        return baker.make(
+            Collection,
+            tree_node=collection_node,
+            name=collection_node.name,
+            **kwargs,
+        )
+
+    return maker
+
+
+@fixture
+def make_treenode():
+    def maker(parent, node_type="FILE", **kwargs):
+        # Enforce valid-length default names for ORGANIZATION and COLLECTION-type node.
+        model = {"ORGANIZATION": Organization, "COLLECTION": Collection}.get(node_type)
+        if model and "name" not in kwargs:
+            kwargs["name"] = baker.prepare(model).name
+        return baker.make(TreeNode, parent=parent, node_type=node_type, **kwargs)
+
+    return maker
+
+
+@fixture
 def make_super_user(make_organization):
     return lambda: baker.make(
         User, organization=make_organization(), is_staff=True, is_superuser=True
@@ -309,23 +328,20 @@ def user(make_user):
 
 
 @fixture
-def treenode_stack(make_treenode, make_collection, make_organization):
+def treenode_stack(make_treenode):
     """Return a complete valid TreeNode type hierarchy dict keyed by type name."""
-    organization = make_organization()
-    organization.refresh_from_db()
-    organization_node = organization.tree_node
-    organization_node.refresh_from_db()
-    collection = make_collection()
-    collection.refresh_from_db()
-    collection_node = collection.tree_node
-    collection_node.refresh_from_db()
-    folder_node = make_treenode(node_type="FOLDER", parent=collection_node)
+    org_node = make_treenode(parent=None, node_type="ORGANIZATION", size=0)
+    col_node = make_treenode(parent=org_node, node_type="COLLECTION", size=0)
+    folder_node = make_treenode(parent=col_node, node_type="FOLDER", size=0)
+    file_node = make_treenode(parent=folder_node, node_type="FILE", size=420)
+    org_node.refresh_from_db()
+    col_node.refresh_from_db()
     folder_node.refresh_from_db()
-    file_node = make_treenode(node_type="FILE", parent=folder_node)
     file_node.refresh_from_db()
+
     return {
-        "ORGANIZATION": organization_node,
-        "COLLECTION": collection_node,
+        "ORGANIZATION": org_node,
+        "COLLECTION": col_node,
         "FOLDER": folder_node,
         "FILE": file_node,
     }

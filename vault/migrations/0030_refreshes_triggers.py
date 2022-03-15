@@ -26,9 +26,10 @@ CREATE TRIGGER treenode_path_prevent_null_trg
     EXECUTE PROCEDURE _reject_null_treenode_path();
 """
 
+
 REVERSE_SQL = """
 DROP TRIGGER IF EXISTS treenode_path_prevent_null_trg ON vault_treenode;
-DROP FUNCTION IF EXISTS _reject_null_treenode_path()
+DROP FUNCTION IF EXISTS _reject_null_treenode_path();
 """
 
 

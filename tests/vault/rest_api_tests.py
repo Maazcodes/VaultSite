@@ -732,7 +732,10 @@ def test_treenode_endpoint_partial_update_allowed(
     for user in users:
         # Make two FOLDER-type tree nodes as direct descendants of a collection that
         # belongs to the user's organization.
-        collection = make_collection(organization=user.organization)
+        collection = make_collection(
+            parent_node=user.organization.tree_node,
+            organization=user.organization,
+        )
         treenode1 = make_treenode(parent=collection.tree_node, node_type="FOLDER")
         treenode2 = make_treenode(parent=collection.tree_node, node_type="FOLDER")
 
