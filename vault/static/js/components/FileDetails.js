@@ -9,7 +9,8 @@ export default class FileDetails extends HTMLElement {
       basePath: "",
       collectionIdDict: {},
       collectionNodeSize: {},
-      folderNodeSize:{}
+      folderNodeSize:{},
+      path: undefined
     }
   }
 
@@ -25,7 +26,7 @@ export default class FileDetails extends HTMLElement {
     )
     subscribe(
       "CHANGE_DIRECTORY",
-      ({ node }) => this.changeDirectoryHandler(node)
+      ({ node,path }) => this.changeDirectoryHandler(node,path)
     )
     subscribe("HIDE_DETAILS_PANEL", this.hide.bind(this))
     subscribe("SHOW_DETAILS_PANEL", this.show.bind(this))
@@ -33,7 +34,7 @@ export default class FileDetails extends HTMLElement {
   }
 
   render () {
-    const { node } = this.props
+    const { node,path } = this.props
     if (!node || node.node_type === "ORGANIZATION") {
       this.innerHTML = `
         <p>
@@ -59,13 +60,12 @@ export default class FileDetails extends HTMLElement {
 
       <div class="details">
         <dl style="font-size: 0.8rem;">` + this.detailSection(nodeKeys) +
-          `</dl>
+          `<dt>Location</dt><dd class="location-detail">${path}</dd></dl>
         ${contentUrl?`<ui5-button design="Default" id="download-file-btn">Download</ui5-button>`: ""}
       </div>
       <div class="activity hidden">
       <div id="events-container" style="height: 420px; overflow-y: scroll;"></div>
       </div>    
-      
     `
     if(!!contentUrl){
       document.getElementById("download-file-btn").addEventListener("click", function(){
@@ -182,6 +182,7 @@ export default class FileDetails extends HTMLElement {
   async tabSelectHandler (e) {
     const {node,basePath,collectionIdDict} = this.props
     const showDetails = e.detail.tabIndex === 0
+    const eventsContainer = document.getElementById("events-container")
     this.detailsEl.classList[showDetails ? "remove" : "add"]("hidden")
     this.activityEl.classList[showDetails ? "add" : "remove"]("hidden")
     if(node.node_type === "COLLECTION" && !showDetails){
@@ -197,7 +198,7 @@ export default class FileDetails extends HTMLElement {
       let events = response["formatted_events"]
       if (events.length!=0){
         events.forEach((event)=>{
-        document.getElementById("events-container").innerHTML += `
+        eventsContainer.innerHTML += `
         <ui5-card class="small" style="margin-bottom: 1rem">
           <div class="content" >
               ${Object.keys(event).map(k=> k!== "Event Id"?`<div class="content-group" style = "margin: 1rem;">
@@ -209,13 +210,17 @@ export default class FileDetails extends HTMLElement {
       </ui5-card>`
       })
       } else{
-        document.getElementById("events-container").innerHTML = "No Events Available"
+        eventsContainer.innerHTML = "No Events Available"
       }
+    } else {
+      // for files and folders
+      eventsContainer.innerHTML = "No Events Available"
     }
   }
 
-  changeDirectoryHandler (node) {
+  changeDirectoryHandler (node,path) {
     this.props.node = node
+    this.props.path = path
     this.render()
   }
 }

@@ -39,6 +39,7 @@ export default class MovePopover extends HTMLElement {
     this.sourceId = contextEle.selectedNodes[0].id 
     const parentNode = this._parentNode
     this.nodePathList = contextEle.selectedNodes[0].path.split(".")
+    const selectedRowIds = contextEle.selectedNodes.map(node=>node.id)
     const AllNodes = this.allNodes    
     this.allNodes.forEach((element)=>{
       const elementPath = element.path.split(".")
@@ -91,21 +92,19 @@ export default class MovePopover extends HTMLElement {
     }
     
     // folder selector
-    this.folderSelectorEventHandler(moveButton, fileParentId)
+    this.folderSelectorEventHandler(moveButton, fileParentId, selectedRowIds)
 
     // Move Item Button
-    this.moveButtonEventHandler(this.popover, this.contextElement, this.sourceId)
+    this.moveButtonEventHandler(this.popover, this.contextElement)
     
     // Back Button
     this.backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes)
   } 
 
-  moveButtonEventHandler(popover, contextElement, sourceId){
+  moveButtonEventHandler(popover, contextElement){
     const tableParentElement = document.querySelector("ui5-table")
-    const selectedRowIndex = contextElement.selectedRows[0].attributes[0].value
-    const selectedItemName = contextElement.selectedNodes[0].name
-    const selectedItemNodeType = contextElement.selectedNodes[0].node_type
-    const sourceNodeUrl = contextElement.selectedNodes[0].url    
+    const {selectedRows, selectedNodes, nodes} = contextElement
+    const selectedRowNames = selectedRows.map(row=>row.attributes[1].value)
     this.button = this.querySelector("ui5-button[id='move-button']")
     this.button.addEventListener("click", async function(){
       let payload = {parent: destinationNodeUrl}
@@ -118,39 +117,61 @@ export default class MovePopover extends HTMLElement {
         },
         body: JSON.stringify(payload)
       }
-      let response = await fetch(sourceNodeUrl, options)
-      if (response.status >= 400){        
-        console.error('Server error - response status', response.status)
-        return
-      }      
-      // Close move popover content after clicking on move button
-      popover.close();
-      // Hide the selected row
-      const selectedElement = document.querySelector(`ui5-table-row[data-index = "${selectedRowIndex}"]`)
-      tableParentElement.removeChild(selectedElement)
-      if(selectedItemNodeType!="FILE"){
-        // Update tree view
-        const ParentNode = document.querySelector(`ui5-tree-item[id='${destinationId}']`)
-        const SourceTreeNode = document.querySelector(`ui5-tree-item[id='${sourceId}']`)
-        // remove the source node from tree view and append it to destination node in tree view
-        SourceTreeNode.parentNode.removeChild(SourceTreeNode)
-        SourceTreeNode.setAttribute("path", `${$(ParentNode).attr('path') || ""}/${selectedItemName}` )
-        ParentNode.appendChild(SourceTreeNode)
+      
+      let error = false
+      const ParentNode = document.querySelector(`ui5-tree-item[id='${destinationId}']`)
+      await Promise.all(selectedNodes.map(async (node)=>{
+        const response = await fetch(node.url, options)
+        if (response.status >= 400){
+          console.error('Server error - response ', response)
+          error = true
+          // dont hide the element which has error from tree view
+          const nodeIndex  = selectedNodes.indexOf(node)
+          selectedNodes.splice(nodeIndex,1)
+          // dont hide the element which has error from table
+          const rowIndex = selectedRowNames.indexOf(node.name)
+          selectedRowNames.splice(rowIndex,1)
+        }
+      }))
+            
+      // Close move popover content after clicking on move button if no error
+      if (!error){
+        popover.close();
       }
+      // Hide the selected row
+      selectedRowNames.map(name=>{
+        const selectedElement = document.querySelector(`ui5-table-row[data-name = "${name}"]`)
+        tableParentElement.removeChild(selectedElement)
+      })
+
+      selectedNodes.map(node=>{
+        if(node.node_type!="FILE"){
+          // remove the moved node from popover menu
+          const nodeIndexInNodes = nodes.indexOf(node)
+          nodes.splice(nodeIndexInNodes,1)
+          // Update tree view
+          const SourceTreeNode = document.querySelector(`ui5-tree-item[id='${node.id}']`)
+          // remove the source node from tree view and append it to destination node in tree view
+          SourceTreeNode.parentNode.removeChild(SourceTreeNode)
+          SourceTreeNode.setAttribute("path", `${$(ParentNode).attr('path') || ""}/${node.name}` )
+          ParentNode.appendChild(SourceTreeNode)
+        }
+      })
+  
     }
     )
   }
 
-  folderSelectorEventHandler(moveButton, fileParentId){
+  folderSelectorEventHandler(moveButton, fileParentId, selectedRowIds){
     const folderSelectorElement = document.getElementById('folder-selector')
     folderSelectorElement.addEventListener("selection-change", function (event){
       const selectedItem = event.detail.selectedItems;
       globalThis.destinationNodeUrl = selectedItem[0].getAttribute("url")
-      globalThis.destinationNodeName = selectedItem[0].textContent
       // making destination id global so as to use in move button event listener
       globalThis.destinationId = selectedItem[0].id
-      if (fileParentId == destinationId || this.sourceId == destinationId){
-        // disable move button if the parent element of source element is selected OR source id == destination id
+      if (fileParentId == destinationId || selectedRowIds.includes(parseInt(destinationId))){
+        // disable move button if the parent element of source element is selected OR destination id is present in 
+        // selected row ids list
         moveButton.setAttribute("disabled",true)
       }
       else{
@@ -160,8 +181,8 @@ export default class MovePopover extends HTMLElement {
     })   
     folderSelectorElement.addEventListener("dblclick", function(event){
       const selectedItemId = event.target.id
-      if (this.sourceId == selectedItemId){
-        // No action if double clicked on the source element
+      if (selectedRowIds.includes(parseInt(destinationId))){
+        // No action if double clicked on the element whose id is same as destination id
         return
       }
       publish("NODE_CHILDREN_REQUEST", {nodeId: selectedItemId, action: "MOVE"})

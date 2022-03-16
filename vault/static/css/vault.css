@@ -192,6 +192,13 @@
     opacity: 1;
   }
 
+  .location-detail{
+    width: 235px; 
+    white-space: nowrap; 
+    overflow:hidden; 
+    text-overflow:ellipsis;
+  }
+
   /* Files View */
   /* button style reset */
   vault-files-view button {

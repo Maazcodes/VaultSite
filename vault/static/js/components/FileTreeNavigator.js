@@ -144,7 +144,7 @@ export default class FileTreeNavigator extends HTMLElement {
     if (error || node.node_type === "FILE") {
       return
     }
-    this.querySelector(`ui5-tree-item[data-url="${node.url}"]`)
+    this.querySelector(`ui5-tree-item[id="${node.id}"]`)
         .setAttribute("text", newName)
   }
 }
