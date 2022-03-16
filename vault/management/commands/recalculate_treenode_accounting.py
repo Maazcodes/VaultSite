@@ -1,5 +1,4 @@
 from itertools import zip_longest
-import time
 from typing import List, Iterable, Tuple, Optional
 
 from django.core.management.base import BaseCommand
@@ -11,23 +10,19 @@ from tqdm import tqdm
 from vault.models import TreeNode
 
 InputRow = Tuple[int, int, str, int, str]
-WalkedRow = Tuple[int, Optional[int], str, int, List[int], str]
+WalkedRow = Tuple[int, Optional[int], str, int, List[int], str, bool]
 CalculatedRow = Tuple[int, int, int, int]
+
+
+TREENODE_TRIGGERS = [
+    "treenode_file_accounting_update_trg",
+]
 
 
 class Command(BaseCommand):
     help = "Recursively recalculates TreeNode size and file_count values"
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--root-id",
-            dest="root_id",
-            type=int,
-            help=(
-                "Root TreeNode to which to constrain recursive recalculation. "
-                "If omitted, all TreeNodes will be recalculated."
-            ),
-        )
         parser.add_argument(
             "--no-dry-run",
             dest="dry_run",
@@ -39,8 +34,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        start = time.perf_counter()
-        root_id = options["root_id"]
         dry_run = options["dry_run"]
 
         # implicitly starts a transaction
@@ -48,24 +41,26 @@ class Command(BaseCommand):
         set_autocommit(False)
 
         with connection.cursor() as cursor:
-            cursor.execute('ALTER TABLE "vault_treenode" DISABLE TRIGGER ALL;')
+            for trigger in TREENODE_TRIGGERS:
+                cursor.execute(
+                    f'ALTER TABLE "vault_treenode" DISABLE TRIGGER {trigger};'
+                )
 
         try:
-            if root_id is not None:
-                qs = TreeNode.objects.filter(pk=root_id)
-            else:
-                qs = TreeNode.objects.all()
+            qs = TreeNode.objects.all()
             num_rows = qs.count()
 
-            with tqdm(total=num_rows) as pbar:
+            with tqdm(total=num_rows, unit="TreeNode") as pbar:
                 rows = qs.order_by("path").values_list(
                     "id", "parent_id", "path", "size", "node_type"
                 )
 
+                last_row_seen = 0
                 for node_id, size, file_count, rows_seen in _calculate_parent_sizes(
                     rows
                 ):
-                    pbar.update(rows_seen)
+                    pbar.update(rows_seen - last_row_seen)
+                    last_row_seen = rows_seen
                     TreeNode.objects.filter(pk=node_id).update(
                         size=size, file_count=file_count
                     )
@@ -78,10 +73,10 @@ class Command(BaseCommand):
                 self.stdout.write("Changes rolled back because this is a dry run.")
         finally:
             with connection.cursor() as cursor:
-                cursor.execute('ALTER TABLE "vault_treenode" ENABLE TRIGGER ALL;')
-
-        end = time.perf_counter()
-        self.stdout.write(f"Elapsed time: {end - start}s")
+                for trigger in TREENODE_TRIGGERS:
+                    cursor.execute(
+                        f'ALTER TABLE "vault_treenode" ENABLE TRIGGER {trigger};'
+                    )
 
 
 def _calculate_parent_sizes(rows: Iterable[InputRow]) -> Iterable[CalculatedRow]:
@@ -101,32 +96,23 @@ def _calculate_parent_sizes(rows: Iterable[InputRow]) -> Iterable[CalculatedRow]
     max_rows_seen = 0
     for rows_seen, walked_row in enumerate(_walk_treenodes(rows), 1):
         max_rows_seen = max(max_rows_seen, rows_seen)
-        (_id, parent_id, _, size, exhausted_parents, node_type) = walked_row
+        (_id, parent_id, _, size, exhausted_parents, node_type, is_empty) = walked_row
 
         if node_type != "FILE":
             # container nodes go on the stack
             size_empty = 0
             file_count_empty = 0
-            parents_stack.append([_id, size_empty, file_count_empty])
-            continue
-
-        if parent_id is None:
-            continue
-
-        # parents atop the stack with non-matching ids indicate empty container
-        # nodes; pop and record them
-        while len(parents_stack) > 0:
-            [top_parent_id, top_parent_size, top_parent_file_count] = parents_stack[-1]
-            if top_parent_id == parent_id:
-                # case: no empty container nodes atop the stack
-                break
-
-            parents_stack.pop()
-            yield (top_parent_id, top_parent_size, top_parent_file_count, rows_seen)
-
-        assert parents_stack[-1][0] == parent_id
-        parents_stack[-1][1] += size  # add cur nodes size to its parent
-        parents_stack[-1][2] += 1  # file count
+            if is_empty:
+                # case: this container node has no children
+                yield (_id, size_empty, file_count_empty, rows_seen)
+            else:
+                parents_stack.append([_id, size_empty, file_count_empty])
+        else:
+            # file nodes increment their parents' size and file_count
+            assert parent_id is not None
+            assert parents_stack[-1][0] == parent_id
+            parents_stack[-1][1] += size  # add cur nodes size to its parent
+            parents_stack[-1][2] += 1  # file count
 
         # foreach parent whose children have all been seen, record their
         # ultimate sizes
@@ -161,6 +147,17 @@ def _get_exhausted_parents(path1: str, path2: Optional[str]) -> List[int]:
     return [int(a) for (a, b) in zip_longest(ids1, ids2) if a and a != b][::-1]
 
 
+def _is_parent_of(path1: str, path2: Optional[str]) -> bool:
+    """Returns ``True`` when path1 is a parent of path2"""
+    if path2 is None:
+        return False
+
+    ids1 = path1.split(".")
+    ids2 = path2.split(".")
+
+    return len(ids2) - len(ids1) == 1 and all(a == b for a, b in zip(ids1, ids2))
+
+
 def _walk_treenodes(rows: Iterable[InputRow]) -> Iterable[WalkedRow]:
     """Iterator which walks *rows*, returning facts about each row. *rows*
     should be an iterable of ``tuple``, with each containing:
@@ -180,11 +177,14 @@ def _walk_treenodes(rows: Iterable[InputRow]) -> Iterable[WalkedRow]:
     * exhausted_parents: ``list`` of ids of parent nodes whose children have
       all been walked
     * node_type
+    * is_empty: True when this is a container node with no children
     """
     _rows = peekable(rows)
     for (_id, parent_id, path, size, node_type) in _rows:
         size = size if size is not None else 0
         next_path = _rows.peek(None)[2] if _rows.peek(None) else None
+        has_children = _is_parent_of(path, next_path)
+        is_empty = node_type != "FILE" and not has_children
         yield (
             _id,
             parent_id,
@@ -192,4 +192,5 @@ def _walk_treenodes(rows: Iterable[InputRow]) -> Iterable[WalkedRow]:
             size,
             _get_exhausted_parents(path, next_path),
             node_type,
+            is_empty,
         )
