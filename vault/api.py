@@ -5,7 +5,9 @@ import os
 from collections import defaultdict
 from functools import partial
 from itertools import chain
-from django.db.models import Max, Q, Sum, Count
+
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import F, Max, Q, Sum, Count, Value
 import fs.errors
 from fs.osfs import OSFS
 from typing import Union
@@ -43,13 +45,12 @@ logger = logging.getLogger(__name__)
 @login_required
 def collections(request):
     org_id = request.user.organization_id
-    collections = models.Collection.objects.filter(organization_id=org_id)
+    collections = models.Collection.objects.filter(organization_id=org_id).values(
+        "id", "name"
+    )
     return JsonResponse(
         {
-            "collections": [
-                {"id": collection.id, "name": collection.name}
-                for collection in collections
-            ]
+            "collections": list(collections),
         }
     )
 
@@ -102,7 +103,11 @@ def collections_stats(request):
     org_id = request.user.organization_id
     org_node_id = request.user.organization.tree_node_id
     if org_node_id:
-        collections = org_collection_sizes(org_node_id)
+        collections = models.Collection.objects.filter(organization_id=org_id).annotate(
+            last_modified=F("tree_node__modified_at"),
+            file_count=Coalesce(F("tree_node__file_count"), 0),
+            size=Coalesce(F("tree_node__size"), 0),
+        )
     else:
         collections = []
     reports = models.Report.objects.filter(
@@ -120,40 +125,15 @@ def collections_stats(request):
         {
             "collections": [
                 {
-                    "id": collection.collection_id,
+                    "id": collection.id,
                     "time": collection.last_modified,
                     "fileCount": collection.file_count,
-                    "totalSize": collection.total_size,
+                    "totalSize": collection.size,
                 }
                 for collection in collections
             ],
             "latestReport": latest_report,
         }
-    )
-
-
-def org_collection_sizes(org_node_id):
-    org_root = str(org_node_id)
-    return models.TreeNode.objects.raw(
-        """
-    select coll.id as collection_id,
-           stats.*
-    from vault_collection coll
-        left join (
-            select colln.*,
-                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
-                   -- subtract 1 from file_count as nodes are own descendants
-                   -- could also filter on node_type to disallow FOLDER
-                   count(descn.id) - 1 as file_count,
-                   max(descn.modified_at) as last_modified
-            from vault_treenode colln, vault_treenode descn
-            where colln.node_type = 'COLLECTION'
-                  and descn.path <@ colln.path
-                  and colln.path <@ Cast(%s as ltree)
-                  and descn.deleted = false
-            group by colln.id
-        ) stats on coll.tree_node_id = stats.id""",
-        [org_root],
     )
 
 
@@ -218,26 +198,24 @@ def reports_files(request, collection_id=None):
 @login_required
 def collections_summary(request):
     org = request.user.organization
-    tree_node_id = str(org.tree_node_id)
-    collection_stats = org_collection_sizes(tree_node_id)
-    collections = models.Collection.objects.filter(organization=org)
+    collection_stats = models.Collection.objects.filter(
+        organization_id=org.id
+    ).annotate(
+        file_count=Coalesce(F("tree_node__file_count"), 0),
+        size=Coalesce(F("tree_node__size"), 0),
+        regions=ArrayAgg(F("target_geolocations__name"), default=Value([])),
+    )
     collection_output = []
-    for collection in collections:
-        stats = None
-        if collection_stats:
-            for possible_stats in collection_stats:
-                if possible_stats.collection_id == collection.pk:
-                    stats = possible_stats
+    for collection in collection_stats:
         collection_output.append(
             {
                 "id": collection.pk,
                 "name": collection.name,
-                "fileCount": stats.file_count if stats else 0,
+                "fileCount": collection.file_count,
                 "regions": {
-                    region: stats.file_count if stats else 0
-                    for region in collection.target_geolocations.values_list(
-                        "name", flat=True
-                    )
+                    region: collection.file_count
+                    for region in collection.regions
+                    if region
                 },
                 "avgReplication": collection.target_replication,
             }
@@ -280,118 +258,6 @@ def report_summary(request, collection_id, report_id):
 @login_required
 def report_files(request, collection_id, report_id):
     return JsonResponse({"files": []})
-    # return JsonResponse({
-    #     "files": [
-    #         {
-    #             "filename": "ARCHIVEIT-16740-ONE_TIME-JOB674475-20180817084026334-00000.warc.gz",
-    #             "checkTime": "2021-05-26T20:42:35.696Z",
-    #             "initialCheckTime": "2021-05-25T06:19:56.176Z",
-    #             "previousCheckTime": "2021-05-25T06:49:35.238Z",
-    #             "size": 22381003,
-    #             "success": True,
-    #             "checksums": [
-    #                 "md5:365fa1c3234a7afc0f2a728df845f0dd",
-    #                 "sha1:b200c07d7cf512bb157a826b2cff0fc9cc9307f6",
-    #                 "sha256:c53b2d161cb37ee21ba166e1ad66aa0811c05d5a6781fa6a3030cd8eb2d1c805"
-    #             ],
-    #             "sources": [
-    #                 {
-    #                     "source": "PBOX",
-    #                     "region": "us-west-1",
-    #                     "type": "prior"
-    #                 },
-    #                 {
-    #                     "source": "AIT",
-    #                     "region": "us-west-2",
-    #                     "type": "prior"
-    #                 },
-    #                 {
-    #                     "source": "PBOX",
-    #                     "region": "us-west-1",
-    #                     "type": "generated",
-    #                     "location": "https://archive.org/serve/ARCHIVEIT-16740-ONE_TIME-JOB674475-20180817-00000/ARCHIVEIT-16740-ONE_TIME-JOB674475-20180817084026334-00000.warc.gz"
-    #                 },
-    #                 {
-    #                     "source": "HDFS",
-    #                     "region": "us-west-2",
-    #                     "type": "generated",
-    #                     "location": "hdfs:///search/ait/10923/arcs/ARCHIVEIT-16740-ONE_TIME-JOB674475-20180817084026334-00000.warc.gz"
-    #                 }
-    #             ]
-    #         },
-    #         {
-    #             "filename": "ARCHIVEIT-16740-ONE_TIME-JOB674475-20180817084026334-00000_warc.wat.gz",
-    #             "checkTime": "2021-05-26T20:42:36.163Z",
-    #             "initialCheckTime": "2021-05-25T06:19:43.400Z",
-    #             "previousCheckTime": "2021-05-25T06:49:33.703Z",
-    #             "size": 3050297,
-    #             "success": False,
-    #             "checksums": [
-    #                 "md5:754ba6eefe7336d812aa1681ac5f05e6",
-    #                 "sha1:61fae3fc51867e15466b8dff4bece42835fc3278",
-    #                 "sha256:65f3d1edfe81df15f591df2d4080379dfc9c71e150983320870095964ab3f705"
-    #             ],
-    #             "sources": [
-    #                 {
-    #                     "source": "PBOX",
-    #                     "region": "us-west-1",
-    #                     "type": "prior"
-    #                 },
-    #                 {
-    #                     "source": "AIT",
-    #                     "region": "us-west-2",
-    #                     "type": "prior"
-    #                 },
-    #                 {
-    #                     "source": "HDFS",
-    #                     "region": "us-west-2",
-    #                     "type": "prior"
-    #                 }
-    #             ],
-    #             "missingLocations": [
-    #                 "HDFS",
-    #                 "archive.org"
-    #             ]
-    #         },
-    #         {
-    #             "filename": "ARCHIVEIT-16740-ONE_TIME-JOB674476-20180817084425211-00000.warc.gz",
-    #             "checkTime": "2021-05-26T20:42:22.814Z",
-    #             "initialCheckTime": "2021-05-25T06:19:33.990Z",
-    #             "previousCheckTime": "2021-05-25T06:49:35.124Z",
-    #             "size": 6866346,
-    #             "success": True,
-    #             "checksums": [
-    #                 "md5:f7334b620ebb46442d14875452bf3d80",
-    #                 "sha1:818a693ad93ec43c65ca23b0ec294cf5bdf5e8aa",
-    #                 "sha256:2052e8ce69faf7b5463b8f80df3965348542af6c681357c23d786cfd8d3aaaf1"
-    #             ],
-    #             "sources": [
-    #                 {
-    #                     "source": "PBOX",
-    #                     "region": "us-west-1",
-    #                     "type": "prior"
-    #                 },
-    #                 {
-    #                     "source": "AIT",
-    #                     "region": "us-west-2",
-    #                     "type": "prior"
-    #                 },
-    #                 {
-    #                     "source": "PBOX",
-    #                     "region": "us-west-1",
-    #                     "type": "generated",
-    #                     "location": "https://archive.org/serve/ARCHIVEIT-16740-ONE_TIME-JOB674476-20180817-00000/ARCHIVEIT-16740-ONE_TIME-JOB674476-20180817084425211-00000.warc.gz"
-    #                 },
-    #                 {
-    #                     "source": "HDFS",
-    #                     "region": "us-west-2",
-    #                     "type": "generated",
-    #                     "location": "hdfs:///search/ait/10923/arcs/ARCHIVEIT-16740-ONE_TIME-JOB674476-20180817084425211-00000.warc.gz"
-    #                 }
-    #             ]
-    #         }
-    #     ]
-    # })
 
 
 def _chunk_out_filename(file_identifier: str, chunk_number: int) -> str:
