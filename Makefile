@@ -105,6 +105,10 @@ ifndef HTTP_REMOTE_USER
 endif
 	venv/bin/python ./vault/utilities/process_chunked_files.py & venv/bin/python manage.py runserver
 
+.PHONY: md-toc
+md-toc:
+	npx markdown-toc -i README.md
+
 .PHONY: clean
 clean:
 	rm -rf $(DPS_DIR)
