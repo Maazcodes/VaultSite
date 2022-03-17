@@ -125,7 +125,8 @@ Here we describe the process we use to define, deploy, and patch releases.
    `releases/YYYY-MM-DD` describing the current date. This branch contains the
    code that will ultimately ship to production.
 4. Deploy `releases/YYYY-MM-DD` to the QA environment. Then ask QA users to begin
-   testing the software to search for bugs.
+   testing the software to search for bugs. See the note below about disabling
+   continuous delivery during pre-release QA.
 5. Bugs discovered on the release branch are addressed as follows:
    1. A branch is created based on `releases/YYYY-MM-DD`, in which the bug is
       fixed.
@@ -142,3 +143,10 @@ Here we describe the process we use to define, deploy, and patch releases.
    QA. Regarding "severity": arguably only blocker bugs should be deployed as
    hotfixes; bugs of lesser severity should be fixed on `master` and deployed
    on the next scheduled production release.
+
+:notebook_with_decorative_cover: **Note**: During pre-release QA it might be
+desirable to disable automatic QA deployments via CD in order to keep the QA
+environment pinned to the code present on `releases/YYYY-MM-DD`. This can be
+accomplished by setting `ENABLE_CD` to `false` in the Gitlab CI variables for
+the vault-site project: https://git.archive.org/dps/vault-site/-/settings/ci_cd
+. To enable automatic QA deployments, `ENABLE_CD` **must** be set to `true`.
