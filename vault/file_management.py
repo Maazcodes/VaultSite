@@ -1,8 +1,14 @@
-import sys
-import os
+import hashlib
 import logging
-import unicodedata
+import os
 import re
+import unicodedata
+from pathlib import Path
+
+from sanitize_filename import sanitize
+from django.conf import settings
+import filetype
+
 from vault import models
 
 # from sentry_sdk import capture_exception, capture_message
@@ -34,52 +40,51 @@ def create_or_update_file(request, attribs):
         pass
 
 
-def generateHashes(filename):
-    hashes = dict()
-    import hashlib
+def generate_hashes(filename):
+    hashes = {}
 
     md5_hash = hashlib.md5()
     sha1_hash = hashlib.sha1()
     sha256_hash = hashlib.sha256()
-    with open(filename, "rb") as f:
+    with open(filename, "rb") as file:
         # Read and update hash string value in blocks of 4K
-        for byte_block in iter(lambda: f.read(4096), b""):
+        for byte_block in iter(lambda: file.read(4096), b""):
             md5_hash.update(byte_block)
             sha1_hash.update(byte_block)
             sha256_hash.update(byte_block)
-    f.close()
+    file.close()
     hashes["md5"] = md5_hash.hexdigest()
     hashes["sha1"] = sha1_hash.hexdigest()
     hashes["sha256"] = sha256_hash.hexdigest()
     return hashes
 
 
-def clean_spaces(s):
-    s = s.replace("\r", "")
-    s = s.replace("\t", " ")
-    s = s.replace("\f", " ")
-    return s
+def clean_spaces(in_str):
+    in_str = in_str.replace("\r", "")
+    in_str = in_str.replace("\t", " ")
+    in_str = in_str.replace("\f", " ")
+    return in_str
 
 
-def unicode_to_ascii(u):
-    a = unicodedata.normalize("NFD", u)
-    a.encode("ascii", "ignore").decode("ascii")
-    return a
+def unicode_to_ascii(in_str):
+    out_str = unicodedata.normalize("NFD", in_str)
+    out_str.encode("ascii", "ignore").decode("ascii")
+    return out_str
 
 
-def posix_string(s):
-    p = clean_spaces(s)
-    p = unicode_to_ascii(p)
-    p = re.sub("[^a-zA-Z0-9_\-\.]", "_", p)
-    return p
+def posix_string(in_str):
+    out_str = clean_spaces(in_str)
+    out_str = unicode_to_ascii(out_str)
+    out_str = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", out_str)
+    return out_str
 
 
-def posix_path(s):
-    p = clean_spaces(s)
-    p = unicode_to_ascii(p)
-    p = re.sub("[^a-zA-Z0-9_\-\/\.]", "_", p)
-    p = os.path.normpath(p)
-    return p
+def posix_path(in_str):
+    out_str = clean_spaces(in_str)
+    out_str = unicode_to_ascii(out_str)
+    out_str = re.sub(r"[^a-zA-Z0-9_\-\/\.]", "_", out_str)
+    out_str = os.path.normpath(out_str)
+    return out_str
 
 
 def hash_to_idx_list(shasum):
@@ -93,9 +98,6 @@ def hash_to_idx_list(shasum):
 
 
 def calculate_sha_file_path(fname, shasum):
-    from pathlib import Path
-    from django.conf import settings
-
     class CalculateShaFilePathError(Exception):
         pass
 
@@ -116,35 +118,34 @@ def calculate_sha_file_path(fname, shasum):
 
 
 def metavirtual_linker(fname):
-    import filetype
-    from pathlib import Path
-
     class MetaVirtualLinkerError(Exception):
         pass
 
     try:
-        f = models.File.objects.get(staging_filename=fname)
-    except models.File.DoesNotExist:
+        file = models.File.objects.get(staging_filename=fname)
+    except models.File.DoesNotExist as e:
         err = f"File not found in database: {fname}"
         logger.error(err)
-        raise MetaVirtualLinkerError(err)
-    except models.File.MultipleObjectsReturned:
+        raise MetaVirtualLinkerError(err) from e
+    except models.File.MultipleObjectsReturned as e:
         err = f"Multiple db rows matched: {fname}"
         logger.error(err)
-        raise MetaVirtualLinkerError(err)
-    except Exception as e:
-        logger.error(f"While handling {fname} : {e}")
+        raise MetaVirtualLinkerError(err) from e
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("While handling %s : %s", fname, e)
 
-    shasum = f.sha256_sum
+    shasum = file.sha256_sum
     shafile = calculate_sha_file_path(fname, shasum)
 
     if os.path.isfile(shafile):
         logger.info(
-            f"metavirtual_linker: linkage already exists - DEDUP! {fname} => {shafile}"
+            "metavirtual_linker: linkage already exists - DEDUP! %s => %s",
+            fname,
+            shafile,
         )
     else:
         # Here is where we mv fname to shafile and ???
-        logger.info(f"metavirtual_linker: linkage needed - {fname} => {shafile}")
+        logger.info("metavirtual_linker: linkage needed - %s => %s", fname, shafile)
 
 
 def db_file_update(fname, bakname):
@@ -152,19 +153,19 @@ def db_file_update(fname, bakname):
         pass
 
     try:
-        f = models.File.objects.get(staging_filename=fname)
-        f.staging_filename = bakname
-        f.save()
-        logger.info(f"staging_filename updated from {fname} to {bakname}")
+        file = models.File.objects.get(staging_filename=fname)
+        file.staging_filename = bakname
+        file.save()
+        logger.info("staging_filename updated from %s to %s", fname, bakname)
     except models.File.DoesNotExist:
         pass
-    except models.File.MultipleObjectsReturned:
+    except models.File.MultipleObjectsReturned as e:
         err = f"db_file_update: multiple db rows matched {fname}"
         logger.error(err)
-        raise DBFileUpdateError(err)
-    except Exception as e:
+        raise DBFileUpdateError(err) from e
+    except Exception as e:  # pylint: disable=broad-except
         # capture_exception(e)
-        logger.error(f"While handling {bakname} : {e}")
+        logger.error("While handling %s : %s", bakname, e)
 
 
 def file_backup(fname):
@@ -179,7 +180,7 @@ def file_backup(fname):
             i += 1
         os.rename(fname, bakname)
         db_file_update(fname, bakname)
-        logger.info(f"moved {fname} to {bakname}")
+        logger.info("moved %s to %s", fname, bakname)
     elif os.path.isfile(fname + ".~1~"):
         err = f"File {fname} does NOT exist, BUT bakfile DOES!"
         logger.error(err)
@@ -189,11 +190,6 @@ def file_backup(fname):
 
 
 def move_temp_file(request, attribs):
-    import filetype
-    from pathlib import Path
-    from sanitize_filename import sanitize
-    from django.conf import settings
-
     root = settings.MEDIA_ROOT
 
     temp_file = attribs["tempfile"]

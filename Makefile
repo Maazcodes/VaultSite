@@ -80,7 +80,6 @@ ifeq ($(ENV),LOCAL)
 	venv/bin/pylint vault vault_site
 else ifeq ($(ENV),CI)
 	venv/bin/pylint vault vault_site \
-		--exit-zero	\
 		--output-format=pylint_gitlab.GitlabCodeClimateReporter \
 		--reports=y > $(PYLINT_REPORT)
 endif

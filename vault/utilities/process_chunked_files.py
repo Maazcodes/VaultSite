@@ -1,3 +1,5 @@
+# pylint: disable=all
+
 # This process handles the files immediately after upload once they are marked as uploaded.
 # File chunks are stitched into a single file and piped through hash functions.
 # The result is then moved into place and the db row updated.

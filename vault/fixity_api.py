@@ -153,6 +153,7 @@ def run_collection_id(request, org_id, collection_id, token):
     return run_collection(request, org, collection, token)
 
 
+# pylint: disable=unused-argument
 @csrf_exempt
 @_api_key_required
 def postback(request, org_id, collection_id, token):

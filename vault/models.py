@@ -1,4 +1,5 @@
-import datetime
+# pylint: disable=too-few-public-methods
+
 import logging
 import re
 import typing
@@ -31,8 +32,6 @@ logger = logging.getLogger(__name__)
 
 class TreeNodeException(Exception):
     """Raised when an invalid TreeNode operation is requested"""
-
-    pass
 
 
 class ReplicationFactor(IntegerChoices):
@@ -79,7 +78,8 @@ class Organization(models.Model):
     pbox_collection = models.CharField(max_length=255, blank=True, null=True)
 
     def filepath(self):
-        return "/files/{org}/".format(org=re.sub("[^a-zA-Z0-9_\-\/\.]", "_", self.name))
+        org = re.sub(r"[^a-zA-Z0-9_\-\/\.]", "_", self.name)
+        return f"/files/{org}/"
 
     def __str__(self):
         return self.name
@@ -109,10 +109,8 @@ class Collection(models.Model):
     )
 
     def filepath(self):
-        return "{org_filepath}{col}/".format(
-            org_filepath=self.organization.filepath(),
-            col=re.sub("[^a-zA-Z0-9_\-\/\.]", "_", self.name),
-        )
+        collection_name = re.sub(r"[^a-zA-Z0-9_\-\/\.]", "_", self.name)
+        return f"{self.organization.filepath()}{collection_name}/"
 
     def last_fixity_report(self):
         return (
@@ -246,7 +244,8 @@ class Deposit(models.Model):
     replicated_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        return f"Deposit-{self.organization_id}-{self.collection_id}-{self.registered_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        reg_dt = self.registered_at.strftime("%Y-%m-%d %H:%M:%S")
+        return f"Deposit-{self.organization_id}-{self.collection_id}-{reg_dt}"
 
     def make_deposit_report(self):
         deposit_stats = TreeNode.objects.filter(depositfile__deposit=self).aggregate(
@@ -279,28 +278,23 @@ class Deposit(models.Model):
     def send_deposit_report_email(self):
         deposit_report_link = f"https://{settings.CURRENT_HOST}/vault/deposit/{self.id}"
         collections_link = f"https://{settings.CURRENT_HOST}/vault/collections"
-        message = """
-Hello {}
+        message = f"""
+Hello {self.user.username}
 
-Your deposit to {} is now complete:
-View deposit report {}
-View all collections {}
+Your deposit to {self.collection.name} is now complete:
+View deposit report {deposit_report_link}
+View all collections {collections_link}
 
 Please feel free to contact our product team at vault@archive.org if you are experiencing any issues.
 
 All the best,
 
 Vault team
-        """.format(
-            self.user.username,
-            self.collection.name,
-            deposit_report_link,
-            collections_link,
-        )
+        """
         send_mail(
             "Vault - Deposit Complete",
             message,
-            f"vault@archive.org",
+            "vault@archive.org",
             [self.user.email],
             fail_silently=False,
         )
@@ -537,7 +531,10 @@ class TreeNode(models.Model):
 
 
 @receiver(post_save, sender=Organization)
-def create_organization_handler(sender, **kwargs):
+def create_organization_handler(
+    sender,  # pylint: disable=unused-argument
+    **kwargs,
+):
     """Automatically create a TreeNode for new Organizations if necessary."""
     if kwargs["created"]:
         org = kwargs["instance"]
@@ -550,7 +547,10 @@ def create_organization_handler(sender, **kwargs):
 
 
 @receiver(post_save, sender=Collection)
-def create_collection_handler(sender, **kwargs):
+def create_collection_handler(
+    sender,  # pylint: disable=unused-argument
+    **kwargs,
+):
     """Automatically create corresponding ORGANIZATION and COLLECTION-type TreeNodes
     for new Collections if necessary."""
     if kwargs["created"]:
@@ -575,7 +575,10 @@ def create_collection_handler(sender, **kwargs):
 
 
 @receiver(post_save, sender=Collection)
-def collection_update_postsave_handler(sender, **kwargs):
+def collection_update_postsave_handler(
+    sender,  # pylint: disable=unused-argument
+    **kwargs,
+):
     """Propagate name changes to the associated TreeNode."""
     if kwargs["created"]:
         return
@@ -603,7 +606,10 @@ TREE_NODE_TYPE_MODEL_MAP = {
 
 
 @receiver(pre_save, sender=TreeNode)
-def treenode_presave_handler(sender, **kwargs):
+def treenode_presave_handler(
+    sender,  # pylint: disable=unused-argument
+    **kwargs,
+):
     """Enforce that the TreeNode type is a valid child of the specified parent and that
     the name value for ORGANIZATION and COLLECTION-type nodes does not exceed the max
     length of the name field on the associated model."""
@@ -632,7 +638,10 @@ def treenode_presave_handler(sender, **kwargs):
 
 
 @receiver(post_save, sender=TreeNode)
-def treenode_update_postsave_handler(sender, **kwargs):
+def treenode_update_postsave_handler(
+    sender,  # pylint: disable=unused-argument
+    **kwargs,
+):
     """Propagate name changes for COLLECTION-type nodes to the associated Collection."""
     if kwargs["created"]:
         return

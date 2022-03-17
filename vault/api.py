@@ -1,19 +1,15 @@
-from copyreg import constructor
 import json
 import logging
 import os
 from collections import defaultdict
 from functools import partial
 from itertools import chain
-
-from django.contrib.postgres.aggregates import ArrayAgg
-from django.db.models import F, Max, Q, Sum, Count, Value
-import fs.errors
-from fs.osfs import OSFS
 from typing import Union
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Max
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import F, Q, Sum, Count, Value
 from django.db.models.functions import Coalesce
 from django.http import (
     Http404,
@@ -25,8 +21,8 @@ from django.http import (
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
-
+import fs.errors
+from fs.osfs import OSFS
 
 from vault import models
 from vault.filters import ExtendedJSONEncoder
@@ -45,12 +41,12 @@ logger = logging.getLogger(__name__)
 @login_required
 def collections(request):
     org_id = request.user.organization_id
-    collections = models.Collection.objects.filter(organization_id=org_id).values(
+    _collections = models.Collection.objects.filter(organization_id=org_id).values(
         "id", "name"
     )
     return JsonResponse(
         {
-            "collections": list(collections),
+            "collections": list(_collections),
         }
     )
 
@@ -58,16 +54,16 @@ def collections(request):
 @login_required
 def reports(request):
     org_id = request.user.organization_id
-    reports = models.Report.objects.filter(collection__organization_id=org_id)
+    _reports = models.Report.objects.filter(collection__organization_id=org_id)
     deposits = models.Deposit.objects.filter(organization_id=org_id)
 
     def event_time(event):
         if isinstance(event, models.Deposit):
             return event.registered_at
-        else:
-            return event.started_at
 
-    events = sorted(chain(deposits, reports), key=event_time, reverse=True)
+        return event.started_at
+
+    events = sorted(chain(deposits, _reports), key=event_time, reverse=True)
     formatted_events = []
     for event in events:
         if isinstance(event, models.Deposit):
@@ -103,21 +99,23 @@ def collections_stats(request):
     org_id = request.user.organization_id
     org_node_id = request.user.organization.tree_node_id
     if org_node_id:
-        collections = models.Collection.objects.filter(organization_id=org_id).annotate(
+        _collections = models.Collection.objects.filter(
+            organization_id=org_id
+        ).annotate(
             last_modified=F("tree_node__modified_at"),
             file_count=Coalesce(F("tree_node__file_count"), 0),
             size=Coalesce(F("tree_node__size"), 0),
         )
     else:
-        collections = []
-    reports = models.Report.objects.filter(
+        _collections = []
+    _reports = models.Report.objects.filter(
         collection__organization=org_id, report_type=models.Report.ReportType.FIXITY
     ).order_by("-ended_at")
     latest_report = (
-        reports.values(
+        _reports.values(
             "pk", "file_count", "total_size", "error_count", "ended_at"
         ).first()
-        if len(reports) > 0
+        if len(_reports) > 0
         else {}
     )
 
@@ -130,7 +128,7 @@ def collections_stats(request):
                     "fileCount": collection.file_count,
                     "totalSize": collection.size,
                 }
-                for collection in collections
+                for collection in _collections
             ],
             "latestReport": latest_report,
         }
@@ -144,12 +142,12 @@ def reports_files(request, collection_id=None):
         collection = get_object_or_404(
             models.Collection, pk=collection_id, organization_id=org_id
         )
-        reports = models.Report.objects.filter(collection=collection)
+        _reports = models.Report.objects.filter(collection=collection)
         deposits = models.Deposit.objects.filter(collection=collection).annotate(
             file_count=Coalesce(Count("files"), 0),
         )
     else:
-        reports = models.Report.objects.filter(collection__organization_id=org_id)
+        _reports = models.Report.objects.filter(collection__organization_id=org_id)
         deposits = models.Deposit.objects.filter(organization_id=org_id).annotate(
             file_count=Coalesce(Count("files"), 0),
         )
@@ -157,10 +155,10 @@ def reports_files(request, collection_id=None):
     def event_time(event):
         if isinstance(event, models.Deposit):
             return event.registered_at
-        else:
-            return event.started_at
 
-    events = sorted(chain(deposits, reports), key=event_time, reverse=False)
+        return event.started_at
+
+    events = sorted(chain(deposits, _reports), key=event_time, reverse=False)
 
     formatted_events = []
     for event in events:
@@ -257,6 +255,7 @@ def report_summary(request, collection_id, report_id):
 
 @login_required
 def report_files(request, collection_id, report_id):
+    # pylint: disable=unused-argument
     return JsonResponse({"files": []})
 
 
@@ -318,24 +317,32 @@ def register_deposit(request):
     )
 
 
-def check_file_in_db(file_path_dict, node, full_path_dict, list_of_path):
-    """To check if the file exists in database. If it exists, append and show it to the user."""
+def _check_file_in_db(file_path_dict, node, full_path_dict, list_of_path):
+    """To check if the file exists in database. If it exists, append and show
+    it to the user.
+    """
+    # TODO (mwilson): this function should be rewritten to eliminate doing ORM
+    # queries in a loop
     try:
         for file in file_path_dict[node]:
-
             file_match = models.TreeNode.objects.filter(
                 name=file, parent=int(full_path_dict[node][1])
             ).first()
 
             if file_match:
                 list_of_path.append(node + file)
-    except:
+    except:  # pylint: disable=bare-except
         file_path_dict[node] = []
 
 
 @csrf_exempt
 @login_required
 def warning_deposit(request):
+    # pylint: disable=too-many-statements,too-many-locals,too-many-branches
+    # TODO (mwilson): this view should be refactored to reduce complexity and
+    # length. Suggestions: move db behavior into models (and add tests);
+    # introduce private functions to do some of the work (and test them).
+
     try:
         body = json.loads(request.body)
     except (AttributeError, TypeError, json.JSONDecodeError):
@@ -382,15 +389,15 @@ def warning_deposit(request):
         )
     )
 
-    allPathsList = []
+    all_paths_list = []
     for path in unique_path_list:
         paths_without_file = path.split("/")[:-1]
         prev_path_element = ""
         for current_path_element in paths_without_file:
-            allPathsList.append(prev_path_element + current_path_element + "/")
+            all_paths_list.append(prev_path_element + current_path_element + "/")
             prev_path_element += current_path_element + "/"
 
-    sorted_path_list = sorted(set(allPathsList))
+    sorted_path_list = sorted(set(all_paths_list))
 
     # Making all the values of paths as False initially in full_path_dict
     full_path_dict = {x: False for x in sorted_path_list}
@@ -401,7 +408,7 @@ def warning_deposit(request):
         file_name = rel_path.split("/")[-1]
         parent_relative_path = "/".join(rel_path.split("/")[:-1]) + "/"
 
-        if not parent_relative_path in file_path_dict:
+        if parent_relative_path not in file_path_dict:
             # Assigning empty list to all keys initially
             file_path_dict[parent_relative_path] = []
 
@@ -429,7 +436,7 @@ def warning_deposit(request):
             if match_node:
                 stack_list.append(node)
                 full_path_dict[node] = [True, match_node.id]
-                check_file_in_db(file_path_dict, node, full_path_dict, list_of_path)
+                _check_file_in_db(file_path_dict, node, full_path_dict, list_of_path)
         else:
             while len(stack_list) > 0:
                 if node.startswith(stack_list[-1]):
@@ -447,17 +454,18 @@ def warning_deposit(request):
                             node
                         )  # to get the parent element in next iteration
 
-                        check_file_in_db(
+                        _check_file_in_db(
                             file_path_dict, node, full_path_dict, list_of_path
                         )
                         break
-                    else:
-                        full_path_dict[node] = [False]
-                        break
-                else:
-                    # if the last element of path does not match with the last element of stack_list, remove the last element
-                    # And keep on removing until it matches with the one in stack_list
-                    stack_list.pop()
+
+                    full_path_dict[node] = [False]
+                    break
+
+                # if the last element of path does not match with the last
+                # element of stack_list, remove the last element And keep on
+                # removing until it matches with the one in stack_list
+                stack_list.pop()
 
     return JsonResponse(
         {
@@ -486,16 +494,19 @@ def flow_chunk(request):
         form = FlowChunkGetForm(request.GET)
     else:
         form = FlowChunkPostForm(request.POST, request.FILES)
+
     if not form.is_valid():
         return JsonResponse(status=400, data=form.errors)
+
     # auth - check the org matches the chunk deposit
     chunk = form.flow_chunk()
-    org_id = request.user.organization_id
     deposit = get_object_or_404(
-        models.Deposit, pk=chunk.deposit_id, organization_id=org_id
+        models.Deposit,
+        pk=chunk.deposit_id,
+        organization_id=request.user.organization_id,
     )
 
-    org_tmp_path = str(org_id)
+    org_tmp_path = str(request.user.organization_id)
     org_chunk_tmp_path = os.path.join(org_tmp_path, "chunks")
     chunk_filename = _chunk_filename(chunk.file_identifier, chunk.number)
     chunk_out_filename = _chunk_out_filename(chunk.file_identifier, chunk.number)
@@ -510,11 +521,11 @@ def flow_chunk(request):
 
     if request.method == "POST":
         # Save the chunk to the org's tmp chunks dir
-        logger.info(f"saving chunk to tmp: {chunk_filename}")
+        logger.info("saving chunk to tmp: %s", chunk_filename)
         with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
             with tmp_fs.makedirs(org_chunk_tmp_path, recreate=True) as org_fs:
                 if org_fs.exists(chunk_filename) or org_fs.exists(chunk_out_filename):
-                    logger.warning(f"chunk already exists, skipping: {chunk_filename}")
+                    logger.warning("chunk already exists, skipping: %s", chunk_filename)
                     return HttpResponse()
                 chunk_out = org_fs.openbin(chunk_out_filename, "a")
                 for chunk_bytes in chunk.file.chunks():
@@ -525,7 +536,7 @@ def flow_chunk(request):
                 org_fs.move(chunk_out_filename, chunk_filename, overwrite=True)
 
     if all_chunks_uploaded(chunk, org_chunk_tmp_path):
-        logger.info(f"all chunks saved for {chunk.file_identifier}")
+        logger.info("all chunks saved for %s", chunk.file_identifier)
         deposit_file = get_object_or_404(
             models.DepositFile,
             deposit=deposit,
@@ -554,7 +565,7 @@ def all_chunks_uploaded(chunk, org_chunk_tmp_path) -> bool:
                 return False
         if not total_saved_size == chunk.file_total_size:
             logger.warning(
-                f"file has all chunks but wrong total size: {chunk.file_identifier}"
+                "file has all chunks but wrong total size: %s", chunk.file_identifier
             )
             raise DepositException
 
@@ -626,7 +637,7 @@ def get_events(request, collection_id):
         models.Collection, id=collection_id, organization=user_org
     )
     collection_node_id = collection_node.id
-    reports = models.Report.objects.filter(collection=collection_node_id)
+    _reports = models.Report.objects.filter(collection=collection_node_id)
     deposits = models.Deposit.objects.filter(collection=collection_node).annotate(
         file_count=Count("files"),
         total_size=Coalesce(Sum("files__size"), 0),
@@ -636,13 +647,13 @@ def get_events(request, collection_id):
     def extract_event_sort_key(event: Union[models.Deposit, models.Report]):
         if isinstance(event, models.Deposit):
             return event.registered_at
-        else:
-            return event.started_at
+
+        return event.started_at
 
     formatted_events = []
     deposit_events = []
     fixity_events = []
-    events = sorted(chain(deposits, reports), key=extract_event_sort_key, reverse=True)
+    events = sorted(chain(deposits, _reports), key=extract_event_sort_key, reverse=True)
     for event in events:
         if isinstance(event, models.Deposit):
             deposit_events.append(

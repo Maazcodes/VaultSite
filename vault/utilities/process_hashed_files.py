@@ -1,3 +1,5 @@
+# pylint: disable=all
+
 # This process handles merged/hashed deposit files.
 # We will create TreeNode Entries and then shuffle file into its final resting place
 

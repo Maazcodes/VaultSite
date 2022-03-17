@@ -14,14 +14,16 @@ class ExtendedJSONEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, Model):
             return model_to_dict(o)
-        elif isinstance(o, QuerySet):
+
+        if isinstance(o, QuerySet):
             # Return a QuerySet as a list of dicts.
             return list(o.values())
+
         if isinstance(o, datetime):
             # Encode datetimes as an ISO-8601 string.
             return o.isoformat()
-        else:
-            return super().default(o)
+
+        return super().default(o)
 
 
 tojson2 = ExtendedJSONEncoder(separators=(",", ":")).encode

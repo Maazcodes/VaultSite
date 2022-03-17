@@ -45,7 +45,7 @@ import yaml
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-with open(os.environ.get("AIT_CONF", "/etc/vault.yml")) as f:
+with open(os.environ.get("AIT_CONF", "/etc/vault.yml"), encoding="utf-8") as f:
     conf = yaml.safe_load(f)
 
 MEDIA_ROOT = Path(conf.get("MEDIA_ROOT", "/opt/DPS/files/"))
@@ -247,8 +247,8 @@ def traces_sampler(sampling_context):
     path = env.get("PATH_INFO")
     if path and path in SAMPLED_PATHS:
         return 0.001
-    else:
-        return 0.1
+
+    return 0.1
 
 
 sentry_sdk.init(

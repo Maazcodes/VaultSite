@@ -14,6 +14,9 @@ Vault digital preservation service.
 - [Dependency Management](#dependency-management)
   * [Adding new dependencies](#adding-new-dependencies)
 - [Deployment](#deployment)
+- [Code Quality](#code-quality)
+  * [Black -- opinionated formatting](#black----opinionated-formatting)
+  * [Pylint -- linting and static analysis](#pylint----linting-and-static-analysis)
 - [Releases](#releases)
 
 <!-- tocstop -->
@@ -99,6 +102,17 @@ pwd
 ansible-playbook --ask-vault-password -i qa setup_vault_site.yml --extra-vars git_ref=eec824149cc850e094dd92921e4af0f8f13ee380
 # ...
 ```
+
+## Code Quality
+### Black -- opinionated formatting
+* `make ck-format` / `make format`
+* https://github.com/psf/black
+
+### Pylint -- linting and static analysis
+* `make lint`
+* https://pylint.org/
+* [Pylint message descriptions](https://pycodequ.al/docs/pylint-messages.html)
+* [Ignoring issues](https://pycodequ.al/docs/ignore-issues.html)
 
 ## Releases
 Here we describe the process we use to define, deploy, and patch releases.

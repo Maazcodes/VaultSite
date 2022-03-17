@@ -21,9 +21,17 @@ good-names=i,
            ex,
            Run,
            _,
-           rf
+           rf,
+           pk,
+
+# NOTE (mwilson Tue 15 Mar 2022): the `duplicate-code` message should be
+# re-enabled when process_{chunked,hashed}_files.py are folded into the
+# "storage manager".
 
 [MESSAGES CONTROL]
 disable=missing-module-docstring,
         missing-function-docstring,
-        missing-class-docstring
+        missing-class-docstring,
+        duplicate-code,
+        fixme,
+

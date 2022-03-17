@@ -1,3 +1,5 @@
+# pylint: disable=too-many-ancestors
+
 from urllib import parse
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -237,7 +239,7 @@ class TreeNodeSerializer(VaultHyperlinkedModelSerializer):
         read_only_fields = ["content_url"]
 
     def to_representation(self, instance):
-        representation = super(TreeNodeSerializer, self).to_representation(instance)
+        representation = super().to_representation(instance)
         representation["uploaded_at"] = (
             instance.uploaded_at.strftime(DATE_TIME_FORMAT)
             if instance.uploaded_at
@@ -331,7 +333,7 @@ class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMix
     def normalize_hyperlinkedrelatedfield_url(url):
         """Return a HyperlinkedRelatedField URL as a app-root relative path.
         Adapted from: https://github.com/encode/django-rest-framework/blob/02eeb6fa003b5cbe3851ac18392f129d31a1a6bd/rest_framework/relations.py#L343-L355
-        """
+        """  # pylint: disable=line-too-long
         try:
             http_prefix = url.startswith(("http:", "https:"))
         except AttributeError:
@@ -352,6 +354,8 @@ class VaultReadOnlyModelViewSet(GenericViewSet, ListModelMixin, RetrieveModelMix
         FilterSet.Meta.user_queryset_filter function. DoesNotExist will be raised
         if user_queryset_filter prevents the get.
         """
+        # pylint: disable=no-member
+
         # Normalize the URL to an app-root relative path.
         url = self.normalize_hyperlinkedrelatedfield_url(url)
         if url is None:
@@ -434,6 +438,8 @@ class VaultFilterSet(FilterSet):
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
+        # pylint: disable=no-member
+
         # Add this to the class model => user_queryset_filter map.
         VaultFilterSet.model_user_queryset_filter_map[
             cls.Meta.model
@@ -450,6 +456,8 @@ class VaultFilterSet(FilterSet):
         """Override FilterSet.qs to apply any defined user_queryset_filter to the
         queryset.
         """
+        # pylint: disable=no-member
+
         queryset = super().qs
         user_queryset_filter = self.__class__.Meta.user_queryset_filter
         if user_queryset_filter is None:
@@ -461,6 +469,8 @@ class VaultFilterSet(FilterSet):
         """Auto-generate a django-filter filterset_fields spec that
         includes extra lookup expression params based on the field type.
         """
+        # pylint: disable=no-member
+
         # Get any defined Meta.fields value.
         fields = getattr(cls.Meta, "fields", ())
 
@@ -512,11 +522,11 @@ class VaultFilterSet(FilterSet):
         defined on the corresponding model's VaultFilterSet subclass.
         """
 
-        def f(request):
+        def func(request):
             user_queryset_filter = cls.model_user_queryset_filter_map[model]
             return user_queryset_filter(request.user, model.objects.all())
 
-        return f
+        return func
 
     @classmethod
     def get_filter_overrides(cls):
@@ -529,8 +539,8 @@ class VaultFilterSet(FilterSet):
           - https://django-filter.readthedocs.io/en/stable/ref/filterset.html?highlight=filter_override#filter-overrides
           - https://django-filter.readthedocs.io/en/stable/ref/filters.html?highlight=modelchoicefilter#modelchoicefilter
           - https://github.com/carltongibson/django-filter/blob/3635b2b67c110627e74404603330583df0000a44/django_filters/filterset.py#L149-L156
-        """
-        OVERRIDE_FILTER_CLASSES = (ModelChoiceFilter, ModelMultipleChoiceFilter)
+        """  # pylint: disable=line-too-long
+        override_filter_classes = (ModelChoiceFilter, ModelMultipleChoiceFilter)
         return {
             field_class: {
                 "filter_class": obj["filter_class"],
@@ -541,7 +551,7 @@ class VaultFilterSet(FilterSet):
                 },
             }
             for field_class, obj in filterset.FILTER_FOR_DBFIELD_DEFAULTS.items()
-            if obj["filter_class"] in OVERRIDE_FILTER_CLASSES
+            if obj["filter_class"] in override_filter_classes
         }
 
 

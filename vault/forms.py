@@ -1,3 +1,5 @@
+# pylint: disable=too-many-instance-attributes
+
 from dataclasses import dataclass
 
 from django.core.files import File

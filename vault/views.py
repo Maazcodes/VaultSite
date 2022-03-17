@@ -14,6 +14,7 @@ from django.db.models import Max, Q, Sum, Count
 from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -22,7 +23,7 @@ import requests
 
 from vault import forms
 from vault import models
-from vault.file_management import generateHashes, move_temp_file
+from vault.file_management import generate_hashes, move_temp_file
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +45,8 @@ def create_collection(request):
         org = request.user.organization
         name = request.POST.get("name")
         if org:
-            collection = models.Collection.objects.filter(organization=org, name=name)
-            if collection:
+            _collection = models.Collection.objects.filter(organization=org, name=name)
+            if _collection:
                 response["code"] = 0
                 response["message"] = (
                     "Collection with name '" + name + "' already exists."
@@ -81,64 +82,66 @@ def collections(request):
             new_collection.target_geolocations.set(org.plan.default_geolocations.all())
             new_collection.save()
             return redirect("collections")
-        else:
-            return redirect("dashboard")
-    else:
-        form = forms.CreateCollectionForm()
-        org_root = str(org.tree_node_id)
-        collections = models.TreeNode.objects.raw(
-            """
-        select coll.id as collection_id,
-               NULL as last_fixity_report,
-               stats.*
-        from vault_collection coll
-            join (
-                select colln.*,
-                       Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
-                       -- subtract 1 from file_count as nodes are own descendants
-                       -- could also filter on node_type to disallow FOLDER
-                       count(descn.id) - 1 as file_count,
-                       max(descn.modified_at) as last_modified
-                from vault_treenode colln, vault_treenode descn
-                where colln.node_type = 'COLLECTION'
-                      and descn.path <@ colln.path
-                      and colln.path <@ Cast(%s as ltree)
-                group by colln.id
-            ) stats on coll.tree_node_id = stats.id""",
-            [org_root],
-        )
-        # collections = models.Collection.objects.filter(organization=org).annotate(
-        #     total_size=Sum("file__size"),
-        #     file_count=Count("file"),
-        #     last_modified=Max("file__modified_date"),
-        # )
-        return TemplateResponse(
-            request,
-            "vault/collections.html",
-            {
-                "collections": collections,
-                "form": form,
-            },
-        )
+
+        return redirect("dashboard")
+
+    form = forms.CreateCollectionForm()
+    org_root = str(org.tree_node_id)
+    _collections = models.TreeNode.objects.raw(
+        """
+    select coll.id as collection_id,
+           NULL as last_fixity_report,
+           stats.*
+    from vault_collection coll
+        join (
+            select colln.*,
+                   Cast(coalesce(sum(descn.size), 0) as bigint) as total_size,
+                   -- subtract 1 from file_count as nodes are own descendants
+                   -- could also filter on node_type to disallow FOLDER
+                   count(descn.id) - 1 as file_count,
+                   max(descn.modified_at) as last_modified
+            from vault_treenode colln, vault_treenode descn
+            where colln.node_type = 'COLLECTION'
+                  and descn.path <@ colln.path
+                  and colln.path <@ Cast(%s as ltree)
+            group by colln.id
+        ) stats on coll.tree_node_id = stats.id""",
+        [org_root],
+    )
+    # _collections = models.Collection.objects.filter(organization=org).annotate(
+    #     total_size=Sum("file__size"),
+    #     file_count=Count("file"),
+    #     last_modified=Max("file__modified_date"),
+    # )
+    return TemplateResponse(
+        request,
+        "vault/collections.html",
+        {
+            "collections": _collections,
+            "form": form,
+        },
+    )
 
 
 @login_required
 def collection(request, collection_id):
     org_id = request.user.organization_id
-    collection = get_object_or_404(
+    _collection = get_object_or_404(
         models.Collection, organization_id=org_id, pk=collection_id
     )
     if request.method == "POST":
         form = forms.EditCollectionSettingsForm(request.POST)
         if form.is_valid():
-            collection.target_replication = form.cleaned_data["target_replication"]
-            collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
-            collection.target_geolocations.set(form.cleaned_data["target_geolocations"])
-            collection.save()
+            _collection.target_replication = form.cleaned_data["target_replication"]
+            _collection.fixity_frequency = form.cleaned_data["fixity_frequency"]
+            _collection.target_geolocations.set(
+                form.cleaned_data["target_geolocations"]
+            )
+            _collection.save()
             messages.success(request, "Collection settings updated.")
 
     collection_stats = models.TreeNode.objects.filter(
-        path__descendant=collection.tree_node.path
+        path__descendant=_collection.tree_node.path
     ).aggregate(
         file_count=Coalesce(Count("pk"), 0),
         total_size=Coalesce(Sum("size"), 0),
@@ -148,14 +151,14 @@ def collection(request, collection_id):
     form = forms.EditCollectionSettingsForm(
         initial=(
             {
-                "target_replication": collection.target_replication,
-                "fixity_frequency": collection.fixity_frequency,
-                "target_geolocations": collection.target_geolocations.all(),
+                "target_replication": _collection.target_replication,
+                "fixity_frequency": _collection.fixity_frequency,
+                "target_geolocations": _collection.target_geolocations.all(),
             }
         )
     )
-    reports = models.Report.objects.filter(collection=collection.pk)
-    deposits = models.Deposit.objects.filter(collection=collection).annotate(
+    reports = models.Report.objects.filter(collection=_collection.pk)
+    deposits = models.Deposit.objects.filter(collection=_collection).annotate(
         file_count=Count("files"),
         total_size=Coalesce(Sum("files__size"), 0),
         error_count=Count("pk", filter=Q(files__state=models.DepositFile.State.ERROR)),
@@ -164,8 +167,8 @@ def collection(request, collection_id):
     def event_sort(event: Union[models.Deposit, models.Report]):
         if isinstance(event, models.Deposit):
             return event.registered_at
-        else:
-            return event.started_at
+
+        return event.started_at
 
     events = sorted(chain(deposits, reports), key=event_sort, reverse=True)
 
@@ -173,9 +176,9 @@ def collection(request, collection_id):
         request,
         "vault/collection.html",
         {
-            "collection": collection,
+            "collection": _collection,
             "collection_stats": collection_stats,
-            "collection_id": str(collection.id),
+            "collection_id": str(_collection.id),
             "form": form,
             "events": events,
         },
@@ -185,17 +188,17 @@ def collection(request, collection_id):
 @login_required
 def report(request, report_id):
     org = request.user.organization
-    report = get_object_or_404(models.Report, pk=report_id)
-    if report.collection.organization != org:
+    _report = get_object_or_404(models.Report, pk=report_id)
+    if _report.collection.organization != org:
         raise Http404
     return TemplateResponse(
         request,
         "vault/report.html",
         {
-            "collection": report.collection,
-            "collection_id": str(report.collection.id),
-            "report_id": str(report.id),
-            "report": report,
+            "collection": _report.collection,
+            "collection_id": str(_report.collection.id),
+            "report_id": str(_report.id),
+            "report": _report,
             "page_number": 1,
         },
     )
@@ -204,30 +207,30 @@ def report(request, report_id):
 @login_required
 def deposit_report(request, deposit_id):
     org_id = request.user.organization_id
-    deposit = get_object_or_404(models.Deposit, pk=deposit_id, organization_id=org_id)
-    collection = deposit.collection
-    deposit_files = deposit.files.all()
+    _deposit = get_object_or_404(models.Deposit, pk=deposit_id, organization_id=org_id)
+    _collection = _deposit.collection
+    deposit_files = _deposit.files.all()
     file_count = len(deposit_files)
     total_size = 0
     state_count = defaultdict(int)
     state_sizes = defaultdict(float)
-    for df in deposit_files:
-        total_size += df.size
-        state_count[df.state] += 1
-        state_sizes[df.state] += df.size
+    for deposit_file in deposit_files:
+        total_size += deposit_file.size
+        state_count[deposit_file.state] += 1
+        state_sizes[deposit_file.state] += deposit_file.size
     processed_states = (
         models.DepositFile.State.HASHED,
         models.DepositFile.State.REPLICATED,
     )
     processed_count = sum(state_count[state] for state in processed_states)
     processed_size = sum(state_sizes[state] for state in processed_states)
-    if deposit.state in (models.Deposit.State.REPLICATED, models.Deposit.State.HASHED):
+    if _deposit.state in (models.Deposit.State.REPLICATED, models.Deposit.State.HASHED):
         display_state = "Complete"
-    elif deposit.state == models.Deposit.State.COMPLETE_WITH_ERRORS:
+    elif _deposit.state == models.Deposit.State.COMPLETE_WITH_ERRORS:
         display_state = "Complete with Errors"
-    elif deposit.state == models.Deposit.State.UPLOADED:
+    elif _deposit.state == models.Deposit.State.UPLOADED:
         display_state = "Processing"
-    elif deposit.state == models.Deposit.State.REGISTERED:
+    elif _deposit.state == models.Deposit.State.REGISTERED:
         display_state = "Registered"
     else:
         display_state = "Error"
@@ -235,8 +238,8 @@ def deposit_report(request, deposit_id):
         request,
         "vault/deposit_report.html",
         {
-            "collection": collection,
-            "deposit": deposit,
+            "collection": _collection,
+            "deposit": _deposit,
             "deposit_files": deposit_files,
             "file_count": file_count,
             "total_size": total_size,
@@ -276,7 +279,7 @@ def deposit(request):
 
 
 def create_attribs_dict(request):
-    retval = dict()
+    retval = {}
     retval["comment"] = request.POST.get("comment", "")
     retval["client"] = request.POST.get("client", "")
     retval["collection"] = request.POST.get("collection", None)
@@ -286,7 +289,7 @@ def create_attribs_dict(request):
     try:
         pk_id = retval["collection"]
         retval["collname"] = models.Collection.objects.get(pk=pk_id).name
-    except:
+    except:  # pylint: disable=bare-except
         retval["collname"] = ""
     return retval
 
@@ -302,11 +305,11 @@ def format_doaj_json(attribs):
 
 
 # Format all the string data from the request as a JSON blob
-def format_filelist_json(request):
+def _format_filelist_json(request):
     collpk = request.POST.get("collection", None)
     try:
         collname = models.Collection.objects.get(pk=collpk).name
-    except:
+    except:  # pylint: disable=bare-except
         collname = ""
     org = request.user.organization.name
     dirs = request.POST.get("directories", "")
@@ -328,45 +331,45 @@ def format_filelist_json(request):
 
 def return_doaj_report(attribs):
     data = format_doaj_json(attribs)
-    return HttpResponse(data, content_type="application/json")
+    return JsonResponse(data)
 
 
 def return_text_report(data):
-    return HttpResponse(data, content_type="application/json")
+    return JsonResponse(data)
 
 
-def return_total_used_quota(collections=None, organization=None):
-    if not collections:
-        collections = models.Collection.objects.filter(
+def return_total_used_quota(_collections=None, organization=None):
+    if not _collections:
+        _collections = models.Collection.objects.filter(
             organization=organization
         ).annotate(
             file_count=Count("file"),
             total_size=Sum("file__size"),
         )
-        if not collections:
+        if not _collections:
             return 0
     return reduce(
         lambda x, y: x + y,
         list(
-            map(lambda x: x.total_size if x.total_size is not None else 0, collections)
+            map(lambda x: x.total_size if x.total_size is not None else 0, _collections)
         ),
     )
 
 
 def return_reload_deposit_web(request):
-    collections = models.Collection.objects.filter(
+    _collections = models.Collection.objects.filter(
         organization=request.user.organization
     ).annotate(
         file_count=Count("file"),
         total_size=Sum("file__size"),
     )
-    form = forms.FileFieldForm(collections)
-    total_used_quota = return_total_used_quota(collections=collections)
+    form = forms.FileFieldForm(_collections)
+    total_used_quota = return_total_used_quota(_collections=_collections)
     return TemplateResponse(
         request,
         "vault/deposit_web.html",
         {
-            "collections": collections,
+            "collections": _collections,
             "filenames": "",
             "form": form,
             "total_used_quota": total_used_quota,
@@ -380,8 +383,8 @@ def validate_collection(request):
         return redirect("dashboard")
 
     collection_id = request.POST.get("collection", None)
-    collection = get_object_or_404(models.Collection, pk=collection_id)
-    if collection.organization != user_org:
+    _collection = get_object_or_404(models.Collection, pk=collection_id)
+    if _collection.organization != user_org:
         raise Http404
     return collection_id
 
@@ -391,15 +394,15 @@ def validate_collection(request):
 #
 @login_required
 @csrf_exempt
-def deposit_web(request):
+def deposit_web(request):  # pylint: disable=too-many-statements,too-many-locals
     if request.method != "POST":
         return return_reload_deposit_web(request)
 
     collection_id = validate_collection(request)
-    collection = get_object_or_404(models.Collection, pk=collection_id)
+    get_object_or_404(models.Collection, pk=collection_id)
 
     reply = []
-    logger.info(format_filelist_json(request))
+    logger.info(_format_filelist_json(request))
     # Accumulate request global attributes
     # Possibly to be overwritten by file iteration below
     attribs = create_attribs_dict(request)
@@ -420,11 +423,11 @@ def deposit_web(request):
 
     for field in inputs:
         files = request.FILES.getlist(field)
-        for f in files:
-            tempfile = f.temporary_file_path()
-            attribs["sizeV"] = f.size
+        for file in files:
+            tempfile = file.temporary_file_path()
+            attribs["sizeV"] = file.size
             attribs["tempfile"] = tempfile
-            hashes = generateHashes(tempfile)
+            hashes = generate_hashes(tempfile)
             attribs["md5sumV"] = hashes["md5"]
             attribs["sha1sumV"] = hashes["sha1"]
             attribs["sha256sumV"] = hashes["sha256"]
@@ -434,20 +437,20 @@ def deposit_web(request):
                 attribs["sha256sum"] = shasums.pop(0)
             except IndexError:
                 attribs["sha256sum"] = "0" * 64
-                logger.error(f"sha256sum for {attribs['name']} not in shasums list")
+                logger.error("sha256sum for %s not in shasums list", attribs["name"])
             try:
                 attribs["size"] = sizes.pop(0)
             except IndexError:
                 attribs["size"] = 0
-                logger.error(f"size for {attribs['name']} not in sizes list")
+                logger.error("size for %s not in sizes list", attribs["name"])
 
             move_temp_file(request, attribs)
             logger.info(json.dumps(attribs))
             reply.append(json.dumps(attribs))
-            validated_total_size += f.size
+            validated_total_size += file.size
             validated_file_count += 1
 
-    collection = (
+    _collection = (
         models.Collection.objects.filter(pk=collection_id)
         .annotate(
             file_count=Count("file"),
@@ -458,27 +461,27 @@ def deposit_web(request):
 
     # TODO: get actual started_at value so we can keep track of upload duration
     models.Report.objects.create(
-        collection=collection,
+        collection=_collection,
         report_type=models.Report.ReportType.DEPOSIT,
         started_at=datetime.datetime.now(datetime.timezone.utc),
         ended_at=datetime.datetime.now(datetime.timezone.utc),
         total_size=validated_total_size,
         file_count=validated_file_count,
-        collection_total_size=collection.total_size,
-        collection_file_count=collection.file_count,
+        collection_total_size=_collection.total_size,
+        collection_file_count=_collection.file_count,
         error_count=0,
         missing_location_count=0,
         mismatch_count=0,
-        avg_replication=collection.target_replication,
+        avg_replication=_collection.target_replication,
     )
 
-    report = (
-        models.Report.objects.filter(collection=collection.pk)
+    _report = (
+        models.Report.objects.filter(collection=_collection.pk)
         .order_by("-ended_at")
         .first()
     )
-    if report:
-        reply.append({"report_id": report.id})
+    if _report:
+        reply.append({"report_id": _report.id})
 
     total_used_quota = return_total_used_quota(organization=request.user.organization)
     reply.append({"total_used_quota": total_used_quota})
@@ -488,22 +491,23 @@ def deposit_web(request):
             org = request.user.organization
             msg = f"<@avdempsey> {org.name} used the old uploader."
             requests.post(settings.SLACK_WEBHOOK, data=json.dumps({"text": msg}))
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
 
     if attribs.get("client", None) == "DOAJ_CLI":
         return return_doaj_report(attribs)
-    elif reply:
+
+    if reply:
         # HOW TO FAKE A 408? - Set this to True!
-        DEBUG_408 = False
-        if DEBUG_408:
+        debug_408 = False
+        if debug_408:
             response = HttpResponse("Timeout!")
             response["status"] = 408
             return response
-        else:
-            return return_text_report(json.dumps(reply))
-    else:
-        return return_reload_deposit_web(request)
+
+        return return_text_report(json.dumps(reply))
+
+    return return_reload_deposit_web(request)
 
 
 @login_required
@@ -539,8 +543,8 @@ def administration_plan(request):
                 "plan": plan,
             },
         )
-    else:
-        return redirect("dashboard")
+
+    return redirect("dashboard")
 
 
 @login_required
@@ -556,7 +560,7 @@ def administration_help(request):
 @login_required
 def deposit_flow(request):
     org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org)
+    colls = models.Collection.objects.filter(organization=org)
     org_root = org.tree_node
     if org_root:
         total_used_quota = models.TreeNode.objects.filter(
@@ -564,13 +568,13 @@ def deposit_flow(request):
         ).aggregate(total=Coalesce(Sum("size"), 0))["total"]
     else:
         total_used_quota = 0
-    collection_form = forms.RegisterDepositForm(collections=collections)
+    collection_form = forms.RegisterDepositForm(collections=colls)
     return TemplateResponse(
         request,
         "vault/deposit_flow.html",
         {
             "collection_form": collection_form,
-            "collections": collections,
+            "collections": colls,
             "total_used_quota": total_used_quota,
         },
     )
@@ -597,7 +601,7 @@ def render_file_view(request, path):
                 request, "vault/files_view.html", {"status": 404}, status=404
             )
         except MultipleObjectsReturned:
-            logger.error(f"multiple TreeNodes returned for {path}")
+            logger.error("multiple TreeNodes returned for %s", path)
             return TemplateResponse(
                 request, "vault/files_view.html", {"status": 404}, status=404
             )
@@ -632,9 +636,8 @@ def render_web_components_file_view(request, path):
         # Get all the objects from TreeNode whose parent id matches in node path list
         parent_child_dict[child.parent_id].append(child)
 
-    org = request.user.organization
-    collections = models.Collection.objects.filter(organization=org)
-    node_collections = {c.tree_node_id: c.id for c in collections}
+    colls = models.Collection.objects.filter(organization=request.user.organization)
+    node_collections = {c.tree_node_id: c.id for c in colls}
 
     id_sizes = org_node.agregate_descendant_sizes__do_not_use()
     folder_node_size = {

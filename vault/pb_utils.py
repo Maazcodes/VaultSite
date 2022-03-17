@@ -37,7 +37,7 @@ def get_presigned_url(
     try:
         [item_id, _] = pbox_item_slash_filename.split("/", maxsplit=1)
     except ValueError as e:
-        raise InvalidPetaboxPath(e)
+        raise InvalidPetaboxPath(e) from e
 
     collapsed_id = item_id.replace(".", "_")
     expiry = int(time.time() + signature_validity_secs)
@@ -45,4 +45,5 @@ def get_presigned_url(
     sig = hmac.HMAC(petabox_secret, msg.encode("ascii"), hashlib.md5)
     sig_digest = sig.hexdigest()
 
+    # pylint: disable=line-too-long
     return f"https://archive.org/download/{pbox_item_slash_filename}?{service_name}-{item_id}={expiry}-{sig_digest}"

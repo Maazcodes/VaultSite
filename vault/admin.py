@@ -1,3 +1,5 @@
+# pylint: disable=no-self-use
+
 from django.contrib import admin
 from django.db.models import Count, Sum, Max
 from django.db.models.functions import Coalesce
@@ -22,8 +24,9 @@ class OrganizationAdmin(admin.ModelAdmin):
         # but disallow editing it in the admin later.
         if obj:  # obj is not None, so this is an edit
             return ("name", "tree_node")
-        else:  # This is an addition
-            return ("tree_node",)
+
+        # This is an addition
+        return ("tree_node",)
 
     @admin.display(description="Quota", ordering="quota_bytes")
     def get_quota(self, organization):
@@ -55,11 +58,12 @@ class CollectionAdmin(admin.ModelAdmin):
         # but disallow editing it in the admin later.
         if obj:  # obj is not None, so this is an edit
             return ("name", "tree_node")
-        else:  # This is an addition
-            return ("tree_node",)
+
+        # This is an addition
+        return ("tree_node",)
 
     def get_queryset(self, request):
-        qs = super(CollectionAdmin, self).get_queryset(request)
+        qs = super().get_queryset(request)
         return qs.annotate(
             file_count=Coalesce(Count("file"), 0),
             total_size=Coalesce(Sum("file__size"), 0),

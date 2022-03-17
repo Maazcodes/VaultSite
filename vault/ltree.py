@@ -8,7 +8,7 @@ class LtreeField(models.TextField):
         kwargs["editable"] = False
         kwargs["null"] = True
         kwargs["default"] = None
-        super(LtreeField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def db_type(self, connection):
         return "ltree"
@@ -17,21 +17,21 @@ class LtreeField(models.TextField):
 class Ancestor(models.Lookup):
     lookup_name = "ancestor"
 
-    def as_sql(self, qn, connection):
-        lhs, lhs_params = self.process_lhs(qn, connection)
-        rhs, rhs_params = self.process_rhs(qn, connection)
+    def as_sql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
         params = lhs_params + rhs_params
-        return "%s @> %s" % (lhs, rhs), params
+        return f"{lhs} @> {rhs}", params
 
 
 class Descendant(models.Lookup):
     lookup_name = "descendant"
 
-    def as_sql(self, qn, connection):
-        lhs, lhs_params = self.process_lhs(qn, connection)
-        rhs, rhs_params = self.process_rhs(qn, connection)
+    def as_sql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        rhs, rhs_params = self.process_rhs(compiler, connection)
         params = lhs_params + rhs_params
-        return "%s <@ %s" % (lhs, rhs), params
+        return f"{lhs} <@ {rhs}", params
 
 
 LtreeField.register_lookup(Ancestor)
