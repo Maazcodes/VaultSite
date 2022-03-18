@@ -8,8 +8,6 @@ export default class FileDetails extends HTMLElement {
       node: undefined,
       basePath: "",
       collectionIdDict: {},
-      collectionNodeSize: {},
-      folderNodeSize:{},
       path: undefined
     }
   }
@@ -60,7 +58,7 @@ export default class FileDetails extends HTMLElement {
 
       <div class="details">
         <dl style="font-size: 0.8rem;">` + this.detailSection(nodeKeys) +
-          `<dt>Location</dt><dd class="location-detail">${path}</dd></dl>
+          `${node.node_type !== "COLLECTION"?`<dt>Location</dt><dd class="location-detail">${path}</dd>`:""}</dl>
         ${contentUrl?`<ui5-button design="Default" id="download-file-btn">Download</ui5-button>`: ""}
       </div>
       <div class="activity hidden">
@@ -133,7 +131,7 @@ export default class FileDetails extends HTMLElement {
                       <dd style="display: inline-block;">${node[key].slice(0,8)}</dd>
                       <div class="tooltipElement">
                         <span class="tooltiptext" id="hover-text-${hashString.slice(hashString.length-1,)}">Copy Text</span>
-                      <div class="copy-hash-btn" data="${node[key]}" ><img src="/vault/static/favicon/copyIcon.png" alt="Copy Icon" style="height: 20px; width: 20px; cursor: pointer;"></div>
+                      <div class="copy-hash-btn" data="${node[key]}" ><img src="/vault/static/favicon/copyIcon.png" alt="Copy Icon" class="copy-img"></div>
                       </div>
                       `
             }
@@ -183,6 +181,7 @@ export default class FileDetails extends HTMLElement {
     const {node,basePath,collectionIdDict} = this.props
     const showDetails = e.detail.tabIndex === 0
     const eventsContainer = document.getElementById("events-container")
+    eventsContainer.innerHTML = ""
     this.detailsEl.classList[showDetails ? "remove" : "add"]("hidden")
     this.activityEl.classList[showDetails ? "add" : "remove"]("hidden")
     if(node.node_type === "COLLECTION" && !showDetails){
@@ -196,23 +195,23 @@ export default class FileDetails extends HTMLElement {
         return
       })
       let events = response["formatted_events"]
-      if (events.length!=0){
+      if (events.length !== 0){
         events.forEach((event)=>{
         eventsContainer.innerHTML += `
-        <ui5-card class="small" style="margin-bottom: 1rem">
-          <div class="content" >
-              ${Object.keys(event).map(k=> k!== "Event Id"?`<div class="content-group" style = "margin: 1rem;">
-              <ui5-title level="H6" style="margin-bottom: 0.5rem;">${k}</ui5-title>
-              <ui5-label>${event[k]}</ui5-label>
+        <ui5-card class="small activity-card">
+          <div class="activity-content">
+              ${Object.keys(event).map(k=> k!== "Event Id"?`<div class="content-group">
+              <ui5-title level="H6" class="activity-title-desc" style="margin-bottom: 0.5rem;">${k}</ui5-title>
+              <ui5-label class="activity-title-desc">${k === "Total Size"? humanBytes(event[k]):event[k]}</ui5-label>
               </div>`:"").join("")}  
-              <ui5-link class="view-details-link" href = "${basePath}/${(event["Event Type"] === "Deposit" || event["Event Type"] === "Migration")?"deposit":"reports"}/${event["Event Id"]}" target = "_blank">View Details</ui5-link>
+              <ui5-link class="view-details-link activity-title-desc" href = "${basePath}/${(event["Event Type"] === "Deposit" || event["Event Type"] === "Migration")?"deposit":"reports"}/${event["Event Id"]}" target = "_blank">View Details</ui5-link>
           </div>
       </ui5-card>`
       })
       } else{
         eventsContainer.innerHTML = "No Events Available"
       }
-    } else {
+    } else if(!showDetails){
       // for files and folders
       eventsContainer.innerHTML = "No Events Available"
     }

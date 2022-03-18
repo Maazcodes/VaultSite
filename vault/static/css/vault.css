@@ -103,7 +103,7 @@
 }
 
 .view-details-link{
-  margin: 0rem 0rem 1rem 1rem;
+  margin: 0.5rem 0rem 1rem 1rem;
 }
 
 /* The Modal (background) */
@@ -153,6 +153,12 @@
     display: inline-block;
     margin-top: 9px;
     vertical-align: super;
+  }
+
+  .copy-img{
+    height: 20px; 
+    width: 20px; 
+    cursor: pointer;
   }
 
   .tooltipElement {
@@ -377,6 +383,25 @@
     margin-top: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  
+  /* Activity */
+  .activity-title-desc{
+    font-size: 0.8rem;
+  }
+
+  .activity-content{
+    display: grid;
+    grid-template-columns: auto auto;
+  }
+
+  .activity-card{
+    margin-bottom: 1rem; 
+    height: 200px;
+  }
+  
+  .content-group{
+    margin: 10px 0px 10px 16px;
   }
 
   ui5-dialog > div {
