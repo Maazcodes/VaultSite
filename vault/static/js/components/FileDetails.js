@@ -8,6 +8,8 @@ export default class FileDetails extends HTMLElement {
       node: undefined,
       basePath: "",
       collectionIdDict: {},
+      collectionNodeSize: {},
+      folderNodeSize:{},
       path: undefined
     }
   }
