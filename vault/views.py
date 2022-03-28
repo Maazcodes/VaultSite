@@ -639,16 +639,6 @@ def render_web_components_file_view(request, path):
     colls = models.Collection.objects.filter(organization=request.user.organization)
     node_collections = {c.tree_node_id: c.id for c in colls}
 
-    id_sizes = org_node.agregate_descendant_sizes__do_not_use()
-    folder_node_size = {
-        f.id: {"total_size": f.total_size} for f in id_sizes if f.node_type == "FOLDER"
-    }
-    collection_node_size = {
-        f.id: {"total_size": f.total_size}
-        for f in id_sizes
-        if f.node_type == "COLLECTION"
-    }
-
     node_dict = {
         "id": node.id,
         "node_type": node.node_type,
@@ -663,8 +653,6 @@ def render_web_components_file_view(request, path):
         "vault/web_components_files_view.html",
         {
             "node_collections": node_collections,
-            "folder_node_size": folder_node_size,
-            "collection_node_size": collection_node_size,
             "node": node_dict,
             "path": f"/{path}",
             "org_id": org_id,

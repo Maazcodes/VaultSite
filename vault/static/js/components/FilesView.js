@@ -1,7 +1,7 @@
 
 import { htmlAttrEncode, joinPath } from "../lib/domLib.js"
 import { publish, subscribe } from "../lib/pubsub.js"
-
+import { humanBytes } from "../lib/lib.js"
 import API from "../services/API.js"
 
 import "./FileDetailsButtons.js"
@@ -129,10 +129,10 @@ class Conductor {
     }
   }
 
-  async nodeRequestHandler(nodeId){
+  async nodeRequestHandler({nodeId, action}){
     const { limit, ordering } = this.state.childQuery
     const nodeResponse = await this.api.treenodes.get(null, {id: nodeId, limit, ordering})
-    publish("NODE_RESPONSE", nodeResponse.results)
+    publish("NODE_RESPONSE", {nodeResponse:nodeResponse.results, action:action})
   }
 
   async nodeChildrenRequestHandler ({nodeId, action}){
@@ -231,11 +231,9 @@ export default class FilesView extends HTMLElement {
       orgId: this.getAttribute("orgId"),
       collectionIdDict: JSON.parse(this.getAttribute("collectionIdDict")),
       parentChildDict: JSON.parse(this.getAttribute("parentChildDict")),
-      collectionNodeSize: JSON.parse(this.getAttribute("collectionNodeSize")),
-      folderNodeSize: JSON.parse(this.getAttribute("folderNodeSize"))
     }
 
-    const {basePath, appPath, path, node, collectionNodeSize, folderNodeSize} = this.props
+    const {basePath, appPath, path, node} = this.props
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${basePath}${appPath}`
     // Instantiate the Conductor with the current paths.
@@ -294,8 +292,6 @@ export default class FilesView extends HTMLElement {
         node:node,
         basePath: basePath,
         collectionIdDict: this.props.collectionIdDict,
-        collectionNodeSize: collectionNodeSize,
-        folderNodeSize: folderNodeSize,
       }
     })
     this.querySelector("#file-details-container")

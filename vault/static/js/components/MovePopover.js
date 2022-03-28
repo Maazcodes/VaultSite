@@ -1,4 +1,6 @@
 import { subscribe, publish } from "../lib/pubsub.js"
+import { humanBytes } from "../lib/lib.js"
+
 const STRING_TRUNCATION_THRESHOLD = 17
 const APPLICATION_JSON = "application/json"
 export default class MovePopover extends HTMLElement {
@@ -59,7 +61,7 @@ export default class MovePopover extends HTMLElement {
       <div id="move-popover-container" style="display:inline-block; text-align: center; width: 100%; height: 40px; vertical-align: middle; font-weight: bold; margin-top:-38px; margin-left: 16px;"></div>
     </div>
     <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" >
-    ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" id="${node.id}" url="${node.url}">${node.name}</ui5-li>`).join("")}
+    ${this.allNodes.filter(node=> node.node_type != "FILE").map(node => `<ui5-li data-value="${node.name}" id="${node.id}" url="${node.url}" type="${node.node_type}">${node.name}</ui5-li>`).join("")}
     </ui5-list>
     <div style="display: flex; justify-content: center; align-items: center;">
       <ui5-button design="Emphasized" id="move-button" style = "margin-top: 10px; margin-left: 0px;"> MOVE HERE</ui5-button>
@@ -95,13 +97,13 @@ export default class MovePopover extends HTMLElement {
     this.folderSelectorEventHandler(moveButton, fileParentId, selectedRowIds)
 
     // Move Item Button
-    this.moveButtonEventHandler(this.popover, this.contextElement)
+    this.moveButtonEventHandler(this.popover, this.contextElement, this._parentNode)
     
     // Back Button
     this.backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes)
   } 
 
-  moveButtonEventHandler(popover, contextElement){
+  moveButtonEventHandler(popover, contextElement, parentNode){
     const tableParentElement = document.querySelector("ui5-table")
     const {selectedRows, selectedNodes, nodes} = contextElement
     const selectedRowNames = selectedRows.map(row=>row.attributes[1].value)
@@ -157,7 +159,13 @@ export default class MovePopover extends HTMLElement {
           ParentNode.appendChild(SourceTreeNode)
         }
       })
-  
+
+      // If the user moves the file/files into a folder in the same collection on the same page, update folder size instantly
+      if (destinationType==="FOLDER" && !!document.querySelector(`ui5-table-row[data-name='${destinationName}']`)){
+        // call api for folder node to update its size instantly
+        publish("NODE_REQUEST", {nodeId:destinationId, action: "MOVE"})
+        
+      }
     }
     )
   }
@@ -169,6 +177,8 @@ export default class MovePopover extends HTMLElement {
       globalThis.destinationNodeUrl = selectedItem[0].getAttribute("url")
       // making destination id global so as to use in move button event listener
       globalThis.destinationId = selectedItem[0].id
+      globalThis.destinationName = selectedItem[0].getAttribute("data-value")
+      globalThis.destinationType = selectedItem[0].getAttribute("type")
       if (fileParentId == destinationId || selectedRowIds.includes(parseInt(destinationId))){
         // disable move button if the parent element of source element is selected OR destination id is present in 
         // selected row ids list
@@ -186,7 +196,7 @@ export default class MovePopover extends HTMLElement {
         return
       }
       publish("NODE_CHILDREN_REQUEST", {nodeId: selectedItemId, action: "MOVE"})
-      publish("NODE_REQUEST", selectedItemId)
+      publish("NODE_REQUEST", {nodeId:selectedItemId, action: ""})
     })
   }
 
@@ -206,7 +216,7 @@ export default class MovePopover extends HTMLElement {
       // Calling an api for the children of grand parent id
       publish("NODE_CHILDREN_REQUEST", {nodeId: BackNodeId, action: "MOVE"})
       // Calling an api for parent node 
-      publish("NODE_REQUEST", BackNodeId)  
+      publish("NODE_REQUEST", {nodeId:BackNodeId, action: ""})  
     })
   }
 
@@ -216,7 +226,7 @@ export default class MovePopover extends HTMLElement {
     }
     const parentUrlList = context.selectedNodes[0].parent.split("/")
     this.selectedNodeParentId = parentUrlList.slice(parentUrlList.length-2, parentUrlList.length-1)[0]
-    publish("NODE_REQUEST", this.selectedNodeParentId)
+    publish("NODE_REQUEST", {nodeId:this.selectedNodeParentId, action: ""})
     this.contextElement = context
     this.allNodes = context.nodes
     const nameCell = context.currentRow.querySelector(".name")
@@ -235,8 +245,11 @@ export default class MovePopover extends HTMLElement {
     this.render()
   }
 
-  nodeResponseHandler(nodeResponse){
+  nodeResponseHandler({nodeResponse,action}){
     this._parentNode = nodeResponse[0]
+    if (action === "MOVE"){
+      document.querySelector(`ui5-table-row[data-name='${nodeResponse[0].name}'] :nth-child(4)`).innerText = humanBytes(nodeResponse[0].size)
+    }
     this.render()    
   }
 

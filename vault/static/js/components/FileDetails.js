@@ -8,10 +8,10 @@ export default class FileDetails extends HTMLElement {
       node: undefined,
       basePath: "",
       collectionIdDict: {},
-      collectionNodeSize: {},
-      folderNodeSize:{},
-      path: undefined
+      path: undefined,
     }
+    this.nodeSize = ""
+    this.folderNodeId = ""
   }
 
   connectedCallback () {
@@ -19,6 +19,7 @@ export default class FileDetails extends HTMLElement {
     // by FilesView.
     this.style.display = "block"
     this.render()
+    subscribe("NODE_RESPONSE", this.nodeResponseHandler.bind(this))
     subscribe("FILE_ROW_SELECTED", this.fileRowSelectedHandler.bind(this))
     subscribe(
       "FILE_CONTEXT_MENU_ITEM_SELECTED",
@@ -44,6 +45,7 @@ export default class FileDetails extends HTMLElement {
       return
     }
 
+    const nodeSize = this.nodeSize
     const contentUrl = node?.content_url
     const attributesToExclude = ["id", "comment", "url", "path", "parent", "content_url"]
     const nodeKeys = Object.keys(node).filter(key=> !attributesToExclude.includes(key))
@@ -118,7 +120,7 @@ export default class FileDetails extends HTMLElement {
   }
 
   detailSection(nodeKeys){
-    const { node, collectionNodeSize, folderNodeSize} = this.props
+    const { node} = this.props
     let str = ""
     nodeKeys.forEach(key => {
           if (node[key] !== null){
@@ -141,29 +143,18 @@ export default class FileDetails extends HTMLElement {
               str += `<dt>Type</dt><dd>${node[key]}</dd>`
             }
             else if (key === "size"){
-                str+=`<dt>${toTitleCase(key)}</dt><dd>${humanBytes(node[key])}</dd>`
+                str+=`<dt>${toTitleCase(key)}</dt><dd class="size-text">${ node.id == this.folderNodeId ? humanBytes(this.nodeSize) : humanBytes(node.size)}</dd>`
             }
             else{
               str+=`<dt>${toTitleCase(key)}</dt><dd>${node[key]}</dd>`
             }
-          } else{
-            if(key === "size"){
-              if(node.node_type === "COLLECTION" && !!collectionNodeSize[node.id]){
-                // display total size of collection
-                str+=`<dt>${toTitleCase(key)}</dt><dd>${humanBytes(collectionNodeSize[node.id]["total_size"])}</dd>`
-              }
-              else if(node.node_type === "FOLDER"){
-                // display total size of folder
-                str+=`<dt>${toTitleCase(key)}</dt><dd>${humanBytes(folderNodeSize[node.id]["total_size"])}</dd>`
-              }
-            }
-          }
+          } 
         })
     return str
   }
 
   fileRowSelectedHandler (message) {
-    const { node } = message
+    const { node} = message
     this.props.node = node
     this.render()
   }
@@ -217,6 +208,15 @@ export default class FileDetails extends HTMLElement {
       // for files and folders
       eventsContainer.innerHTML = "No Events Available"
     }
+  }
+
+  nodeResponseHandler({nodeResponse,action}){
+    this._parentNode = nodeResponse[0]
+    if (action === "MOVE"){
+      this.folderNodeId = nodeResponse[0].id
+      this.nodeSize = nodeResponse[0].size
+    }
+    this.render()    
   }
 
   changeDirectoryHandler (node,path) {

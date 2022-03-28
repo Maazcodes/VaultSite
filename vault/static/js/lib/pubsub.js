@@ -26,7 +26,7 @@ export const TOPICS = new Set([
   "NODE_CHILDREN_REQUEST",
   "NODE_CHILDREN_RESPONSE",
   "NODE_REQUEST",
-  "NODE_RESPONSE"
+  "NODE_RESPONSE",
 ])
 
 const topicSubscribersMap = new Map(

@@ -50,7 +50,7 @@ export default class FilesList extends HTMLElement {
         <ui5-table-cell class="modified-at">
           ${node.modified_at}
         </ui5-table-cell>
-        <ui5-table-cell class="size">${node.node_type === "FILE" ? humanBytes(node.size) : "&mdash;"}</ui5-table-cell>
+        <ui5-table-cell class="size">${!node.size ? "&mdash;" : humanBytes(node.size)}</ui5-table-cell>
       </ui5-table-row>
       `)
   }
