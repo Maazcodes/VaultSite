@@ -636,7 +636,8 @@ def render_web_components_file_view(request, path):
         # Get all the objects from TreeNode whose parent id matches in node path list
         parent_child_dict[child.parent_id].append(child)
 
-    colls = models.Collection.objects.filter(organization=request.user.organization)
+    org = request.user.organization
+    colls = models.Collection.objects.filter(organization=org)
     node_collections = {c.tree_node_id: c.id for c in colls}
 
     node_dict = {
