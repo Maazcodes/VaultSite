@@ -77,6 +77,8 @@ class Command(BaseCommand):
                     cursor.execute(
                         f'ALTER TABLE "vault_treenode" ENABLE TRIGGER {trigger};'
                     )
+            # explicit commit required because autocommit disabled earlier
+            commit()
 
 
 def _calculate_parent_sizes(rows: Iterable[InputRow]) -> Iterable[CalculatedRow]:

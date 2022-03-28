@@ -18,6 +18,8 @@ Vault digital preservation service.
   * [Black -- opinionated formatting](#black----opinionated-formatting)
   * [Pylint -- linting and static analysis](#pylint----linting-and-static-analysis)
 - [Releases](#releases)
+- [Operations](#operations)
+  * [Triggers](#triggers)
 
 <!-- tocstop -->
 
@@ -150,3 +152,46 @@ environment pinned to the code present on `releases/YYYY-MM-DD`. This can be
 accomplished by setting `ENABLE_CD` to `false` in the Gitlab CI variables for
 the vault-site project: https://git.archive.org/dps/vault-site/-/settings/ci_cd
 . To enable automatic QA deployments, `ENABLE_CD` **must** be set to `true`.
+
+## Operations
+
+### Triggers
+`vault` makes heavy use of Postgres triggers. It's handy to be able to view and
+enable/disable them.
+
+**View Triggers**
+
+```
+# in a psql REPL:
+vault=# \d vault_treenode
+                                             Table "public.vault_treenode"
+
+# ...
+
+Triggers:
+    treenode_file_accounting_delete_trg AFTER DELETE ON vault_treenode FOR EACH ROW WHEN (old.node_type::text = 'FILE'::text OR old.node_type::text = 'FOLDER'::text) EXECUTE PROCEDURE _do_treenode_delete_file_accounting()
+    treenode_file_accounting_insert_trg AFTER INSERT ON vault_treenode FOR EACH ROW WHEN (new.node_type::text = 'FILE'::text OR new.node_type::text = 'FOLDER'::text) EXECUTE PROCEDURE _do_treenode_insert_file_accounting()
+    treenode_file_accounting_update_trg AFTER UPDATE ON vault_treenode FOR EACH ROW WHEN (new.node_type::text = 'FILE'::text OR new.node_type::text = 'FOLDER'::text) EXECUTE PROCEDURE _do_treenode_update_file_accounting()
+    treenode_path_after_trg AFTER UPDATE ON vault_treenode FOR EACH ROW WHEN (new.path IS DISTINCT FROM old.path) EXECUTE PROCEDURE _update_descendants_treenode_path()
+    treenode_path_insert_trg BEFORE INSERT ON vault_treenode FOR EACH ROW EXECUTE PROCEDURE _update_treenode_path()
+    treenode_path_prevent_null_trg BEFORE UPDATE ON vault_treenode FOR EACH ROW WHEN (new.path IS NULL) EXECUTE PROCEDURE _reject_null_treenode_path()
+    treenode_path_update_trg BEFORE UPDATE ON vault_treenode FOR EACH ROW WHEN (old.parent_id IS DISTINCT FROM new.parent_id OR old.id IS DISTINCT FROM new.id) EXECUTE PROCEDURE _update_treenode_path()
+    treenode_set_new_file_count BEFORE INSERT ON vault_treenode FOR EACH ROW WHEN (new.node_type::text = 'FILE'::text) EXECUTE PROCEDURE _do_treenode_set_new_file_count()
+```
+:notebook_with_decorative_cover: **Note**: any disabled triggers will be listed
+under a subsection of the display printed above with the title: `Disabled user
+triggers`.
+
+**Enable/Disable Triggers**
+
+```
+# in a psql REPL:
+# to disable:
+ALTER TABLE "vault_treenode" DISABLE TRIGGER <trigger-name>;
+
+# to enable:
+ALTER TABLE "vault_treenode" ENABLE TRIGGER <trigger-name>;
+
+# also, if necessary, trigger enablement can be programmatically determined:
+SELECT tgenabled FROM pg_trigger WHERE tgname = '<trigger-name>';
+```
