@@ -281,6 +281,7 @@ export default class FilesView extends HTMLElement {
       props: {
         nodes: [],
         path:path,
+        basePath,
       }
     })
     this.querySelector("#files-list-container").appendChild(this.filesList)

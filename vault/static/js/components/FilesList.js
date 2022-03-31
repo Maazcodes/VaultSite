@@ -7,7 +7,11 @@ import { humanBytes } from "./../lib/lib.js"
 export default class FilesList extends HTMLElement {
   constructor () {
     super()
-    this.props = { nodes: [], path: undefined }
+    this.props = {
+      nodes: [],
+      path: undefined,
+      basePath: "",
+    };
     this.state = {
       detailsPanelClosed: false,
       selectedRows: [],
@@ -257,7 +261,7 @@ export default class FilesList extends HTMLElement {
         break
       case "Deposit Here":
         const parentId = selectedNodes[0].id;
-        const url = `/deposit/flow?parentId=${parentId}`;
+        const url = `${this.props.basePath}/deposit/flow?parentId=${parentId}`;
         window.location = url;
         break;
     }
