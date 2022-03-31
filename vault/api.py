@@ -273,6 +273,7 @@ def _chunk_filename(file_identifier: str, chunk_number: int) -> str:
 @csrf_exempt
 @login_required
 def register_deposit(request):
+    # pylint: disable=too-many-return-statements
     if request.method != "POST":
         return HttpResponseNotAllowed(permitted_methods=["POST"])
 

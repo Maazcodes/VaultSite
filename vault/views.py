@@ -3,14 +3,12 @@ import json
 import logging
 import os
 import random
-import tempfile
 import time
 from collections import defaultdict
 from functools import reduce
 from itertools import chain
 from typing import Union
 
-import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -456,6 +454,7 @@ def deposit_compat(request):
           "storage" and treenode tables are updated? If a user uploads two different
           files with the same name in quick succession, how do we handle that?
     """
+    # pylint: disable=too-many-return-statements,too-many-locals,too-many-branches
     if request.method != "POST":
         return HttpResponse(status=405)
 
@@ -472,8 +471,8 @@ def deposit_compat(request):
     if not collection_id:
         return HttpResponse(status=400)
     try:
-        collection = models.Collection.objects.get(pk=collection_id)
-        if collection.organization != request.user.organization:
+        _collection = models.Collection.objects.get(pk=collection_id)
+        if _collection.organization != request.user.organization:
             return HttpResponse(status=400)
     except models.Collection.DoesNotExist:
         return HttpResponse(status=400)
@@ -495,17 +494,15 @@ def deposit_compat(request):
     # Web uploads use https://github.com/flowjs/flow.js/ for uploads, using
     # flow identifiers; we only have a dummy identifier: unique and can be
     # generated with stdlib. Example: 'compat-1646859646-28990082667'
-    dummy_flow_identifier = "compat-{}-{}".format(
-        int(time.time()), random.randrange(1e10, 9e10)
-    )
+    dummy_flow_identifier = f"compat-{int(time.time())}-{random.randrange(1e10, 9e10)}"
 
     # Write out file so that "process_chunked_files.py" will pick it up. We use
     # chunk subdir, but we only really have one chunk per file.
     with OSFS(settings.FILE_UPLOAD_TEMP_DIR) as tmp_fs:
         chunk_path = os.path.join(str(request.user.organization.id), "chunks")
         with tmp_fs.makedirs(chunk_path, recreate=True) as chunk_fs:
-            tf = f"{dummy_flow_identifier}.uploading"
-            fout = chunk_fs.openbin(tf, mode="a")
+            temp_fname = f"{dummy_flow_identifier}.uploading"
+            fout = chunk_fs.openbin(temp_fname, mode="a")
             for chunk in request.FILES[filekey].chunks():
                 fout.write(chunk)
             fout.flush()
@@ -514,7 +511,7 @@ def deposit_compat(request):
             # the vault/utilities/process_chunked_files.py will look for
             # [flow-id]-[#].tmp files
             dst = f"{dummy_flow_identifier}-1.tmp"
-            chunk_fs.move(tf, dst, overwrite=True)
+            chunk_fs.move(temp_fname, dst, overwrite=True)
             # DOAJ has confirmed they are not providing `size`, so we substitute.
             size = chunk_fs.getsize(dst)
             if sha256sum != chunk_fs.hash(dst, "sha256"):
@@ -522,7 +519,7 @@ def deposit_compat(request):
 
     # > I think we should make a new Deposit for every call to your endpoint;
     # so 1 new Deposit and 1 new DepositFile
-    deposit = models.Deposit.objects.create(
+    _deposit = models.Deposit.objects.create(
         organization_id=request.user.organization.id,
         collection_id=collection_id,
         user=request.user,
@@ -541,8 +538,8 @@ def deposit_compat(request):
     )
     if not deposit_file_form.is_valid():
         return HttpResponse(status=400)
-    df = models.DepositFile.objects.create(
-        deposit=deposit,
+    models.DepositFile.objects.create(
+        deposit=_deposit,
         **deposit_file_form.cleaned_data,
         state=models.DepositFile.State.UPLOADED,
         uploaded_at=timezone.now(),
@@ -552,7 +549,7 @@ def deposit_compat(request):
             org = request.user.organization
             msg = f"<@avdempsey> {org.name} used the new deposit uploader."
             requests.post(settings.SLACK_WEBHOOK, data=json.dumps({"text": msg}))
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
     return JsonResponse(
         {
