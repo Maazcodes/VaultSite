@@ -329,6 +329,7 @@ def make_or_find_file_node(deposit_file, parent):
 def make_or_find_parent_node(deposit_file):
     organization = Organization.objects.get(id=deposit_file.deposit.organization_id)
     collection = Collection.objects.get(id=deposit_file.deposit.collection_id)
+    deposit_parent_node = deposit_file.deposit.parent_node
 
     # Make collection and org tree nodes if non existent
     if organization.tree_node is None:
@@ -347,7 +348,7 @@ def make_or_find_parent_node(deposit_file):
         collection.save()
 
     # filter and ignore empty path segments. Strip file name segment
-    parent_segment = collection.tree_node
+    parent_segment = deposit_parent_node
     for segment in filter(None, deposit_file.relative_path.split("/")[:-1]):
         parent_segment, created = TreeNode.objects.get_or_create(
             parent=parent_segment,

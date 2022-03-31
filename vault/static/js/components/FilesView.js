@@ -1,7 +1,6 @@
 
-import { htmlAttrEncode, joinPath } from "../lib/domLib.js"
+import { joinPath } from "../lib/domLib.js"
 import { publish, subscribe } from "../lib/pubsub.js"
-import { humanBytes } from "../lib/lib.js"
 import API from "../services/API.js"
 
 import "./FileDetailsButtons.js"

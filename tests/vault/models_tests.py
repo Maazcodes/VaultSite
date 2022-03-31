@@ -271,6 +271,93 @@ class TestTreeNode:
         file_node.save()
         TreeNode.objects.get(pk=file_node_id)
 
+    @mark.django_db
+    def test_get_owned_by__basic_success(self, make_user, make_treenode):
+        """Treenode.get_owned_by basic correctness"""
+        # Given: a treenode hierarchy owned by a user
+        user = make_user()
+        org = user.organization
+        org_node = make_treenode(parent=None, node_type="ORGANIZATION")
+        org.tree_node = org_node
+        org.save()
+        coll_node = make_treenode(parent=org_node, node_type="COLLECTION")
+
+        # When: we ask for a node owned by the given user
+        actual = TreeNode.get_owned_by(coll_node.id, user_id=user.id)
+
+        # Then: the correct node is returned
+        assert actual == coll_node
+
+    @mark.django_db
+    def test_get_owned_by__rejects_unauthorized(self, make_user, make_treenode):
+        """Treenode.get_owned_by raises when given user doesn't own TreeNode"""
+        # Given: a treenode hierarchy NOT owned by a given user
+        bogus_user = make_user()
+        user = make_user()
+        org = user.organization
+        org_node = make_treenode(parent=None, node_type="ORGANIZATION")
+        org.tree_node = org_node
+        org.save()
+        coll_node = make_treenode(parent=org_node, node_type="COLLECTION")
+
+        # When: we ask for a node NOT owned by the given user
+        # Then: an exception is raised
+        with raises(TreeNode.DoesNotExist):
+            TreeNode.get_owned_by(coll_node.id, user_id=bogus_user.id)
+
+    @mark.django_db
+    def test_get_ancestor__basic_success(self, treenode_stack):
+        # Given: a simple treenode hierarchy
+        file_node = treenode_stack["FILE"]
+        collection_node = treenode_stack["COLLECTION"]
+
+        # When: the collection-type parent of a file is requested
+        actual = file_node.get_ancestor(TreeNode.Type.COLLECTION)
+
+        # Then: the correct collection is returned
+        assert actual == collection_node
+
+    @mark.django_db
+    def test_get_ancestor__nested_folders(self, treenode_stack, make_treenode):
+        # Given: a nested folder hierarchy
+        folder1 = treenode_stack["FOLDER"]
+        folder2 = make_treenode(parent=folder1, node_type="FOLDER")
+        folder2.refresh_from_db()
+        file2 = make_treenode(parent=folder2, node_type="FILE")
+        file2.refresh_from_db()
+
+        # When: the folder-type parent of a file in a nested folder hierarchy
+        # is requested
+        actual = file2.get_ancestor(TreeNode.Type.FOLDER)
+
+        # Then: the closest folder ancestor to the file is returned
+        assert actual == folder2
+
+    @mark.django_db
+    def test_get_ancestor__nonexistent_ancestor_type(self, treenode_stack):
+        # Given: a collection node as part of a treenode hierarchy
+        collection_node = treenode_stack["COLLECTION"]
+
+        # When: an folder-type ancestor of the collection is requested
+        actual = collection_node.get_ancestor("FOLDER")
+
+        # Then: no TreeNode is returned
+        assert actual is None
+
+    @mark.django_db
+    def test_get_collection(self, make_collection, make_treenode):
+        # Given: a a collection and treenode hierarchy
+        collection = make_collection()
+        collection_node = collection.tree_node
+        folder_node = make_treenode(parent=collection_node)
+        folder_node.refresh_from_db()
+
+        # When: the collection of a folder-type treenode is requested
+        actual = folder_node.get_collection()
+
+        # Then: the correct collection is returned
+        assert collection == actual
+
 
 class TestTreeNodeAccountingTriggers:
     """Test case for create/update/delete file accounting triggers"""

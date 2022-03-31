@@ -180,6 +180,7 @@ export default class FilesList extends HTMLElement {
     const numSelectedNodes = this.state.selectedNodes.length
     const node = this.props.nodes[parseInt(tr.dataset.index)]
     const isCollection = node.node_type === "COLLECTION"
+    const isFolder = node.node_type === "FOLDER";
     const isDownloadable = !!node.content_url
     const options = [
       this.state.detailsPanelClosed && "View Details",
@@ -187,7 +188,8 @@ export default class FilesList extends HTMLElement {
       numSelectedNodes < 2 && "Rename",
       !isCollection && "Move",
       numSelectedNodes < 2 && "Download",
-      !isCollection && "Delete"
+      !isCollection && "Delete",
+      isFolder && numSelectedNodes === 0 && "Deposit Here",
     ].filter(x => x !== false)
 
     // TODO - implement these
@@ -253,6 +255,11 @@ export default class FilesList extends HTMLElement {
           window.open(contentUrl, "_blank")
         }
         break
+      case "Deposit Here":
+        const parentId = selectedNodes[0].id;
+        const url = `/deposit/flow?parentId=${parentId}`;
+        window.location = url;
+        break;
     }
   }
 

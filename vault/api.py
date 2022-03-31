@@ -278,28 +278,54 @@ def register_deposit(request):
         return HttpResponseNotAllowed(permitted_methods=["POST"])
 
     try:
-        body = json.loads(request.body)
+        request_payload = json.loads(request.body)
     except (AttributeError, TypeError, json.JSONDecodeError):
         return HttpResponseBadRequest()
 
-    if "files" not in body:
+    if "files" not in request_payload:
         return JsonResponse({"files": ["Missing file list"]}, status=400)
 
+    _parent_node_id = request_payload.get("parent_node_id")
     org_id = request.user.organization_id
-    collection_id = body.get("collection_id")
-    # Include organization_id in filter to ensure we have permission
-    collection = get_object_or_404(
-        models.Collection, pk=collection_id, organization_id=org_id
-    )
+    collection_id = request_payload.get("collection_id")
+
+    if all((collection_id, _parent_node_id)):
+        return HttpResponseBadRequest(
+            "one of parent_node_id or collection_id must be supplied"
+        )
+
+    # determine collection and parent_node from request payload params
+    if collection_id is not None:
+        # Include organization_id in filter to ensure we have permission
+        collection = get_object_or_404(
+            models.Collection, pk=collection_id, organization_id=org_id
+        )
+        parent_node = collection.tree_node
+    elif _parent_node_id is not None:
+        parent_node = models.TreeNode.get_owned_by(
+            _parent_node_id,
+            request.user.id,
+        )
+        if parent_node.node_type != models.TreeNode.Type.FOLDER:
+            return HttpResponseBadRequest(
+                "parent_node_id must correspond to a FOLDER-type node",
+            )
+        collection = parent_node.get_collection()
+    else:
+        # case: neither `collection_id` nor `parent_node_id` were provided
+        return HttpResponseBadRequest(
+            "one of parent_node_id or collection_id must be supplied"
+        )
 
     deposit = models.Deposit.objects.create(
         organization_id=org_id,
         collection=collection,
         user=request.user,
+        parent_node=parent_node,
     )
 
     deposit_files = []
-    for file in body.get("files", []):
+    for file in request_payload.get("files", []):
         deposit_file_form = RegisterDepositFileForm(file)
         if not deposit_file_form.is_valid():
             return JsonResponse(deposit_file_form.errors, status=400)
@@ -345,23 +371,31 @@ def warning_deposit(request):
     # introduce private functions to do some of the work (and test them).
 
     try:
-        body = json.loads(request.body)
+        request_payload = json.loads(request.body)
     except (AttributeError, TypeError, json.JSONDecodeError):
         return HttpResponseBadRequest()
 
-    collection_table_coll_id = body.get("collection_id")
+    coll_id = request_payload.get("collection_id")
+    _parent_node_id = request_payload.get("parent_node_id")
+    relative_path_list = [i["relative_path"] for i in request_payload.get("files")]
 
-    org_id = request.user.organization_id
+    if all((coll_id, _parent_node_id)):
+        # only one of `collection_id`, `parent_node_id` may be supplied
+        return HttpResponseBadRequest()
 
-    collection = get_object_or_404(
-        models.Collection, pk=collection_table_coll_id, organization_id=org_id
-    )
-
-    collection_id = collection.tree_node.id
+    # determine id of parent treenode
+    if coll_id:
+        # case: using Collection.tree_node as parent
+        org_id = request.user.organization_id
+        collection = get_object_or_404(
+            models.Collection, pk=coll_id, organization_id=org_id
+        )
+        parent_node_id = collection.tree_node.id
+    else:
+        # case: using explicitly-supplied parent TreeNode id
+        parent_node_id = _parent_node_id
 
     list_of_matched_files = []
-
-    relative_path_list = [i["relative_path"] for i in body.get("files")]
 
     # Only for files
     files_list = []
@@ -374,7 +408,7 @@ def warning_deposit(request):
     for file in files_list:
         # Check if the file exists in database. If yes, append to list_of_matched_files
         matched_file = models.TreeNode.objects.filter(
-            name=file, parent=collection_id
+            name=file, parent=parent_node_id
         ).first()
         if matched_file:
             list_of_matched_files.append(matched_file)
@@ -432,7 +466,7 @@ def warning_deposit(request):
         if len(stack_list) == 0:
             # check if the first folder is a child of collection
             match_node = models.TreeNode.objects.filter(
-                name=node_name, parent=collection_id
+                name=node_name, parent=parent_node_id
             ).first()
             if match_node:
                 stack_list.append(node)

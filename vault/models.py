@@ -231,7 +231,9 @@ class Deposit(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
-    # TODO: add ForeignKey to parent once we have the FileNode model
+    #: TreeNode which is the root into which this Deposit is being made.
+    #: Referenced TreeNode must be either type COLLECTION or FOLDER
+    parent_node = models.ForeignKey("TreeNode", on_delete=models.PROTECT)
     user = models.ForeignKey(User, on_delete=models.PROTECT)
 
     state = models.CharField(
@@ -450,12 +452,11 @@ class TreeNode(models.Model):
                 settings.PETABOX_SECRET,
                 settings.PETABOX_URL_SIGNATURE_EXPIRATION_SECS,
             )
-        except InvalidPetaboxPath as e:
+        except InvalidPetaboxPath:
             logger.warning(
                 "TreeNode id=%d has an invalid pbox_path=%s",
                 self.id,
                 self.pbox_path,
-                exc_info=e,
             )
             return None
 
@@ -494,34 +495,51 @@ class TreeNode(models.Model):
         logger.warning("hard deletion of TreeNode id=%d", self.id)
         super().delete()
 
-    def agregate_descendant_sizes__do_not_use(self):
-        """Calculates aggregated sums of all the sizes of all FOLDER- and
-        COLLECTION-type subtrees contained under this node. Results are
-        returned as an iterable of objects each containing attributes:
-
-        * id -- id of a given subtree root
-        * node_type -- type of subtree root; one of (FOLDER, COLLECTION)
-        * total_size -- agregate size of subtree in bytes
-
-        :deprecated:
-
-        To be deleted after the completion of
-        https://webarchive.jira.com/browse/WT-1172
+    def get_ancestor(
+        self,
+        _type: typing.Union["TreeNode.Type", str],
+    ) -> typing.Optional["TreeNode"]:
+        """Returns the nearests ancestor to this :py:class:`Treenode` of type
+        *_type*. Where no ancestor node of the given type exists, `None` is
+        returned.
         """
-        return TreeNode.objects.raw(
-            """
-            SELECT
-                root.id,
-                root.node_type,
-                CAST(COALESCE(SUM(descn.size), 0) AS bigint) AS total_size
-            FROM vault_treenode root, vault_treenode descn
-            WHERE root.node_type IN ('FOLDER', 'COLLECTION')
-            AND descn.path <@ root.path
-            AND root.path <@ Cast(%s as ltree)
-            AND descn.deleted = false
-            GROUP BY root.id
-            """,
-            [self.path],
+        return (
+            TreeNode.objects.filter(
+                path__ancestor=self.path,
+                node_type=_type,
+            )
+            .order_by("-path")
+            .first()
+        )
+
+    def get_collection(self) -> Collection:
+        """Gets the :py:class:`.Collection` associated with the
+        `COLLECTION`-type ancestor of this :py:class:`.TreeNode`, or raise
+        :py:exc:`.Collection.DoesNotExist`.
+        """
+        return Collection.objects.get(
+            tree_node__path__ancestor=self.path,
+        )
+
+    @classmethod
+    def get_owned_by(cls, pk: int, user_id: int) -> "TreeNode":
+        """Gets the :py:class:`.TreeNode` identified by *pk* which is
+        ultimately owned by the :py:class:`.Organization` to which the
+        :py:class:`.User` identified by *user_id* belongs.
+
+        :param pk: id of target :py:class:`.TreeNode` to return
+        :param user_id: id of :py:class:`.User` designating the
+            :py:class:`.Organization` owning the target :py:class:`.TreeNode`
+
+        :return: target :py:class:`.TreeNode`
+
+        :raises: :py:exc:`.TreeNode.DoesNotExist` when no such
+            :py:class:`.TreeNode` exists
+        """
+        org_node = cls.objects.get(organization__user__id=user_id)
+        return cls.objects.get(
+            pk=pk,
+            path__descendant=org_node.path,
         )
 
 

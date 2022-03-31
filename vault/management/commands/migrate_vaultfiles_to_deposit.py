@@ -79,10 +79,12 @@ class Command(BaseCommand):
                 )
             else:
                 print("Collection files found. Creating Deposit...")
+                collection_node = collection.tree_node
                 deposit = Deposit.objects.create(
                     organization_id=collection.organization_id,
                     collection=collection,
                     user=user,
+                    parent_node=collection_node,
                 )
                 org_tmp_path = str(collection.organization_id)
                 osfs_root = os.path.join(settings.FILE_UPLOAD_TEMP_DIR, org_tmp_path)

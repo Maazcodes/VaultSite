@@ -28,7 +28,11 @@ def test_api_reports(rf):
     user = baker.make("vault.User", _fill_optional=["organization"])
     collection = baker.make("Collection", organization=user.organization)
     deposit = baker.make(
-        "Deposit", user=user, organization=user.organization, collection=collection
+        "Deposit",
+        user=user,
+        organization=user.organization,
+        collection=collection,
+        parent_node_id=collection.tree_node.id,
     )
     files = baker.make("DepositFile", deposit=deposit, _quantity=5)
     old_deposit_report = baker.make(
@@ -96,7 +100,11 @@ class TestWarningDepositApi:
             "Song5.mp4",
         ]
         deposit = baker.make(
-            "Deposit", user=user, organization=user.organization, collection=collection
+            "Deposit",
+            user=user,
+            organization=user.organization,
+            collection=collection,
+            parent_node_id=collection.tree_node.id,
         )
         file_relative_path = ""
         # deposit files in collection
@@ -213,7 +221,11 @@ class TestEventsApi:
 
     def deposit_files_in_db(self, user, collection):
         deposit = baker.make(
-            "Deposit", user=user, organization=user.organization, collection=collection
+            "Deposit",
+            user=user,
+            organization=user.organization,
+            collection=collection,
+            parent_node_id=collection.tree_node.id,
         )
         deposit_file = baker.make("DepositFile", deposit=deposit, _quantity=5)
 

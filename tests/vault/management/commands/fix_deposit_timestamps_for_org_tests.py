@@ -16,6 +16,7 @@ def test_calculate_hashed_at(super_user):
         collection=coll,
         user=super_user,
         state=Deposit.State.HASHED,
+        parent_node_id=coll.tree_node.id,
     )
     expected_time = timezone.now()
     for i in range(3):

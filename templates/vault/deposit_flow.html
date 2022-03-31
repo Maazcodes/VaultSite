@@ -1,9 +1,5 @@
 {% extends "vault/deposit.html" %}
 
-{% block head_deposit %}
-    <script src="/vault/static/js/flow.min.js"></script>
-{% endblock head_deposit %}
-
 {% set active_subnav = "test" %}
 {% set breadcrumbs = (("Vault", "dashboard"), ("Deposit", "deposit"), ("Web Uploader", "deposit/flow")) %}
 
@@ -117,9 +113,22 @@
     <div class="small-8 columns">
         <h3>Upload Files</h3>
         {% if collections %}
-        <form>
-            {{ collection_form }}
-        </form>
+        {% if parent_node %}
+            <label for="parent_node_name">
+                Parent Folder:
+            </label>
+            <input
+                id="parent_node_name"
+                type="text"
+                value="{{ parent_node.name }}"
+                disabled="disabled"
+                style="display: inline-block;"
+            >
+        {% else %}
+            <form>
+                {{ collection_form }}
+            </form>
+        {% endif %}
 
         <button class="button small padding-top padding-bottom half left" id="browseFilesButton">Browse Files</button>
         <button class="button small padding-top padding-bottom half left margin-left half" id="browseDirectoriesButton">Browse Folders</button>
@@ -134,6 +143,12 @@
         <div>
             <div>
                 <button class="button small padding-top padding-bottom half left margin-right half" id="flowPost" onclick="start_deposit(flow, files)">Upload</button>
+                <button
+                    class="button secondary small padding-top padding-bottom half left margin-right half"
+                    onclick="resetForm()"
+                >
+                    Reset
+                </button>
             </div>
             <div id="span_stats">
                 <div id="flow-stats"></div>
@@ -191,13 +206,12 @@
         api_warning_deposit: '{{ url("api_warning_deposit") }}',
         api_register_deposit: '{{ url("api_register_deposit") }}',
     };
+    const PARENT_NODE_ID = {{ parent_node.id if parent_node else "undefined" }};
 </script>
+
+<script src="{{ static("js/flow.min.js") }}"></script>
 <script src="{{ static("js/components/md5_hash.js") }}"></script>
 <script src="{{ static("js/pages/deposit-flow.js") }}"></script>
 <script src="{{ static("digipres/js/chartalign.js") }}"></script>
 <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
-
-<script type="text/javascript">
-    window.onload = depositFlowMain;
-</script>
 {% endblock content %}

@@ -7,7 +7,9 @@ import time
 from collections import defaultdict
 from functools import reduce
 from itertools import chain
+from typing import Optional
 from typing import Union
+from typing import cast
 
 from django.conf import settings
 from django.contrib import messages
@@ -16,14 +18,15 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.db.models import Count, Max, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import Http404
+from django.http import HttpRequest
 from django.http import HttpResponse
+from django.http import HttpResponseBadRequest
 from django.http import JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from fs.osfs import OSFS
-
 import requests
 
 from vault import forms
@@ -477,6 +480,8 @@ def deposit_compat(request):
     except models.Collection.DoesNotExist:
         return HttpResponse(status=400)
 
+    parent_node_id = _collection.tree_node_id
+
     # "curl-DOAJ.sh" uses "dir_field", whereas doaj upload python script
     # (https://is.gd/OLydc8) uses "file_field".
     filekey = "file_field" if "file_field" in request.FILES else "dir_field"
@@ -525,6 +530,7 @@ def deposit_compat(request):
         user=request.user,
         state=models.DepositFile.State.UPLOADED,
         uploaded_at=timezone.now(),
+        parent_node_id=parent_node_id,
     )
     deposit_file_form = forms.RegisterDepositFileForm(
         {
@@ -730,10 +736,23 @@ def administration_help(request):
 
 
 @login_required
-def deposit_flow(request):
+def deposit_flow(request: HttpRequest):
     org = request.user.organization
     colls = models.Collection.objects.filter(organization=org)
     org_root = org.tree_node
+    parent_node_id = cast(Optional[str], request.GET.get("parentId", None))
+    parent_node = None
+    if parent_node_id is not None:
+        try:
+            parent_node = models.TreeNode.get_owned_by(
+                int(parent_node_id),
+                request.user.id,
+            )
+        except models.TreeNode.DoesNotExist:
+            # case: specified parent node doesn't exist or isn't owned by
+            # requesting user's organization (i.e., unauthorized)
+            return HttpResponseBadRequest()
+
     if org_root:
         total_used_quota = models.TreeNode.objects.filter(
             path__descendant=org_root.path
@@ -747,6 +766,7 @@ def deposit_flow(request):
         {
             "collection_form": collection_form,
             "collections": colls,
+            "parent_node": parent_node,
             "total_used_quota": total_used_quota,
         },
     )

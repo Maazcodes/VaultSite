@@ -6,21 +6,18 @@
 import argparse
 import logging
 import os
-import shutil
 import signal
 import sys
-import hashlib
 import threading
-from fs.osfs import OSFS
-from internetarchive import Item, get_session
+from internetarchive import get_session
 
 os.environ["DJANGO_SETTINGS_MODULE"] = "vault_site.settings"
 import django
 
 django.setup()
 from django.conf import settings
-from django.utils import timezone, dateformat
-from vault.models import DepositFile, Deposit, TreeNode, Collection, Organization
+from django.utils import dateformat
+from vault.models import DepositFile, Deposit
 
 SLEEP_TIME = 20
 MAX_PBOX_ITEM_FILES = 10000

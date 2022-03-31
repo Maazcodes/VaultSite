@@ -1,5 +1,53 @@
 /* global URLS, Flow, md5, $ */
 
+function secondsToString(seconds) {
+  var remaining_min = Math.floor(seconds / 60);
+  var remaining_sec = seconds - remaining_min * 60;
+
+  // For hours
+  var remaining_hours = Math.floor(seconds / 3600);
+  var total_remaining_sec_hr = seconds - remaining_hours * 3600; // Total remaining seconds after hours
+  var remaining_seconds_after_mins = Math.floor(total_remaining_sec_hr / 60); // Converting remaining seconds into minutes to get remaining minutes
+  var actual_remaining_sec = seconds - remaining_seconds_after_mins * 60; // Getting remaining seconds after minutes
+
+  if (seconds <= 60) {
+    return seconds + " s ";
+  } else if (seconds > 60 && seconds <= 3600) {
+    return remaining_min + " m " + remaining_sec + " s ";
+  } else if (seconds > 3600) {
+    return (
+      remaining_hours +
+      " h " +
+      remaining_seconds_after_mins +
+      " m " +
+      actual_remaining_sec +
+      " s "
+    );
+  }
+}
+
+const formatBytes = (bytes, decimals = 2) => {
+  if (bytes === 0) return "0 Bytes";
+
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = [
+    "Bytes",
+    "KiB",
+    "MiB",
+    "GiB",
+    "TiB",
+    "PiB",
+    "EiB",
+    "ZiB",
+    "YiB",
+  ];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+};
+
 var flow = new Flow({
   target: URLS.api_flow_chunk,
   query: { upload_token: "my_token" },
@@ -85,7 +133,7 @@ function changeStats() {
 
 document
   .getElementById("id_collection")
-  .addEventListener("change", changeStats);
+  ?.addEventListener("change", changeStats);
 
 function deposit_status(time) {
   if (currentDepositId == undefined) {
@@ -149,32 +197,6 @@ flow.on("complete", function () {
   deposit_status(0);
 });
 
-function secondsToString(seconds) {
-  var remaining_min = Math.floor(seconds / 60);
-  var remaining_sec = seconds - remaining_min * 60;
-
-  // For hours
-  var remaining_hours = Math.floor(seconds / 3600);
-  var total_remaining_sec_hr = seconds - remaining_hours * 3600; // Total remaining seconds after hours
-  var remaining_seconds_after_mins = Math.floor(total_remaining_sec_hr / 60); // Converting remaining seconds into minutes to get remaining minutes
-  var actual_remaining_sec = seconds - remaining_seconds_after_mins * 60; // Getting remaining seconds after minutes
-
-  if (seconds <= 60) {
-    return seconds + " s ";
-  } else if (seconds > 60 && seconds <= 3600) {
-    return remaining_min + " m " + remaining_sec + " s ";
-  } else if (seconds > 3600) {
-    return (
-      remaining_hours +
-      " h " +
-      remaining_seconds_after_mins +
-      " m " +
-      actual_remaining_sec +
-      " s "
-    );
-  }
-}
-
 let initial_time = 0;
 let sum_speed = 0;
 let counter = 0;
@@ -219,7 +241,7 @@ function start_deposit(flow, files) {
 
   document.querySelector("#progress_bar_flow").value = flow.progress() * 0;
   let coll_input = document.getElementById("id_collection");
-  let collection_id = coll_input.options[coll_input.selectedIndex].value;
+  let collection_id = coll_input?.options[coll_input.selectedIndex].value;
 
   btn = document.getElementById("flowPost");
   btn.innerHTML = "Uploading...";
@@ -233,6 +255,7 @@ function start_deposit(flow, files) {
     collection_id: collection_id,
     files: files,
     total_size: upload_size,
+    parent_node_id: PARENT_NODE_ID || null,
   };
   xhr.send(JSON.stringify(payload));
   xhr.onloadend = function () {
@@ -534,7 +557,7 @@ function registerDeposit(remaining_files) {
   document.getElementById("progress_bar_flow").style.display = "inline-block";
 
   let coll_input = document.getElementById("id_collection");
-  let collection_id = coll_input.options[coll_input.selectedIndex].value;
+  let collection_id = coll_input?.options[coll_input.selectedIndex].value;
 
   let xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function () {
@@ -549,6 +572,7 @@ function registerDeposit(remaining_files) {
     collection_id: collection_id,
     files: remaining_files,
     total_size: upload_size,
+    parent_node_id: PARENT_NODE_ID || null,
   };
   xhr.send(JSON.stringify(payload));
   xhr.onloadend = function () {
@@ -558,29 +582,6 @@ function registerDeposit(remaining_files) {
     }
   };
 }
-
-/// HELPER FUNCTIONS ///
-const formatBytes = (bytes, decimals = 2) => {
-  if (bytes === 0) return "0 Bytes";
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = [
-    "Bytes",
-    "KiB",
-    "MiB",
-    "GiB",
-    "TiB",
-    "PiB",
-    "EiB",
-    "ZiB",
-    "YiB",
-  ];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-};
 
 const createQuotaDonut = () => {
   let data = [];
@@ -650,10 +651,15 @@ const createCollectionsChart = (collections, fileCounts) => {
   );
 };
 
-const depositFlowMain = () => {
+const resetForm = () => {
+  const newLocation = window.location.href.split("?")[0];
+  window.location = newLocation;
+}
+
+$(() => {
   $("#collections-chart .spinner").hide();
   $("label[for='id_collection']").html(
     "Collections:  <a href='javascript:void(0);' onclick='show_modal();'>Create a new Collection</a>"
   );
   createQuotaDonut();
-};
+});
