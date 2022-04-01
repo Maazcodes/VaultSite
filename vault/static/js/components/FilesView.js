@@ -19,7 +19,7 @@ import BreadcrumbsView from "./BreadcrumbsView.js";
    Conductor
  *****************************************************************************/
 class Conductor {
-  constructor ({ basePath, appPath, path, node }) {
+  constructor ({ basePath, appPath, path, node,orgId }) {
     const API_BASE_PATH = `${window.location.origin}${basePath}/api/`
 
     // The initial node is rendered outside of DRF so doesn't include a url
@@ -27,6 +27,7 @@ class Conductor {
     node.url = `${API_BASE_PATH}treenodes/${node.id}/`
 
     this.basePath = basePath
+    this.orgId = orgId
     this.appPath = appPath
     this.path = path
     this.node = node
@@ -166,12 +167,16 @@ class Conductor {
     const response = await this.api.collections.post({ name })
     const error = await this.api.getResponseErrorDetail(response)
     publish("CREATE_COLLECTION_RESPONSE", { name, error })
-    // If creation was successful, publish a CHANGE_DIRECTORY_REQUEST to navigate to
-    // the new collection.
+
     if (!error) {
-      const collection = await response.json()
-      const node = await (await fetch(collection.tree_node)).json()
-      publish("CHANGE_DIRECTORY_REQUEST", { node,  path: `/${node.name}` })
+      // cause FileTreeNavigator to refresh its children
+      // TODO (mwilson): figure out how to do this while maintaining node
+      // expansion state in FileTreeNavigator
+      publish("NODE_CHILDREN_REQUEST", { nodeId: this.orgId, action: "TREE_VIEW" });
+
+      // cause FilesView to refresh itself to possibly display the new
+      // collection
+      publish("CHANGE_DIRECTORY_REQUEST", { node: this.node,  path: this.path })
     }
   }
 
@@ -232,7 +237,7 @@ export default class FilesView extends HTMLElement {
       parentChildDict: JSON.parse(this.getAttribute("parentChildDict")),
     }
 
-    const {basePath, appPath, path, node} = this.props
+    const {basePath, appPath, path, node, orgId} = this.props
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${basePath}${appPath}`
     // Instantiate the Conductor with the current paths.

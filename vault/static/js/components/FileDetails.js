@@ -8,7 +8,9 @@ export default class FileDetails extends HTMLElement {
       node: undefined,
       basePath: "",
       collectionIdDict: {},
-      path: undefined,
+      // collectionNodeSize: {},
+      // folderNodeSize:{},
+      path: undefined
     }
     this.nodeSize = ""
     this.folderNodeId = ""
@@ -67,7 +69,7 @@ export default class FileDetails extends HTMLElement {
       </div>
       <div class="activity hidden">
       <div id="events-container" style="height: 420px; overflow-y: scroll;"></div>
-      </div>    
+      </div>
     `
     if(!!contentUrl){
       document.getElementById("download-file-btn").addEventListener("click", function(){
@@ -120,7 +122,7 @@ export default class FileDetails extends HTMLElement {
   }
 
   detailSection(nodeKeys){
-    const { node} = this.props
+    const { node } = this.props
     let str = ""
     nodeKeys.forEach(key => {
           if (node[key] !== null){
@@ -148,7 +150,7 @@ export default class FileDetails extends HTMLElement {
             else{
               str+=`<dt>${toTitleCase(key)}</dt><dd>${node[key]}</dd>`
             }
-          } 
+          }
         })
     return str
   }
@@ -196,7 +198,7 @@ export default class FileDetails extends HTMLElement {
               ${Object.keys(event).map(k=> k!== "Event Id"?`<div class="content-group">
               <ui5-title level="H6" class="activity-title-desc" style="margin-bottom: 0.5rem;">${k}</ui5-title>
               <ui5-label class="activity-title-desc">${k === "Total Size"? humanBytes(event[k]):event[k]}</ui5-label>
-              </div>`:"").join("")}  
+              </div>`:"").join("")}
               <ui5-link class="view-details-link activity-title-desc" href = "${basePath}/${(event["Event Type"] === "Deposit" || event["Event Type"] === "Migration")?"deposit":"reports"}/${event["Event Id"]}" target = "_blank">View Details</ui5-link>
           </div>
       </ui5-card>`
@@ -216,7 +218,7 @@ export default class FileDetails extends HTMLElement {
       this.folderNodeId = nodeResponse[0].id
       this.nodeSize = nodeResponse[0].size
     }
-    this.render()    
+    this.render()
   }
 
   changeDirectoryHandler (node,path) {

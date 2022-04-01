@@ -19,13 +19,13 @@ export default class NewFolderModal extends Modal {
              spellcheck="false"
              autocomplete="off"
              placeholder="Enter new folder name"
+             id="create-folder-input"
       >
       </input>
     `
     super.connectedCallback()
 
     this.input = this.querySelector("input[name=name]")
-
     subscribe(
       "NEW_CTA_MENU_ITEM_SELECTED",
       this.newCtaMenuItemSelectedHandler.bind(this)
@@ -43,6 +43,8 @@ export default class NewFolderModal extends Modal {
       return
     }
     this.open()
+    /* clearing the pre-populated field */
+    $('#create-folder-input').val('')
   }
 
   submitHandler (nameInputMap) {

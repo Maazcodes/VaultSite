@@ -19,6 +19,7 @@ export default class NewCollectionModal extends Modal {
              spellcheck="false"
              autocomplete="off"
              placeholder="Enter new collection name"
+             class="new-collection-modal-create-collection-input"
       >
       </input>
     `
@@ -41,7 +42,10 @@ export default class NewCollectionModal extends Modal {
     if (value !== "collection") {
       return
     }
-    this.open()
+    /* clearing the pre-populated field */
+    const input = this.querySelector(".new-collection-modal-create-collection-input");
+    input.value = "";
+    this.open();
   }
 
   submitHandler (nameInputMap) {

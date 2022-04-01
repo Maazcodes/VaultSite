@@ -1,17 +1,18 @@
 import { publish, subscribe } from "../lib/pubsub.js"
+
 export default class FileTreeNavigator extends HTMLElement {
   constructor ({ orgId, parentChildDict}) {
     super()
     this.orgId = orgId
     // parent child dictionary receiving from views.py file - receive data after refresh
-    this.parentChildDict = parentChildDict 
+    this.parentChildDict = parentChildDict
     // parentChildDict = {"parent id": [list of children]}
     this.props = {
       nodes: [],
       node: {},
     }
     // parent child dictionary created locally in this file to store data after every publish function call
-    this.parentChildDictionary = {} 
+    this.parentChildDictionary = {}
   }
 
   connectedCallback () {
@@ -42,7 +43,11 @@ export default class FileTreeNavigator extends HTMLElement {
         <ui5-tree id="treeDynamic">
           <ui5-tree-item text="Collections" id="${this.orgId}" has-children expanded selected>
             ${this.props.nodes.filter(node => node.node_type !== "FILE").map(node =>
-              `<ui5-tree-item text="${node.name}" path="/${node.name}" id="${node.id}" ${node.node_type === "FILE" ? "" : "has-children"}>
+              `<ui5-tree-item
+                text="${node.name}"
+                path="/${node.name}"
+                id="${node.id}"
+                ${node.node_type === "FILE" ? "" : "has-children"}>
                 </ui5-tree-item>`
             ).join("")}
           </ui5-tree-item>
@@ -51,14 +56,14 @@ export default class FileTreeNavigator extends HTMLElement {
       const dynamicTree = document.getElementById("treeDynamic");
       const firstTreeElement = document.querySelectorAll("ui5-tree-item")[0];
       dynamicTree.addEventListener("item-toggle", async function(event) {
-        
+
         const item = event.detail.item; // get the node that is toggled
         if (item.text != firstTreeElement.text && item.expanded) {
             item.innerHTML = "";
           }
         if (item.text == firstTreeElement.text && !item.expanded) {
           // clearing previous tree data for first element
-          firstTreeElement.innerHTML = ""; 
+          firstTreeElement.innerHTML = "";
         }
         // show only subfolders after toggle
         if (!item.expanded) {
@@ -76,7 +81,7 @@ export default class FileTreeNavigator extends HTMLElement {
         }
         publish("CHANGE_DIRECTORY_REQUEST", { nodeId: nodeItemId, path: `${nodePublishPath}`});
       })
-    } 
+    }
     else {
       const nodeElement = document.getElementById(String(node.id));
       const nodePathArray = node.path.split(".");
@@ -94,7 +99,21 @@ export default class FileTreeNavigator extends HTMLElement {
         // toggle the node in tree view by getting parent node if parent node is present in tree view
         this.CreateTreeViewElements(nodes, nodeElement);
       }
-    }     
+    }
+  }
+
+  _createTreeViewElement(node, parentNode){
+    // create a new item in tree view with all the required attributes and append to its parent
+    const newItem = document.createElement("ui5-tree-item");
+    newItem.id = String(node.id);
+    newItem.text = String(node.name);
+    if(node.node_type === "FOLDER"){
+      newItem.setAttribute("path", String($(parentNode).attr('path') || "") + "/" + String(newItem.text))
+    } else{
+      newItem.setAttribute("path", "/" + String(newItem.text))
+    }
+    newItem.setAttribute("has-children", "");
+    parentNode.appendChild(newItem);
   }
 
   CreateTreeViewElements(nodesArray, parentNode){
@@ -102,12 +121,7 @@ export default class FileTreeNavigator extends HTMLElement {
     for (let index = 0; index < nodesArray.length; index++) {
       const childNode = nodesArray[index];
       if (childNode.node_type !== "FILE" && !document.querySelector(`ui5-tree-item[id='${childNode.id}']`)) {
-        const newItem = document.createElement("ui5-tree-item");
-        newItem.id = String(childNode.id);
-        newItem.text = String(childNode.name);
-        newItem.setAttribute("path", String($(parentNode).attr('path') || "") + "/" + String(newItem.text))
-        newItem.setAttribute("has-children", "");
-        parentNode.appendChild(newItem);
+        this._createTreeViewElement(childNode, parentNode);
       }
     }
     if (!parentNode.expanded) {

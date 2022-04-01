@@ -9,13 +9,12 @@ export default class NewCta extends HTMLElement {
         <ui5-list mode="SingleSelect">
           <ui5-li data-value="collection">Collection</ui5-li>
           <ui5-li data-value="folder">Folder</ui5-li>
-          <ui5-li data-value="fileUpload" disabled>File upload</ui5-li>
-          <ui5-li data-value="folderUpload" disabled>Folder upload</ui5-li>
         </ui5-list>
       </ui5-popover>
     `
 
     const [ button, popover ] = this.querySelectorAll(":scope > *")
+    
     this.popover = popover
 
     button.addEventListener("click", this.buttonClickHandler.bind(this))
