@@ -53,8 +53,6 @@ SHADIR_ROOT = Path(conf.get("SHADIR_ROOT", "/opt/DPS/SHA_DIR/"))
 FILE_UPLOAD_TEMP_DIR = Path(conf.get("FILE_UPLOAD_TEMP_DIR", "/opt/DPS/tmp/"))
 PETABOX_SECRET = bytes(conf["PETABOX_SECRET"], "ascii")
 
-# LOGIN_REDIRECT_URL = '/dashboard'
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -114,14 +112,13 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "vault.middleware.VaultRemoteUserMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "vault.authentication.VaultRemoteUserAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": ("rest_framework.pagination.LimitOffsetPagination"),
     "EXCEPTION_HANDLER": "vault.rest_api.exception_handler",
@@ -163,8 +160,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "vault_site.wsgi.application"
 
 AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.RemoteUserBackend",
-    # "django.contrib.auth.backends.ModelBackend",
+    "django.contrib.auth.backends.ModelBackend",
 ]
 
 # Database
@@ -233,7 +229,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "vault.User"
 
-LOGIN_URL = "/vault/accounts/login/"
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/dashboard"
 
 
 SENTRY_DSN = conf.get("SENTRY_DSN", "")
@@ -320,3 +317,8 @@ FIXITY_API_KEY = conf.get("FIXITY_API_KEY", "FIXITY_API_KEY")
 FIXITTER_URL_PREFIX = "https://webdata.archive-it.org/jobman"
 # Preshared auth key accepted by the fixity checking service
 FIXITTER_API_KEY = conf.get("FIXITTER_API_KEY", "FIXITTER_API_KEY")
+
+
+# To disable basic auth support for DOAJ endpoint, or any view using the
+# @basic_auth_required decorator, uncomment the following line
+# BASICAUTH_DISABLE = True

@@ -98,10 +98,6 @@ migrate: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 
 .PHONY: run
 run: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
-ifndef HTTP_REMOTE_USER
-	@echo "ensure HTTP_REMOTE_USER is set and try again"
-	@exit 1
-endif
 	venv/bin/python ./vault/utilities/process_chunked_files.py & venv/bin/python manage.py runserver
 
 .PHONY: md-toc

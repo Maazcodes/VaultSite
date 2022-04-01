@@ -1,6 +1,7 @@
 django
 django-filter
 djangorestframework
+django-basicauth
 fs
 internetarchive
 Jinja2

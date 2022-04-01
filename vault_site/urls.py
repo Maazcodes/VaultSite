@@ -1,5 +1,6 @@
 """vault_site URL Configuration"""
 
+from django.contrib.auth import views as auth_views
 from django.contrib import admin
 from django.urls import (
     include,
@@ -7,12 +8,52 @@ from django.urls import (
     re_path,
 )
 
-from vault import api, views, fixity_api
+from vault import api, views, fixity_api, forms
 
 from vault.rest_api import router as rest_api_router
 
+
 urlpatterns = [
     path("", views.index, name="index"),
+    path("accounts/login/", auth_views.LoginView.as_view(), name="login"),
+    path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path(
+        "accounts/password_change/",
+        auth_views.PasswordChangeView.as_view(),
+        name="password_change",
+    ),
+    path(
+        "accounts/password_change/done/",
+        auth_views.PasswordChangeDoneView.as_view(),
+        "password_change_done",
+    ),
+    path(
+        "accounts/password_reset/",
+        auth_views.PasswordResetView.as_view(form_class=forms.VaultPasswordResetForm),
+        name="password_reset",
+    ),
+    path(
+        "accounts/password_reset/done",
+        auth_views.PasswordResetDoneView.as_view(),
+        name="password_reset_done",
+    ),
+    path(
+        "accounts/reset/<uidb64>/<token>",
+        auth_views.PasswordResetConfirmView.as_view(
+            form_class=forms.VaultSetPasswordForm
+        ),
+        name="password_reset_confirm",
+    ),
+    path(
+        "accounts/reset/done",
+        auth_views.PasswordResetCompleteView.as_view(),
+        name="password_reset_complete",
+    ),
+    path(
+        "accounts/logout_then_login",
+        auth_views.logout_then_login,
+        name="logout_then_login",
+    ),
     path("dashboard", views.dashboard, name="dashboard"),
     path("create_collection", views.create_collection, name="create_collection"),
     re_path(
@@ -36,7 +77,6 @@ urlpatterns = [
         "administration/users", views.administration_users, name="administration_users"
     ),
     path("administration/help", views.administration_help, name="administration_help"),
-    # path('accounts/', include('django.contrib.auth.urls')),
     path("api/collections", api.collections, name="api_collections"),
     path("api/reports", api.reports, name="api_reports"),
     path("api/collections_stats", api.collections_stats, name="api_collections_stats"),

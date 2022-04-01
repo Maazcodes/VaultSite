@@ -10,6 +10,7 @@ from itertools import chain
 from typing import Optional
 from typing import Union
 from typing import cast
+from typing import Dict
 
 from django.conf import settings
 from django.contrib import messages
@@ -27,10 +28,12 @@ from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from fs.osfs import OSFS
+
 import requests
 
 from vault import forms
 from vault import models
+from vault.basicauth import basic_auth_required
 from vault.file_management import generate_hashes, move_temp_file
 
 logger = logging.getLogger(__name__)
@@ -291,7 +294,7 @@ def create_attribs_dict(request):
     retval["comment"] = request.POST.get("comment", "")
     retval["client"] = request.POST.get("client", "")
     retval["collection"] = request.POST.get("collection", None)
-    retval["username"] = request.META.get("REMOTE_USER", "")
+    retval["username"] = request.user.username
     retval["organization"] = request.user.organization.id
     retval["orgname"] = request.user.organization.name
     try:
@@ -302,14 +305,14 @@ def create_attribs_dict(request):
     return retval
 
 
-def format_doaj_json(attribs):
+def format_doaj_json(attribs: Dict) -> Dict:
     attr = {
         "files": {
             "name": attribs["name"],
             "sha256": attribs["sha256sumV"],
         }
     }
-    return json.dumps(attr)
+    return attr
 
 
 # Format all the string data from the request as a JSON blob
@@ -337,13 +340,16 @@ def _format_filelist_json(request):
     return json.dumps(request_list)
 
 
-def return_doaj_report(attribs):
-    data = format_doaj_json(attribs)
-    return JsonResponse(data)
+def return_doaj_report(attribs: Dict) -> HttpResponse:
+    data: Dict = format_doaj_json(attribs)
+    return JsonResponse(data, safe=True)
 
 
-def return_text_report(data):
-    return JsonResponse(data)
+# This function is called with stringified dicts, so JsonResponse
+# will TypeError.
+def return_text_report(data: str) -> HttpResponse:
+    # pylint: disable=http-response-with-content-type-json
+    return HttpResponse(data, content_type="application/json")
 
 
 def return_total_used_quota(_collections=None, organization=None):
@@ -397,7 +403,7 @@ def validate_collection(request):
     return collection_id
 
 
-@login_required
+@basic_auth_required
 @csrf_exempt
 def deposit_compat(request):
     """
@@ -570,7 +576,7 @@ def deposit_compat(request):
 #
 # @csrf_exempt required for curl, for example.
 #
-@login_required
+@basic_auth_required
 @csrf_exempt
 def deposit_web(request):  # pylint: disable=too-many-statements,too-many-locals
     if request.method != "POST":

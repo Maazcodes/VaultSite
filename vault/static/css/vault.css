@@ -438,3 +438,41 @@ ui5-tree {
   --sapList_SelectionBackgroundColor: rgba(0, 0, 0, 0.05) !important;
   --sapList_SelectionBorderColor: rgba(0, 0, 0, 0.05) !important;
 }
+
+
+/*  Forms */
+
+.errorlist {
+  color: #e84b4b;
+}
+
+/* Dropdown */
+.top-bar-section li.has-dropdown:hover {
+  display: inherit;
+}
+
+.top-bar-section li.has-dropdown:hover >  ul {
+  left: auto;
+  border: none;
+
+}
+
+.top-bar-section li.has-dropdown:hover >  ul.f-dropdown::before,
+.top-bar-section li.has-dropdown:hover >  ul.f-dropdown::after {
+  content: none;
+}
+
+.top-bar-section li.has-dropdown ul li {
+  width:170px;
+	float:none;
+	display:list-item;
+	position: relative;
+}
+
+.top-bar-section li.has-dropdown ul li a {
+  background-color: #333 !important;
+}
+
+.top-bar-section li.has-dropdown ul li a:hover {
+  background-color: #2a282c !important;
+}

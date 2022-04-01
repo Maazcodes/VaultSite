@@ -1,4 +1,7 @@
+from base64 import b64encode
 from django.http import Http404
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.files.uploadedfile import SimpleUploadedFile
 from model_bakery import baker
 import pytest
@@ -280,3 +283,29 @@ def test_deposit_compat(rf):
     request.user = user
     response = views.deposit_compat(request)
     assert response.status_code == 200, "complete doaj-style request should succeed"
+
+    # anonymous user
+    request = rf.post(f"/deposit/compat", data=data)
+    request.user = AnonymousUser()
+    response = views.deposit_compat(request)
+    assert response.status_code == 401, "Anonymous user cannot post"
+
+    # anonymous user with basic auth header
+    user.username = "doaj_uploader"
+    user.set_password("pass")
+    user.save()
+    ba_string = b64encode(b"doaj_uploader:pass").decode("utf-8")
+    headers = {"HTTP_AUTHORIZATION": f"Basic {ba_string}"}
+    uploaded_file = SimpleUploadedFile("b.txt", b"b", content_type="text/plain")
+    data["file_field"] = uploaded_file
+    data["directories"] = "b.txt"
+    data[
+        "sha256sum"
+    ] = "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d"
+    request = rf.post(f"/deposit/compat", data=data, **headers)
+    request.user = AnonymousUser()
+    middleware = SessionMiddleware(request)
+    middleware.process_request(request)
+    request.session.save()
+    response = views.deposit_compat(request)
+    assert response.status_code == 200, "Anonymous with basic auth should succeed"

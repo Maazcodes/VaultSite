@@ -10,7 +10,6 @@ Vault digital preservation service.
   * [Docker-Dev Install](#docker-dev-install)
   * [Virtualenv + Docker Install](#virtualenv--docker-install)
   * [Finally](#finally)
-  * [Regarding `REMOTE_USER`](#regarding-remote_user)
 - [Dependency Management](#dependency-management)
   * [Adding new dependencies](#adding-new-dependencies)
 - [Deployment](#deployment)
@@ -42,7 +41,7 @@ make setup
 make .git/hooks/pre-commit
 make migrate
 AIT_CONF=./DPS_dev/vault.yml ./venv/bin/python manage.py createsuperuser
-HTTP_REMOTE_USER=<your-superuser-name> make run
+make run
 # in a separate shell:
 make test
 ```
@@ -52,12 +51,6 @@ make test
 - Create a plan, an organization and associate your user with that org
 - From the [dashboard](http://localhost:8000/dashboard), create a collection
 - Deposit file(s) to your new collection
-
-### Regarding `REMOTE_USER`
-Until we complete de-apachefication we are using Apache `REMOTE_USER`
-authentication. Django inspects the `REMOTE_USER` env var and looks up that
-username in its vault_user table. As such, above, we set the `REMOTE_USER`
-environment variable to the username of the superuser we created.
 
 ## Dependency Management
 The project is using [pip-tools(https://github.com/jazzband/pip-tools) for

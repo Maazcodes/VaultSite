@@ -73,8 +73,7 @@ class AuthenticatedClient(APIClient):
         super().__init__()
         # Save the user for convenience.
         self.user = user
-        # Set the HTTP header required for Django RemoteUserBackend.
-        self.credentials(HTTP_REMOTE_USER=user.username)
+        self.force_login(self.user)
 
     def get_html(self, *args, **kwargs):
         return self.get(*args, HTTP_ACCEPT="text/html", **kwargs)

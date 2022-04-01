@@ -2,9 +2,12 @@
 
 from dataclasses import dataclass
 
+from django.contrib.auth import password_validation
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.core.files import File
 from django import forms
 from django.forms import CheckboxSelectMultiple
+from django.utils.translation import gettext_lazy as _
 
 from vault import models
 
@@ -153,3 +156,22 @@ class RegisterDepositFileForm(forms.Form):
     size = forms.IntegerField()
     type = forms.CharField(required=False)
     pre_deposit_modified_at = forms.DateTimeField(required=False)
+
+
+class VaultPasswordResetForm(PasswordResetForm):
+    email = forms.EmailField(
+        label=_("Email"),
+        max_length=254,
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "autofocus": ""}),
+    )
+
+
+class VaultSetPasswordForm(SetPasswordForm):
+    new_password1 = forms.CharField(
+        label=_("New password"),
+        widget=forms.PasswordInput(
+            attrs={"autocomplete": "new-password", "autofocus": ""}
+        ),
+        strip=False,
+        help_text=password_validation.password_validators_help_text_html(),
+    )

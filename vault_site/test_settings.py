@@ -6,7 +6,6 @@ from .settings import *
 
 
 TEST_FIXTURE_USER = "tester"
-os.environ["HTTP_REMOTE_USER"] = TEST_FIXTURE_USER
 
 VAULT_TEST_POSTGRES_NAME = os.environ.get("VAULT_POSTGRES_NAME", "vault")
 VAULT_TEST_POSTGRES_USER = os.environ.get("VAULT_POSTGRES_USER", "vault")
