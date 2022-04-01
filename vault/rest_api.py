@@ -45,6 +45,7 @@ from rest_framework.renderers import (
     JSONRenderer,
 )
 from rest_framework.routers import DefaultRouter
+from rest_framework.settings import api_settings
 from rest_framework.views import exception_handler as _exception_handler
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.mixins import (
@@ -149,12 +150,17 @@ class GeolocationSerializer(VaultHyperlinkedModelSerializer):
 
 
 class CollectionSerializer(VaultHyperlinkedModelSerializer):
+    target_geolocations = GeolocationSerializer(
+        many=True, required=False, read_only=True
+    )
+
     class Meta:
         model = Collection
         fields = (
             "fixity_frequency",
             "name",
             "organization",
+            "target_geolocations",
             "target_replication",
             "tree_node",
             "url",
@@ -617,9 +623,7 @@ class PlanFilterSet(VaultFilterSet):
 ###############################################################################
 
 
-class CollectionViewSet(
-    VaultReadOnlyModelViewSet, CreateModelMixin, VaultUpdateModelMixin
-):
+class CollectionViewSet(VaultReadOnlyModelViewSet, VaultUpdateModelMixin):
     queryset = Collection.objects.all()
     serializer_class = CollectionSerializer
     filterset_class = CollectionFilterSet
@@ -637,7 +641,8 @@ class CollectionViewSet(
     # check because "organization" is not included in mutable_fields.
 
     def create(self, request, *args, **kwargs):
-        """Override CreateModelMixin.create() to validate requests."""
+        """Custom create method for permissions check and saving plan-related info."""
+        # Check user can create a collection for this organization
         organization_url = request.data.get("organization")
         if organization_url:
             # Return a 403 if the specified Organization is not accessible by the user.
@@ -648,7 +653,36 @@ class CollectionViewSet(
             request.data["organization"] = OrganizationSerializer.get_url(
                 request, request.user.organization
             )
-        return super().create(request, *args, **kwargs)
+
+        # Use plan's default target_replication and fixity_frequency unless specified
+        plan = request.user.organization.plan
+        request.data.setdefault("target_replication", plan.default_replication)
+        request.data.setdefault("fixity_frequency", plan.default_fixity_frequency)
+
+        # Save collection instance
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        new_collection = serializer.save()
+
+        # Add plan's default_geolocations to collection
+        new_collection.target_geolocations.set(plan.default_geolocations.all())
+        new_collection_data = self.serializer_class(
+            new_collection, context={"request": request}
+        ).data
+
+        # Share the good news
+        headers = self.get_success_headers(new_collection_data)
+        return Response(
+            new_collection_data, status=status.HTTP_201_CREATED, headers=headers
+        )
+
+    @staticmethod
+    def get_success_headers(data):
+        # sets location header to URL of the newly created Collection
+        try:
+            return {"Location": str(data[api_settings.URL_FIELD_NAME])}
+        except (TypeError, KeyError):
+            return {}
 
 
 class GeolocationViewSet(VaultReadOnlyModelViewSet):

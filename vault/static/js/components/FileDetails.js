@@ -125,7 +125,7 @@ export default class FileDetails extends HTMLElement {
     const { node } = this.props
     let str = ""
     nodeKeys.forEach(key => {
-          if (node[key] !== null){
+          if (node[key] !== null && node[key] !== ""){
             if(key === "uploaded_by"){
               str += `<dt>${toTitleCase(key)}</dt><dd>${node[key].username}</dd>`
             }
@@ -146,6 +146,9 @@ export default class FileDetails extends HTMLElement {
             }
             else if (key === "size"){
                 str+=`<dt>${toTitleCase(key)}</dt><dd class="size-text">${ node.id == this.folderNodeId ? humanBytes(this.nodeSize) : humanBytes(node.size)}</dd>`
+            }
+            else if (key === "modified_at") {
+              str += `<dt>Last Action At</dt><dd>${node[key]}</dd>`
             }
             else{
               str+=`<dt>${toTitleCase(key)}</dt><dd>${node[key]}</dd>`

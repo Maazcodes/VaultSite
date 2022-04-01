@@ -71,8 +71,8 @@ var flow = new Flow({
   },
 });
 
-flow.assignBrowse(document.getElementById("browseFilesButton"));
-flow.assignBrowse(document.getElementById("browseDirectoriesButton"), true);
+flow.assignBrowse(document.getElementById("uploadFilesButton"));
+flow.assignBrowse(document.getElementById("uploadFoldersButton"), true);
 flow.assignDrop(document.getElementById("dropTarget"));
 
 let files = [];
@@ -96,7 +96,7 @@ flow.on("fileAdded", function (file, event) {
   // dictionary with relative path as key
   files_dict[String(new_file["relative_path"])] = new_file;
   upload_size += new_file["size"];
-  document.querySelector("#flow-stats").innerHTML =
+  document.querySelector("#dropTargetMsg").innerHTML =
     "<div>" +
     files.length +
     pluralizeWord(" file ", " files ", files.length) +
@@ -121,7 +121,7 @@ flow.on("fileError", function (file, message) {
 
 function changeStats() {
   if ($("#id_collection").find(":selected").val() != "") {
-    document.querySelector("#flow-stats").innerHTML =
+    document.querySelector("#dropTargetMsg").innerHTML =
       "<div>" +
       files.length +
       pluralizeWord(" file ", " files ", files.length) +

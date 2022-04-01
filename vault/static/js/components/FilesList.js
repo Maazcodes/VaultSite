@@ -188,27 +188,19 @@ export default class FilesList extends HTMLElement {
     const isDownloadable = !!node.content_url
     const options = [
       this.state.detailsPanelClosed && "View Details",
-      node.node_type === "FILE" && numSelectedNodes < 2 && "Preview",
+      // node.node_type === "FILE" && numSelectedNodes < 2 && "Preview",
       numSelectedNodes < 2 && "Rename",
       !isCollection && "Move",
-      numSelectedNodes < 2 && "Download",
+      node.node_type === "FILE" && numSelectedNodes < 2 && "Download",
       !isCollection && "Delete",
       isFolder && numSelectedNodes === 0 && "Deposit Here",
     ].filter(x => x !== false)
-
-    // TODO - implement these
-    const disabledOptions = [
-      "Preview",
-      (numSelectedNodes < 2) || "Move",
-      (numSelectedNodes < 2 && isDownloadable) || "Download",
-    ]
 
     this.appendChild(
       Object.assign(new ContextMenu(), {
         props: {
           x: e.clientX,
           y: e.clientY + window.scrollY,
-          // disabledOptions,
           options,
           context: {
             currentRow: tr,

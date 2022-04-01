@@ -16,10 +16,12 @@
         border-radius: 5px;
         padding: 50px;
         text-align: center;
-        font: 21pt bold arial;
-        color: #bbb;
+        font: 21pt bold;
+        font-family: "Open Sans",Helvetica,Arial,sans-serif;
+        color: #888;
         background-color: white;
     }
+
     #progress_bar_flow {
         height: 24px;
         display: none;
@@ -130,10 +132,10 @@
             </form>
         {% endif %}
 
-        <button class="button small padding-top padding-bottom half left" id="browseFilesButton">Browse Files</button>
-        <button class="button small padding-top padding-bottom half left margin-left half" id="browseDirectoriesButton">Browse Folders</button>
+        <button class="button small padding-top padding-bottom half left" id="uploadFilesButton">Upload Files</button>
+        <button class="button small padding-top padding-bottom half left margin-left half" id="uploadFoldersButton">Upload Folders</button>
         <div class="area">
-            <div id="dropTarget"><p style="text-align: center; vertical-align: center">Drop Files here</p></div>
+            <div id="dropTarget"><p id="dropTargetMsg" style="text-align: center; vertical-align: center">Drop Files Here</p></div>
         </div>
         <input id="organization_quota" name="organization_quota" type="hidden" value="{{ request.user.organization.quota_bytes }}">
         <input id="total_used_quota" name="total_used_quota" type="hidden" value="{{ total_used_quota }}">

@@ -1,3 +1,8 @@
+.dashboard-report-link {
+  text-decoration: underline;
+  color: #0000EE;
+}
+
 #progress_bar {
   height: 24px;
   display: none;

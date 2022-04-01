@@ -67,10 +67,13 @@ def reports(request):
     formatted_events = []
     for event in events:
         if isinstance(event, models.Deposit):
+            # Filter out "Migration" events
+            if is_migration(event.id):
+                continue
             formatted_events.append(
                 {
                     "id": event.id,
-                    "reportType": "Migration" if 15 <= event.id <= 96 else "Deposit",
+                    "reportType": "Deposit",
                     "model": "Deposit",
                     "endedAt": event.registered_at.strftime("%Y-%m-%dT%H-%M-%S-000Z"),
                     "collection_id": event.collection_id,
@@ -137,6 +140,8 @@ def collections_stats(request):
 
 @login_required
 def reports_files(request, collection_id=None):
+    """Provides data for the Total Files Deposited dashboard widget. See the function
+    fetchFilesEvolutions in the dashboard js."""
     org_id = request.user.organization_id
     if collection_id:
         collection = get_object_or_404(
@@ -164,7 +169,7 @@ def reports_files(request, collection_id=None):
     for event in events:
         if isinstance(event, models.Deposit):
             # filter out the "Migration" deposits
-            if 15 <= event.id <= 96:
+            if is_migration(event.id):
                 continue
             formatted_events.append(
                 {
@@ -691,10 +696,13 @@ def get_events(request, collection_id):
     events = sorted(chain(deposits, _reports), key=extract_event_sort_key, reverse=True)
     for event in events:
         if isinstance(event, models.Deposit):
+            # filter out the "Migration" deposits
+            if is_migration(event.id):
+                continue
             deposit_events.append(
                 {
                     "Event Id": event.id,
-                    "Event Type": "Migration" if is_migration(event.id) else "Deposit",
+                    "Event Type": "Deposit",
                     "Started": event.registered_at.strftime(DATE_FORMAT),
                     "File Count": event.file_count,
                     "Completed": event.hashed_at.strftime(DATE_FORMAT)

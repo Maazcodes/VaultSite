@@ -224,8 +224,14 @@
 }
 
 .dashboard-list-item a {
-    text-decoration: none;
-    color: black;
+    float: right;
+    text-decoration: underline;
+    display: none;
+    /* Hide unless parent dashboard-list-item is also selected */
+}
+
+.dashboard-list-item.selected a {
+    display: inline;
 }
 
 .stats-item {

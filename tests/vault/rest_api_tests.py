@@ -371,6 +371,34 @@ def test_collections_endpoint_partial_update_allowed(users, make_collection, mak
             assert_status(client, collection.id, {field: value}, 403)
 
 
+@mark.django_db
+def test_collections_endpoint_saves_target_geolocations(make_user):
+    user = make_user()
+    client = AuthenticatedClient(user)
+    org_id = user.organization_id
+    assert len(Collection.objects.filter(organization_id=org_id)) == 0
+
+    collection_dict = model_to_dict(baker.prepare(Collection, organization=None))
+    response = client.post(endpoint("collections"), collection_dict)
+    assert response.status_code == 201
+    response_geolocations = sorted(
+        [geo["name"] for geo in response.data["target_geolocations"]]
+    )
+    collection = Collection.objects.get(organization_id=org_id)
+    geolocations = list(
+        collection.target_geolocations.all()
+        .order_by("name")
+        .values_list("name", flat=True)
+    )
+    expected_geolocations = list(
+        user.organization.plan.default_geolocations.all()
+        .order_by("name")
+        .values_list("name", flat=True)
+    )
+    assert geolocations == expected_geolocations
+    assert response_geolocations == expected_geolocations
+
+
 #### Geolocations Endpoint Tests ####
 
 
