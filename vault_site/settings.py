@@ -227,12 +227,6 @@ STATIC_ROOT = conf.get("STATIC_ROOT", "/opt/DPS/html/django-admin-static-hack")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-AUTH_USER_MODEL = "vault.User"
-
-LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/dashboard"
-
-
 SENTRY_DSN = conf.get("SENTRY_DSN", "")
 
 
@@ -303,6 +297,10 @@ if DEPLOYMENT_ENVIRONMENT == "PROD":
 if DEPLOYMENT_ENVIRONMENT != "DEV":
     # informs application it's mounted on /vault, which is necessary for URL generation
     FORCE_SCRIPT_NAME = "/vault"
+
+AUTH_USER_MODEL = "vault.User"
+LOGIN_URL = f"{vars().get('FORCE_SCRIPT_NAME', '')}/accounts/login/"
+LOGIN_REDIRECT_URL = f"{vars().get('FORCE_SCRIPT_NAME', '')}/dashboard"
 
 # name of service as which to identify when creating presigned petabox content
 # URLs
