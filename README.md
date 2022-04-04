@@ -32,10 +32,14 @@ Use Docker-Dev for a quicker setup.
 
 ### Virtualenv + Docker Install
 - Python 3.8
+- If on Apple Silicon: `brew install postgresql` so we can compile psycopg2-binary
+    - There currently isn't an arm64 wheel for psycopg2-binary
+    - We won't run this brew install of postgres, it will run in a container
+    - You may first need to `brew install openssl readline sqlite3 xz zlib`
 - Run Postgres, install into virtual environment, and start the app:
 ```
 cd path/to/project
-utilities/dev-postgres.sh start
+vault/utilities/dev-postgres.sh start
 make setup
 # set up git pre-commit hook; optional, but recommended
 make .git/hooks/pre-commit

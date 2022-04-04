@@ -10,6 +10,7 @@ dist
 build
 
 node_modules
+venv
 
 postgres-data
 

@@ -22,7 +22,7 @@ PYLINT_REPORT ?= pylint.json
 export AIT_CONF = $(DPS_DIR)/vault.yml
 
 venv:
-	virtualenv venv
+	python -m venv venv
 
 ./venv/bin/pip-sync: venv
 	venv/bin/pip install pip-tools==$(PIPTOOLS_VERSION)
