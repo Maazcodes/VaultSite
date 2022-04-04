@@ -9,13 +9,13 @@ Vault digital preservation service.
 - [Development](#development)
   * [Docker-Dev Install](#docker-dev-install)
   * [Virtualenv + Docker Install](#virtualenv--docker-install)
-  * [Finally](#finally)
 - [Dependency Management](#dependency-management)
   * [Adding new dependencies](#adding-new-dependencies)
 - [Deployment](#deployment)
 - [Code Quality](#code-quality)
   * [Black -- opinionated formatting](#black----opinionated-formatting)
   * [Pylint -- linting and static analysis](#pylint----linting-and-static-analysis)
+  * [Frontend](#frontend)
 - [Releases](#releases)
 - [Operations](#operations)
   * [Triggers](#triggers)
@@ -46,7 +46,7 @@ make run
 make test
 ```
 
-### Finally
+**Finally**
 - Log in to [admin](http://localhost:8000/admin/)
 - Create a plan, an organization and associate your user with that org
 - From the [dashboard](http://localhost:8000/dashboard), create a collection
@@ -108,6 +108,43 @@ ansible-playbook --ask-vault-password -i qa setup_vault_site.yml --extra-vars gi
 * https://pylint.org/
 * [Pylint message descriptions](https://pycodequ.al/docs/pylint-messages.html)
 * [Ignoring issues](https://pycodequ.al/docs/ignore-issues.html)
+
+### Frontend
+The vault frontend uses [`eslint`](https://eslint.org/),
+[`prettier`](https://prettier.io/) to assert baseline code quality.
+[`nvm`](https://github.com/nvm-sh/nvm) is used to make it simpler for all
+developers to target the same version of `node`.
+
+```sh
+# First, install nvm: https://github.com/nvm-sh/nvm#installing-and-updating
+# This must only be done once on a given workstation.
+
+# Next, install the target version of node. The target version is determined by
+# the contents of ./.nvmrc. This step is only necessary when first setting up
+# vault for development or when the version of node used by vault changes.
+nvm install
+
+# Make the yarn package manager for node available. This step is only necessary
+# when first setting up vault for development or when the version of node used
+# by vault changes.
+corepack enable
+
+# Activate the target node version according to ./nvmrc. This step is necessary
+# to run in each new shell session.
+nvm use
+
+# Be in the frontend JavaScript directory
+cd vault/static/js
+
+# Run static analysis checks with eslint:
+make lint
+
+# Assert formatting correctness with prettier:
+make ck-format
+
+# Modify JavaScript source for formatting compliance:
+make format
+```
 
 ## Releases
 Here we describe the process we use to define, deploy, and patch releases.

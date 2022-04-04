@@ -1,0 +1,15 @@
+{
+  "name": "vault-js",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.10.0",
+    "prettier": "^2.5.1"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "ck-format": "prettier --check ."
+  }
+}

@@ -19,19 +19,15 @@ cache:
 services:
 - postgres:10
 
-image:
-  name: python:3.8
-
-before_script:
-  - python --version
-  - pip install virtualenv
-
-test:
+test-py:
   stage: test
+  image: python:3.8
   # job can be preempted by subsequent requests to re-run
   # https://git.archive.org/help/ci/yaml/README.md#interruptible
   interruptible: true
   script:
+  - python --version
+  - pip install virtualenv
   - make setup
   - make test
   - make lint
@@ -55,3 +51,14 @@ qa-deploy:
   rules:
    # Run this job when commits are pushed or merged to the default branch
    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ENABLE_CD == 'true'
+
+# TODO (mwilson): enable JS CI automated QA once formatting and lint
+# violations have been corrected
+#test-js:
+#  stage: test
+#  image: node:16
+#  interruptible: true
+#  script:
+#    - cd vault/static/js
+#    - make lint
+#    - make ck-format

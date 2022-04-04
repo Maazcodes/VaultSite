@@ -25,3 +25,9 @@ export function toTitleCase(text){
       return word[0].toUpperCase() + word.slice(1, word.length)
     }).join(" ")
   }
+
+// Define a dummy html tagged template that simply returns the concatenated
+// string in order to signal to Prettier that these strings should be
+// formatted at HTML.
+export const html = (strs, ...refs) =>
+  strs.reduce((acc, s, i) => acc + s + (refs[i] ?? ""), "")
