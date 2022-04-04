@@ -1,9 +1,9 @@
+import { publish } from "../lib/pubsub.js";
 
-import { publish } from "../lib/pubsub.js"
+const APPLICATION_JSON = "application/json";
+const CSRF_REGEX = /csrftoken=([^;$]+)/;
 
-const APPLICATION_JSON = "application/json"
-
-const encodeSearchParams = x => x ? `?${new URLSearchParams(x).toString()}` : ''
+const encodeSearchParams = x => x ? `?${new URLSearchParams(x).toString()}` : '';
 
 export default class API {
   /* Class to interact with a Django Rest Framework API.
@@ -55,7 +55,8 @@ export default class API {
         url, {
           credentials: "same-origin",
           headers: {
-            "accept": APPLICATION_JSON
+            "accept": APPLICATION_JSON,
+            ...getCsrfHeader(),
           }
         }
       )
@@ -79,7 +80,8 @@ export default class API {
         method: "PATCH",
         headers: {
           "Accept": APPLICATION_JSON,
-          "content-type": APPLICATION_JSON
+          "content-type": APPLICATION_JSON,
+          ...getCsrfHeader(),
         },
         body: JSON.stringify(data)
       }
@@ -95,7 +97,8 @@ export default class API {
         method: "POST",
         headers: {
           "Accept": APPLICATION_JSON,
-          "content-type": APPLICATION_JSON
+          "content-type": APPLICATION_JSON,
+          ...getCsrfHeader(),
         },
         body: JSON.stringify(data)
       }
@@ -110,6 +113,9 @@ export default class API {
       {
         credentials: "same-origin",
         method: "DELETE",
+        headers: {
+          ...getCsrfHeader(),
+        },
       }
     )
   }
@@ -120,4 +126,18 @@ export default class API {
       detail: (await response.json()).detail
     }
   }
+}
+
+
+/**
+ * Gets an object describing a CSRF header taking the value of the CSRF token
+ * found in session cookie.
+ */
+const getCsrfHeader = () => {
+  const csrfMatch = CSRF_REGEX.exec(decodeURIComponent(document.cookie));
+  if (!csrfMatch) {
+    return {};
+  }
+
+  return {"X-CSRFToken": csrfMatch[1]};
 }
