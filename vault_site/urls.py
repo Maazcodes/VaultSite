@@ -25,7 +25,7 @@ urlpatterns = [
     path(
         "accounts/password_change/done/",
         auth_views.PasswordChangeDoneView.as_view(),
-        "password_change_done",
+        name="password_change_done",
     ),
     path(
         "accounts/password_reset/",
