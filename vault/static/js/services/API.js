@@ -126,7 +126,7 @@ export default class API {
  * Gets an object describing a CSRF header taking the value of the CSRF token
  * found in session cookie.
  */
-const getCsrfHeader = () => {
+export const getCsrfHeader = () => {
   const csrfMatch = CSRF_REGEX.exec(decodeURIComponent(document.cookie));
   if (!csrfMatch) {
     return {};

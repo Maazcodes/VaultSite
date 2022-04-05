@@ -1,5 +1,6 @@
 import { subscribe, publish } from "../lib/pubsub.js";
 import { humanBytes } from "../lib/lib.js";
+import { getCsrfHeader } from "../services/API.js";
 
 const STRING_TRUNCATION_THRESHOLD = 17;
 const APPLICATION_JSON = "application/json";
@@ -131,6 +132,7 @@ export default class MovePopover extends HTMLElement {
         headers: {
           Accept: APPLICATION_JSON,
           "Content-Type": APPLICATION_JSON,
+          ...getCsrfHeader(),
         },
         body: JSON.stringify(payload),
       };
