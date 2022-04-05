@@ -7,14 +7,14 @@ https://github.com/pypa/sampleproject
 from setuptools import setup, find_packages
 
 
-install_requires = list()
-with open("requirements.txt") as f:
-    install_requires = [line for line in f]
+install_requires = []
+with open("requirements.txt", encoding="utf-8") as f:
+    install_requires = list(f)
 
 
 setup(
     name="vault",
-    version="0.1.0",
+    version="0.3.0",
     description="Vault Digital Preservation Service",
     url="https://git.archive.org/dps/vault-site",
     author="Web Team",

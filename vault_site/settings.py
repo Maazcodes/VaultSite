@@ -42,6 +42,8 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 import yaml
 
+from vault import utils
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -140,6 +142,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "vault.context_processors.sentry_dsn",
+                "vault.context_processors.vault_version",
             ],
         },
     },
@@ -227,6 +230,10 @@ STATIC_ROOT = conf.get("STATIC_ROOT", "/opt/DPS/html/django-admin-static-hack")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+VAULT_VERSION = utils.get_vault_version()
+VAULT_GIT_COMMIT_HASH = utils.get_repo_commit_hash()[:7]
+
 SENTRY_DSN = conf.get("SENTRY_DSN", "")
 
 
@@ -248,6 +255,7 @@ sentry_sdk.init(
     traces_sampler=traces_sampler,
     send_default_pii=True,
     environment=DEPLOYMENT_ENVIRONMENT,
+    release=f"vault@{VAULT_VERSION}-{VAULT_GIT_COMMIT_HASH}",
 )
 
 
@@ -256,7 +264,11 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "plain": {
-            "format": "{asctime} {levelname} {module} {message}",
+            "format": (
+                "{asctime} "
+                + VAULT_GIT_COMMIT_HASH[:7]
+                + " {levelname} {module} {message}"
+            ),
             "style": "{",
         },
     },
@@ -315,7 +327,6 @@ FIXITY_API_KEY = conf.get("FIXITY_API_KEY", "FIXITY_API_KEY")
 FIXITTER_URL_PREFIX = "https://webdata.archive-it.org/jobman"
 # Preshared auth key accepted by the fixity checking service
 FIXITTER_API_KEY = conf.get("FIXITTER_API_KEY", "FIXITTER_API_KEY")
-
 
 # To disable basic auth support for DOAJ endpoint, or any view using the
 # @basic_auth_required decorator, uncomment the following line

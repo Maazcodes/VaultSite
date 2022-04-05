@@ -11,6 +11,7 @@ requests
 sentry-sdk
 more-itertools
 tqdm
+GitPython
 
 # remove with old File code
 filetype

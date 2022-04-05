@@ -37,7 +37,7 @@ requirements.test.txt: requirements.test.in requirements.txt
 requirements.dev.txt: requirements.dev.in requirements.test.txt
 	venv/bin/pip-compile --output-file $@ $<
 
-$(VAULT_SITE_EGG_LINK): venv
+$(VAULT_SITE_EGG_LINK): venv setup.py
 	venv/bin/pip install --editable .
 
 .PHONY: setup
