@@ -1,5 +1,4 @@
-
-const DEBUG = false
+const DEBUG = false;
 
 export const TOPICS = new Set([
   "API_SERVICE_READY",
@@ -27,56 +26,60 @@ export const TOPICS = new Set([
   "NODE_CHILDREN_RESPONSE",
   "NODE_REQUEST",
   "NODE_RESPONSE",
-])
+]);
 
 const topicSubscribersMap = new Map(
-  Array.from(TOPICS).map(topic => [ topic, [] ])
-)
+  Array.from(TOPICS).map((topic) => [topic, []])
+);
 
-function assertValidTopic (topic) {
+function assertValidTopic(topic) {
   if (!TOPICS.has(topic)) {
-    throw new Error(`Undefined topic: ${topic}`)
+    throw new Error(`Undefined topic: ${topic}`);
   }
 }
 
-export function subscribe (topic, func) {
+export function subscribe(topic, func) {
   /* Subscribe func to the specified topic.
    */
-  assertValidTopic(topic)
-  const subscribers = topicSubscribersMap.get(topic)
+  assertValidTopic(topic);
+  const subscribers = topicSubscribersMap.get(topic);
   // Do not subscribe func more than once.
   if (!subscribers.includes(func)) {
-    subscribers.push(func)
+    subscribers.push(func);
   }
 }
 
-export function unsubscribe (topic, func) {
+export function unsubscribe(topic, func) {
   /* Unsubscribe func from the specified topic.
    */
-  assertValidTopic(topic)
+  assertValidTopic(topic);
   topicSubscribersMap.set(
     topic,
-    topicSubscribersMap.get(topic).filter(f => f !== func)
-  )
+    topicSubscribersMap.get(topic).filter((f) => f !== func)
+  );
 }
 
 // Define a monotonically increasing message ID integer.
-let messageId = 0
+let messageId = 0;
 
-export async function publish (topic, message) {
+export async function publish(topic, message) {
   /* Publish the specified message to all topic subscribers.
    */
-  assertValidTopic(topic)
-  messageId += 1
+  assertValidTopic(topic);
+  messageId += 1;
   if (DEBUG) {
     console.debug(
       `Publishing to ${topicSubscribersMap.get(topic).length} subscribers ` +
-       `on topic "${topic}" with message (id:${messageId}): ${JSON.stringify(message)}`
-    )
+        `on topic "${topic}" with message (id:${messageId}): ${JSON.stringify(
+          message
+        )}`
+    );
   }
   await Promise.all(
-    topicSubscribersMap.get(topic).map(func =>
-      new Promise(resolve => resolve(func(message, messageId)))
-    )
-  )
+    topicSubscribersMap
+      .get(topic)
+      .map(
+        (func) => new Promise((resolve) => resolve(func(message, messageId)))
+      )
+  );
 }

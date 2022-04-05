@@ -6,7 +6,7 @@ export default class BreadcrumbsView extends HTMLElement {
       nodes: [],
       path: undefined,
       node: {},
-    }    
+    };
   }
 
   connectedCallback() {
@@ -19,69 +19,92 @@ export default class BreadcrumbsView extends HTMLElement {
 
   render() {
     const { path, node, appPath } = this.props;
-    this.pathParts = path === "/" ? [] : path.replace(/^\//, "").split("/");    
+    this.pathParts = path === "/" ? [] : path.replace(/^\//, "").split("/");
     this.node = node;
     this.nodePathArray = this.node.path.split(".");
     this.innerHTML = `<ol class="main-breadcrumbs-list"><li class="my-collection"><a href="${appPath}">Collections </a></li>
     ${this.pathParts
       .map(
-        (pathElement, pathIndex) =>                                                                 
-            `<li class="crumb-elements" id="${pathIndex}"><a href="${this.pathLink(appPath, this.pathParts, pathIndex)}">${pathElement}</a></li>`)
+        (pathElement, pathIndex) =>
+          `<li class="crumb-elements" id="${pathIndex}"><a href="${this.pathLink(
+            appPath,
+            this.pathParts,
+            pathIndex
+          )}">${pathElement}</a></li>`
+      )
       .join("")}</ol>
     `;
     if (this.pathParts.length > 2) {
       this.innerHTML = `<ol class="main-breadcrumbs-list"><li class="my-collection"><a href="${appPath}">Collections </a></li><li class="crumb-elements" id="openPopoverButton" >...</li>
-      ${this.pathParts.slice(this.pathParts.length-2,)
-      .map(
-        (pathElement, pathIndex) =>                                                                 
-            `<li class="crumb-elements" id="${pathIndex + this.pathParts.length-2}"><a href="${this.pathLink(appPath, this.pathParts, pathIndex)}">${pathElement}</a></li>`)
-      .join("")}</ol>
+      ${this.pathParts
+        .slice(this.pathParts.length - 2)
+        .map(
+          (pathElement, pathIndex) =>
+            `<li class="crumb-elements" id="${
+              pathIndex + this.pathParts.length - 2
+            }"><a href="${this.pathLink(
+              appPath,
+              this.pathParts,
+              pathIndex
+            )}">${pathElement}</a></li>`
+        )
+        .join("")}</ol>
       `;
       this.innerHTML += `
       <ui5-popover id="breadcrumbs-popover-content" placement-type="Bottom">
         <ol style = "list-style: none; margin: 10px;">
-          ${this.pathParts.slice(0,this.pathParts.length-2)
-          .map(
-            (pathElement, pathIndex) =>                                                                 
-                `<li id="${pathIndex}"><a href="${this.pathLink(appPath, this.pathParts, pathIndex)}">${pathElement}</a></li>`)
-          .join("")}
+          ${this.pathParts
+            .slice(0, this.pathParts.length - 2)
+            .map(
+              (pathElement, pathIndex) =>
+                `<li id="${pathIndex}"><a href="${this.pathLink(
+                  appPath,
+                  this.pathParts,
+                  pathIndex
+                )}">${pathElement}</a></li>`
+            )
+            .join("")}
         </ol>
       </ui5-popover>
-      `
+      `;
       const popoverOpener = document.getElementById("openPopoverButton");
-	    const breadcrumbsPopover = document.getElementById("breadcrumbs-popover-content");
-      popoverOpener.addEventListener("click", function() {
+      const breadcrumbsPopover = document.getElementById(
+        "breadcrumbs-popover-content"
+      );
+      popoverOpener.addEventListener("click", function () {
         breadcrumbsPopover.showAt(popoverOpener);
       });
     }
   }
-  
-  async clickHandler (e) {
+
+  async clickHandler(e) {
     if (e.ctrlKey) {
-      return
+      return;
     }
     // prevent from re-loading the page
     e.preventDefault();
     const { target } = e;
     if (target.tagName !== "A") {
-      return
+      return;
     }
     this.targetId = target.parentElement.id;
     this.pathIndex = parseInt(this.targetId);
-    this.nodeId = this.nodePathArray[this.pathIndex+1]; // getting node id from node path array
-    if (!this.nodeId) { // For first element of Breadcrumb
+    this.nodeId = this.nodePathArray[this.pathIndex + 1]; // getting node id from node path array
+    if (!this.nodeId) {
+      // For first element of Breadcrumb
       this.nodeId = parseInt(this.nodePathArray[0]);
-    } 
+    }
     publish("CHANGE_DIRECTORY_REQUEST", {
-      nodeId: this.nodeId, path: `/${this.pathParts.slice(0, this.pathIndex + 1).join("/")}`,
-      })
+      nodeId: this.nodeId,
+      path: `/${this.pathParts.slice(0, this.pathIndex + 1).join("/")}`,
+    });
   }
 
   pathLink(appPath, pathParts, pathIndex) {
-    return appPath + "/" + pathParts.slice(0, pathIndex + 1).join("/")
+    return appPath + "/" + pathParts.slice(0, pathIndex + 1).join("/");
   }
 
-  changeDirectoryHandler({childNodesResponse, path, node}) {
+  changeDirectoryHandler({ childNodesResponse, path, node }) {
     this.props.node = node;
     this.props.path = path;
     this.props.nodes = childNodesResponse.results;

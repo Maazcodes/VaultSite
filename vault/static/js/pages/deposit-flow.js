@@ -654,7 +654,7 @@ const createCollectionsChart = (collections, fileCounts) => {
 const resetForm = () => {
   const newLocation = window.location.href.split("?")[0];
   window.location = newLocation;
-}
+};
 
 $(() => {
   $("#collections-chart .spinner").hide();

@@ -1,21 +1,20 @@
-
 export default class Modal extends HTMLElement {
-  constructor () {
-    super()
+  constructor() {
+    super();
     this.state = {
       open: false,
       busy: false,
-    }
+    };
   }
 
-  connectedCallback () {
+  connectedCallback() {
     this.props = {
       submitText: this.getAttribute("submit-text") || "SUBMIT",
       submitDesign: this.getAttribute("submit-design") || "Emphasized",
       busySubmitText: this.getAttribute("busy-submit-text") || "WORKING",
       cancelText: this.getAttribute("cancel-text") || "CANCEL",
       headerText: this.getAttribute("header-text"),
-    }
+    };
 
     // Expect the initial innerHTML to comprise 0 or more <input> elements that
     // specify a name property, a input.name -> input map of which will be passed
@@ -37,105 +36,110 @@ export default class Modal extends HTMLElement {
           </ui5-button>
         </div>
       </ui5-dialog>
-    `
-    this.dialog = this.querySelector("ui5-dialog")
-    this.busy = this.querySelector("ui5-busy-indicator")
-    this.errorDiv = this.querySelector("div.error")
-    this.cancelButton = this.querySelector("ui5-button[data-name=cancel]")
-    this.submitButton = this.querySelector("ui5-button[data-name=submit]")
+    `;
+    this.dialog = this.querySelector("ui5-dialog");
+    this.busy = this.querySelector("ui5-busy-indicator");
+    this.errorDiv = this.querySelector("div.error");
+    this.cancelButton = this.querySelector("ui5-button[data-name=cancel]");
+    this.submitButton = this.querySelector("ui5-button[data-name=submit]");
     // Collect all non-disabled inputs and buttons for disabling while busy.
-    this.disablableEls =
-      this.querySelectorAll("input:not(:disabled), ui5-button:not(:disabled)")
+    this.disablableEls = this.querySelectorAll(
+      "input:not(:disabled), ui5-button:not(:disabled)"
+    );
     // Create a input.name -> input map for reference within submitHandler().
-    this.nameInputMap = new Map(Array.from(this.querySelectorAll("input[name]"))
-                                     .map(el => [ el.getAttribute("name"), el ]))
+    this.nameInputMap = new Map(
+      Array.from(this.querySelectorAll("input[name]")).map((el) => [
+        el.getAttribute("name"),
+        el,
+      ])
+    );
 
     // Maybe set the header text.
     if (this.props.headerText) {
-      this.dialog.headerText = this.props.headerText
+      this.dialog.headerText = this.props.headerText;
     }
 
-    this.addEventListener("click", this.clickHandler.bind(this))
+    this.addEventListener("click", this.clickHandler.bind(this));
 
     // Reset the error when dialog is closed.
-    this.dialog.addEventListener("after-close", () => this.error = "")
+    this.dialog.addEventListener("after-close", () => (this.error = ""));
   }
 
-  open () {
+  open() {
     // Show the dialog.
-    this.dialog.show()
+    this.dialog.show();
     // Register a global keydown handler with useCapture=true so that we can
     // prevent Escape from closing a busy modal.
     // Save the bound handler function so that we can successfully remove it later.
-    this.boundKeydownHandler = this.keydownHandler.bind(this)
-    document.addEventListener("keydown", this.boundKeydownHandler, true)
+    this.boundKeydownHandler = this.keydownHandler.bind(this);
+    document.addEventListener("keydown", this.boundKeydownHandler, true);
   }
 
-  set error (error) {
-    this.errorDiv.textContent = error
+  set error(error) {
+    this.errorDiv.textContent = error;
   }
 
-  close () {
+  close() {
     // Close the dialog.
-    this.dialog.close()
+    this.dialog.close();
     // Remove the global keydown handler.
-    document.removeEventListener("keydown", this.boundKeydownHandler, true)
+    document.removeEventListener("keydown", this.boundKeydownHandler, true);
   }
 
-  setInputsDisabledState (disabled) {
+  setInputsDisabledState(disabled) {
     for (const el of this.disablableEls) {
       if (disabled) {
-        el.setAttribute("disabled", "")
+        el.setAttribute("disabled", "");
       } else {
-        el.removeAttribute("disabled")
+        el.removeAttribute("disabled");
       }
     }
   }
 
-  setBusyState (busy) {
-    this.state.busy = busy
-    this.setInputsDisabledState(busy)
-    this.busy.active = busy
-    const { submitText, busySubmitText } = this.props
-    this.submitButton.textContent = busy ? busySubmitText : submitText
+  setBusyState(busy) {
+    this.state.busy = busy;
+    this.setInputsDisabledState(busy);
+    this.busy.active = busy;
+    const { submitText, busySubmitText } = this.props;
+    this.submitButton.textContent = busy ? busySubmitText : submitText;
   }
 
-  clickHandler (e) {
-    e.stopPropagation()
+  clickHandler(e) {
+    e.stopPropagation();
     if (e.target.tagName !== "UI5-BUTTON") {
-      return
+      return;
     }
-    const button = e.target
+    const button = e.target;
     switch (button.dataset.name) {
       case "cancel":
-        this.close()
-        break
+        this.close();
+        break;
       case "submit":
-        this.submitHandler(this.nameInputMap)
-        break
+        this.submitHandler(this.nameInputMap);
+        break;
     }
   }
 
-  keydownHandler (e) {
+  keydownHandler(e) {
     switch (e.key) {
       case "Enter":
         if (e.target.tagName === "INPUT") {
-          this.submitHandler(this.nameInputMap)
+          this.submitHandler(this.nameInputMap);
         }
-        break
+        break;
       case "Escape":
         // Prevent Escape from closing the dialog if busy.
         if (this.state.busy) {
-          e.stopPropagation()
+          e.stopPropagation();
         }
-        break
+        break;
     }
   }
 
-  submitHandler (nameInputMap) {
+  submitHandler(nameInputMap) {
     /* Implement in subclass.
      */
   }
 }
 
-customElements.define("vault-modal", Modal)
+customElements.define("vault-modal", Modal);

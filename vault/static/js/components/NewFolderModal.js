@@ -1,18 +1,16 @@
+import { subscribe, publish } from "../lib/pubsub.js";
 
-import { subscribe, publish } from "../lib/pubsub.js"
-
-import Modal from "./Modal.js"
-
+import Modal from "./Modal.js";
 
 export default class NewFolderModal extends Modal {
-  constructor () {
-    super()
-    this.state = { node: undefined }
+  constructor() {
+    super();
+    this.state = { node: undefined };
   }
 
-  connectedCallback () {
-    this.setAttribute("header-text", "Create Folder")
-    this.setAttribute("submit-text", "OK")
+  connectedCallback() {
+    this.setAttribute("header-text", "Create Folder");
+    this.setAttribute("submit-text", "OK");
     this.innerHTML = `
       <input type="text"
              name="name"
@@ -22,59 +20,59 @@ export default class NewFolderModal extends Modal {
              id="create-folder-input"
       >
       </input>
-    `
-    super.connectedCallback()
+    `;
+    super.connectedCallback();
 
-    this.input = this.querySelector("input[name=name]")
+    this.input = this.querySelector("input[name=name]");
     subscribe(
       "NEW_CTA_MENU_ITEM_SELECTED",
       this.newCtaMenuItemSelectedHandler.bind(this)
-    )
+    );
 
-    subscribe("CHANGE_DIRECTORY", this.changeDirectoryHandler.bind(this))
+    subscribe("CHANGE_DIRECTORY", this.changeDirectoryHandler.bind(this));
     subscribe(
       "CREATE_FOLDER_RESPONSE",
       this.createFolderResponseHandler.bind(this)
-    )
+    );
   }
 
-  newCtaMenuItemSelectedHandler ({ value }) {
+  newCtaMenuItemSelectedHandler({ value }) {
     if (value !== "folder") {
-      return
+      return;
     }
-    this.open()
+    this.open();
     /* clearing the pre-populated field */
-    $('#create-folder-input').val('')
+    $("#create-folder-input").val("");
   }
 
-  submitHandler (nameInputMap) {
-    const name = nameInputMap.get("name").value
-    const parentNode = this.state.node
-    publish("CREATE_FOLDER_REQUEST", { name, parentNode })
-    this.setBusyState(true)
+  submitHandler(nameInputMap) {
+    const name = nameInputMap.get("name").value;
+    const parentNode = this.state.node;
+    publish("CREATE_FOLDER_REQUEST", { name, parentNode });
+    this.setBusyState(true);
   }
 
-  changeDirectoryHandler ({ node}) {
+  changeDirectoryHandler({ node }) {
     this.state.node = node;
   }
 
-  createFolderResponseHandler ({ error }) {
-    this.setBusyState(false)
+  createFolderResponseHandler({ error }) {
+    this.setBusyState(false);
     if (!error) {
-      this.close()
-      return
+      this.close();
+      return;
     }
-    const { code } = error
+    const { code } = error;
     switch (code) {
       case 409:
-        this.error = "A Folder with this name already exists"
-        break
+        this.error = "A Folder with this name already exists";
+        break;
       default:
-        this.error = "An error occurred"
+        this.error = "An error occurred";
     }
     // Reselect the input.
-    this.input.select()
+    this.input.select();
   }
 }
 
-customElements.define("vault-new-folder-modal", NewFolderModal)
+customElements.define("vault-new-folder-modal", NewFolderModal);
