@@ -2,11 +2,11 @@
 {% set active_subnav = "debug" %}
 {% set breadcrumbs = (("Vault", "dashboard"), ("Deposit", "deposit"), ("Debug META", "deposit_debug")) %}
 {% block content %}
-{% if request.user.is_superuser %}
-<pre>
+  {% if request.user.is_superuser %}
+    <pre>
 {#{{request.META|pprint}}#}
-</pre>
-{% else %}
-<h2>Unauthorized</h2>
-{% endif %}
+        </pre>
+  {% else %}
+    <h2>Unauthorized</h2>
+  {% endif %}
 {% endblock content %}

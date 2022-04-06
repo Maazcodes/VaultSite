@@ -96,10 +96,12 @@ endif
 .PHONY: format
 format: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 	venv/bin/black .
+	venv/bin/djhtml --in-place --tabwidth 2 ./templates/**/*.html
 
 .PHONY: ck-format
 ck-format: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 	venv/bin/black --check .
+	venv/bin/djhtml --check --tabwidth 2 ./templates/**/*.html
 
 .PHONY: migrate
 migrate: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)

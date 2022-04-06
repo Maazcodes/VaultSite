@@ -111,6 +111,10 @@ djangorestframework==3.12.4
     #   -c requirements.test.txt
     #   -c requirements.txt
     #   -r requirements.in
+djhtml==1.5.0
+    # via
+    #   -c requirements.test.txt
+    #   -r requirements.test.in
 docker[ssh]==5.0.3
     # via
     #   -c requirements.test.txt

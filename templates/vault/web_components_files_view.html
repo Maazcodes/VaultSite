@@ -48,17 +48,17 @@
 {% block content %}
 
   {% if status == 404 %}
-  <h2>Not Found</h2>
+    <h2>Not Found</h2>
   {% else %}
-  <vault-files-view base-path="{{ request.META.get('SCRIPT_NAME', '') }}"
-                    app-path="/collections"
-                    path='{{ path | tojson }}'
-                    node='{{ node | tojson2 }}'
-                    orgId = '{{ org_id | tojson }}'
-                    parentChildDict = '{{ parent_child_dict | tojson2 }}'
-                    collectionIdDict = '{{ node_collections | tojson2}}'
-  >
-  </vault-files-view>
+    <vault-files-view base-path="{{ request.META.get('SCRIPT_NAME', '') }}"
+      app-path="/collections"
+      path='{{ path | tojson }}'
+      node='{{ node | tojson2 }}'
+      orgId = '{{ org_id | tojson }}'
+      parentChildDict = '{{ parent_child_dict | tojson2 }}'
+      collectionIdDict = '{{ node_collections | tojson2}}'
+    >
+    </vault-files-view>
   {% endif %}
 
 {% endblock content %}

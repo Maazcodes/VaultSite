@@ -1,40 +1,40 @@
 {% extends "vault/base.html" %}
 
 {% block head_deposit %}
-    <script src="/vault/static/js/preserve-directory-info.js"></script>
-    <script src="/vault/static/js/ext/spark-md5/spark-md5.js"></script>
-    <script src="/vault/static/js/ext/chunkfile/chunkfile.js"></script>
+  <script src="/vault/static/js/preserve-directory-info.js"></script>
+  <script src="/vault/static/js/ext/spark-md5/spark-md5.js"></script>
+  <script src="/vault/static/js/ext/chunkfile/chunkfile.js"></script>
 {% endblock head_deposit %}
 
 {% block header_title %}Deposit{% endblock header_title %}
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}
-<div class="row subnav">
-	<div class="small-12 columns">
-		<div class="row">
-			<div class="subnav-box columns">
-				<!-- <div class="left subnav-link collections {% if active_subnav == 'web' %}active{% endif %}">
+  <div class="row subnav">
+    <div class="small-12 columns">
+      <div class="row">
+        <div class="subnav-box columns">
+          <!-- <div class="left subnav-link collections {% if active_subnav == 'web' %}active{% endif %}">
 					<a class="" href="{{ url('deposit_web') }}">Web Uploader</a>
 				</div> -->
-				<div class="left subnav-link collections {% if active_subnav == 'test' %}active{% endif %}">
-					<a class="" href="{{ url('deposit_flow') }}">Web Uploader</a>
-				</div>
-				<div class="left subnav-link collections {% if active_subnav == 'cli' %}active{% endif %}">
-					<a class="" href="{{ url('deposit_cli') }}">Command Line</a>
-				</div>
-                		<div class="left subnav-link collections {% if active_subnav == 'mail' %}active{% endif %}">
-                    			<a class="" href="{{ url('deposit_mail') }}">Mail Drive</a>
-                		</div>
-{#				<div class="left subnav-link collections {% if active_subnav == 'debug' %}active{% endif %}">#}
-{#                    			<a class="" href="{{ url('deposit_debug') }}">Debug META</a>#}
-{#                		</div>#}
+          <div class="left subnav-link collections {% if active_subnav == 'test' %}active{% endif %}">
+            <a class="" href="{{ url('deposit_flow') }}">Web Uploader</a>
+          </div>
+          <div class="left subnav-link collections {% if active_subnav == 'cli' %}active{% endif %}">
+            <a class="" href="{{ url('deposit_cli') }}">Command Line</a>
+          </div>
+          <div class="left subnav-link collections {% if active_subnav == 'mail' %}active{% endif %}">
+            <a class="" href="{{ url('deposit_mail') }}">Mail Drive</a>
+          </div>
+          {#				<div class="left subnav-link collections {% if active_subnav == 'debug' %}active{% endif %}">#}
+          {#                    			<a class="" href="{{ url('deposit_debug') }}">Debug META</a>#}
+          {#                		</div>#}
 
-				<div class="left subnav-link collections {% if active_subnav == 'ait' %}active{% endif %}">
-					<a class="" href="{{ url('deposit_ait') }}">Import IA Collection</a>
-				</div>
-				<hr>
-			</div>
-		</div>
-	</div>
-</div>
+          <div class="left subnav-link collections {% if active_subnav == 'ait' %}active{% endif %}">
+            <a class="" href="{{ url('deposit_ait') }}">Import IA Collection</a>
+          </div>
+          <hr>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock subnav %}

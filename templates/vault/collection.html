@@ -4,74 +4,74 @@
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}
 {% block content %}
-    <div class="row">
-        <div class="large-8 columns">
-            <br>
-            <br>
-            <h2>Collection Stats</h2>
-            <ul>
-                <li>Total Size: {% if collection_stats.total_size is none %}-{% else %}{{ collection_stats.total_size|filesizeformat(binary=True) }}{% endif %}</li>
-                <li>File Count: {{ collection_stats.file_count if collection_stats.file_count is gt 0 else "-" }}</li>
-                <li>Last Modified: {% if collection_stats.last_modified is none %}-{% else %}{{ collection_stats.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
-            </ul>
+  <div class="row">
+    <div class="large-8 columns">
+      <br>
+      <br>
+      <h2>Collection Stats</h2>
+      <ul>
+        <li>Total Size: {% if collection_stats.total_size is none %}-{% else %}{{ collection_stats.total_size|filesizeformat(binary=True) }}{% endif %}</li>
+        <li>File Count: {{ collection_stats.file_count if collection_stats.file_count is gt 0 else "-" }}</li>
+        <li>Last Modified: {% if collection_stats.last_modified is none %}-{% else %}{{ collection_stats.last_modified.strftime('%B %-d, %Y') }}{% endif %}</li>
+      </ul>
 
-            {% if collection_stats.file_count is gt 0 %}
-                <a href="{{ url("files", args=[collection.name]) }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
-            {% endif %}
+      {% if collection_stats.file_count is gt 0 %}
+        <a href="{{ url("files", args=[collection.name]) }}" target="_blank" class="button padding-top padding-bottom half">View Files</a>
+      {% endif %}
 
-            <h2>Collection Events</h2>
-            {% if events %}
-                {% set headers = ("Event Type", "Started", "Completed", "Total Size", "File Count", "Error Count", "View Details") %}
-                <table class="small-12 columns">
-                    <thead>
-                    {% for header in headers %}
-                        <th>{{ header }}</th>
-                    {% endfor %}
-                    <tr></tr>
-                    </thead>
-                    {% for event in events %}
-                        {%  if "Deposit" in event.__class__.__name__ %}
-                            <tbody>
-                            <tr>
-                                <td>{% if 15 <= event.id <= 96 %}Migration{% else %}Deposit{% endif %}</td>
-                                <td>{{ event.registered_at.strftime('%B %-d, %Y') }}</td>
-                                <td>{% if event.hashed_at %}{{ event.hashed_at.strftime('%B %-d, %Y') }}{% else %}-{% endif %}</td>
-                                <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
-                                <td>{{ event.file_count }}</td>
-                                <td>{{ event.error_count }}</td>
-                                <td><a href="{{ url('deposit_report', args=(event.pk,)) }}">View Details</a></td>
-                            </tr>
-                            </tbody>
-                        {% else %}
-                            <tbody>
-                            <tr>
-                                <td>{{ event.get_report_type_display() }}</td>
-                                <td>{{ event.started_at.strftime('%B %-d, %Y') }}</td>
-                                <td>{{ event.ended_at.strftime('%B %-d, %Y') }}</td>
-                                <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
-                                <td>{{ event.file_count }}</td>
-                                <td>{{ event.error_count }}</td>
-                                <td><a href="{{ url('report', args=(event.pk,)) }}">View Details</a></td>
-                            </tr>
-                            </tbody>
-                        {% endif %}
-                    {% endfor %}
-                </table>
+      <h2>Collection Events</h2>
+      {% if events %}
+        {% set headers = ("Event Type", "Started", "Completed", "Total Size", "File Count", "Error Count", "View Details") %}
+        <table class="small-12 columns">
+          <thead>
+            {% for header in headers %}
+              <th>{{ header }}</th>
+            {% endfor %}
+            <tr></tr>
+          </thead>
+          {% for event in events %}
+            {%  if "Deposit" in event.__class__.__name__ %}
+              <tbody>
+                <tr>
+                  <td>{% if 15 <= event.id <= 96 %}Migration{% else %}Deposit{% endif %}</td>
+                  <td>{{ event.registered_at.strftime('%B %-d, %Y') }}</td>
+                  <td>{% if event.hashed_at %}{{ event.hashed_at.strftime('%B %-d, %Y') }}{% else %}-{% endif %}</td>
+                  <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
+                  <td>{{ event.file_count }}</td>
+                  <td>{{ event.error_count }}</td>
+                  <td><a href="{{ url('deposit_report', args=(event.pk,)) }}">View Details</a></td>
+                </tr>
+              </tbody>
             {% else %}
-                <p>No events yet.</p>
+              <tbody>
+                <tr>
+                  <td>{{ event.get_report_type_display() }}</td>
+                  <td>{{ event.started_at.strftime('%B %-d, %Y') }}</td>
+                  <td>{{ event.ended_at.strftime('%B %-d, %Y') }}</td>
+                  <td>{{ event.total_size|filesizeformat(binary=True) }}</td>
+                  <td>{{ event.file_count }}</td>
+                  <td>{{ event.error_count }}</td>
+                  <td><a href="{{ url('report', args=(event.pk,)) }}">View Details</a></td>
+                </tr>
+              </tbody>
             {% endif %}
-        </div>
-        <div class="large-4 columns">
-            <br>
-            <br>
-            <h2>Collection Settings</h2>
-            <div class="panel">
-            <form action="{{ url("collection", args=(collection.pk,)) }}" method="post">
-                {{ csrf_input }}
-                {{ form }}
-                <input type="submit" value="Edit Settings", class="button small padding-top padding-bottom half">
-            </form>
-            </div>
-        </div>
+          {% endfor %}
+        </table>
+      {% else %}
+        <p>No events yet.</p>
+      {% endif %}
     </div>
+    <div class="large-4 columns">
+      <br>
+      <br>
+      <h2>Collection Settings</h2>
+      <div class="panel">
+        <form action="{{ url("collection", args=(collection.pk,)) }}" method="post">
+          {{ csrf_input }}
+          {{ form }}
+          <input type="submit" value="Edit Settings", class="button small padding-top padding-bottom half">
+        </form>
+      </div>
+    </div>
+  </div>
 {% endblock content %}

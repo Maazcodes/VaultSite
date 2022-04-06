@@ -4,216 +4,216 @@
 {% set breadcrumbs = (("Vault", "dashboard"), ("Deposit", "deposit"), ("Web Uploader", "deposit/flow")) %}
 
 {% block content %}
-<style>
+  <style>
     .area {
-        width: 40em;
-        margin-bottom: 1rem;
-        margin-top: 3rem;
+      width: 40em;
+      margin-bottom: 1rem;
+      margin-top: 3rem;
     }
     #dropTarget {
-        border: 2px dashed #bbb;
-        -webkit-border-radius: 5px;
-        border-radius: 5px;
-        padding: 50px;
-        text-align: center;
-        font: 21pt bold;
-        font-family: "Open Sans",Helvetica,Arial,sans-serif;
-        color: #888;
-        background-color: white;
+      border: 2px dashed #bbb;
+      -webkit-border-radius: 5px;
+      border-radius: 5px;
+      padding: 50px;
+      text-align: center;
+      font: 21pt bold;
+      font-family: "Open Sans",Helvetica,Arial,sans-serif;
+      color: #888;
+      background-color: white;
     }
 
     #progress_bar_flow {
-        height: 24px;
-        display: none;
-        padding: 0;
-        margin-top: 3px;
-        margin-left: 10px;
+      height: 24px;
+      display: none;
+      padding: 0;
+      margin-top: 3px;
+      margin-left: 10px;
 
     }
     #flow-stats {
-       margin-top: -3px;
-       margin-left: 5px;
-       padding: 0;
-       padding-top: 0.5rem;
-       display: inline;
-       margin-right: 1px;
+      margin-top: -3px;
+      margin-left: 5px;
+      padding: 0;
+      padding-top: 0.5rem;
+      display: inline;
+      margin-right: 1px;
     }
     #span_stats {
-        display: flex;
+      display: flex;
     }
     .loader {
-        margin-left: 15px;
-        border: 4px solid white; /* Light grey */
-        border-top: 4px solid #3498db; /* Blue */
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        animation: spin 1.1s linear infinite;
-        display: inline-block;
-        vertical-align: middle;
+      margin-left: 15px;
+      border: 4px solid white; /* Light grey */
+      border-top: 4px solid #3498db; /* Blue */
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 1.1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
     }
 
     #warningModal_id {
 
-        display: none; /* Hidden by default */
-        position: fixed; /* Stay in place */
-        z-index: 1; /* Sit on top */
-        left: 0;
-        top: 0;
-        width: 100%; /* Full width */
-        height: 100%; /* Full height */
-        overflow: auto;
-        background-color: rgb(0,0,0); /* Fallback color */
-        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+      display: none; /* Hidden by default */
+      position: fixed; /* Stay in place */
+      z-index: 1; /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%; /* Full width */
+      height: 100%; /* Full height */
+      overflow: auto;
+      background-color: rgb(0,0,0); /* Fallback color */
+      background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
 
     }
 
     .skipBtn {
-        background-color: darkgreen;
+      background-color: darkgreen;
     }
 
     .replaceBtn{
-        background-color: red;
+      background-color: red;
     }
 
     .warningModalContent{
-        width: 900px;
-        height: 400px;
-        overflow: auto;
-        box-shadow: 0px 0px 15px #348fc6;
-        border-radius: 8px;
+      width: 900px;
+      height: 400px;
+      overflow: auto;
+      box-shadow: 0px 0px 15px #348fc6;
+      border-radius: 8px;
     }
 
     .skip-button:hover {
-        box-shadow: 0 5px 5px 0 lightgreen;
+      box-shadow: 0 5px 5px 0 lightgreen;
     }
 
     #skipall:hover {
-        box-shadow: 0 5px 5px 0 lightgreen;
+      box-shadow: 0 5px 5px 0 lightgreen;
     }
 
     .replace-button:hover {
-        box-shadow: 0 5px 5px 0 lightcoral;
+      box-shadow: 0 5px 5px 0 lightcoral;
     }
 
     #replaceall:hover {
-        box-shadow: 0 5px 5px 0 lightcoral;
+      box-shadow: 0 5px 5px 0 lightcoral;
     }
 
     .confirm-button {
-        border-radius: 28px;
-        padding: 7px 30px;
-        margin-top: -12px;
+      border-radius: 28px;
+      padding: 7px 30px;
+      margin-top: -12px;
     }
 
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-</style>
-<div class="row">
+  </style>
+  <div class="row">
     <div class="small-8 columns">
-        <h3>Upload Files</h3>
-        {% if collections %}
+      <h3>Upload Files</h3>
+      {% if collections %}
         {% if parent_node %}
-            <label for="parent_node_name">
-                Parent Folder:
-            </label>
-            <input
-                id="parent_node_name"
-                type="text"
-                value="{{ parent_node.name }}"
-                disabled="disabled"
-                style="display: inline-block;"
-            >
+          <label for="parent_node_name">
+            Parent Folder:
+          </label>
+          <input
+            id="parent_node_name"
+            type="text"
+            value="{{ parent_node.name }}"
+            disabled="disabled"
+            style="display: inline-block;"
+          >
         {% else %}
-            <form>
-                {{ collection_form }}
-            </form>
+          <form>
+            {{ collection_form }}
+          </form>
         {% endif %}
 
         <button class="button small padding-top padding-bottom half left" id="uploadFilesButton">Upload Files</button>
         <button class="button small padding-top padding-bottom half left margin-left half" id="uploadFoldersButton">Upload Folders</button>
         <div class="area">
-            <div id="dropTarget"><p id="dropTargetMsg" style="text-align: center; vertical-align: center">Drop Files Here</p></div>
+          <div id="dropTarget"><p id="dropTargetMsg" style="text-align: center; vertical-align: center">Drop Files Here</p></div>
         </div>
         <input id="organization_quota" name="organization_quota" type="hidden" value="{{ request.user.organization.quota_bytes }}">
         <input id="total_used_quota" name="total_used_quota" type="hidden" value="{{ total_used_quota }}">
         <div>
-            <div id="warning"></div>
+          <div id="warning"></div>
         </div>
         <div>
-            <div>
-                <button class="button small padding-top padding-bottom half left margin-right half" id="flowPost" onclick="start_deposit(flow, files)">Upload</button>
-                <button
-                    class="button secondary small padding-top padding-bottom half left margin-right half"
-                    onclick="resetForm()"
-                >
-                    Reset
-                </button>
-            </div>
-            <div id="span_stats">
-                <div id="flow-stats"></div>
-                <progress id="progress_bar_flow" value="0" max="100" disabled="true"> 0% </progress>
-            </div>
+          <div>
+            <button class="button small padding-top padding-bottom half left margin-right half" id="flowPost" onclick="start_deposit(flow, files)">Upload</button>
+            <button
+              class="button secondary small padding-top padding-bottom half left margin-right half"
+              onclick="resetForm()"
+            >
+              Reset
+            </button>
+          </div>
+          <div id="span_stats">
+            <div id="flow-stats"></div>
+            <progress id="progress_bar_flow" value="0" max="100" disabled="true"> 0% </progress>
+          </div>
         </div>
-        {% else %}
-            <p>Create <a href="{{ url('collections', args=['']) }}">your first collection</a> to start uploading files.</p>
-        {% endif %}
+      {% else %}
+        <p>Create <a href="{{ url('collections', args=['']) }}">your first collection</a> to start uploading files.</p>
+      {% endif %}
     </div>
     <div class="small-4 columns" style=" display: inline;" id="collections-chart">
-        <span class="spinner small"></span>
+      <span class="spinner small"></span>
     </div>
-</div>
+  </div>
 
 
 
-<!-- Create Collection Modal -->
-<div id="myModal" class="modal">
+  <!-- Create Collection Modal -->
+  <div id="myModal" class="modal">
     <!-- Modal content -->
     <div class="modal-content">
-        <div class="modal-header">
-            <span class="close">&times;</span>
-            <h3>Create a new Collection</h3>
+      <div class="modal-header">
+        <span class="close">&times;</span>
+        <h3>Create a new Collection</h3>
+      </div>
+      <form id="create_collection">
+        {{ csrf_input }}
+        <div class="modal-body">
+          <input id="collection_name" type="text" placeholder="Enter Collection Name" required />
         </div>
-        <form id="create_collection">
-            {{ csrf_input }}
-            <div class="modal-body">
-                <input id="collection_name" type="text" placeholder="Enter Collection Name" required />
-            </div>
-            <div class="modal-footer">
-                <input type="submit" value="Create Collection" class="button small" id="create_collection_submit_btn">
-            </div>
-            <div id="modal-message"></div>
-        </form>
+        <div class="modal-footer">
+          <input type="submit" value="Create Collection" class="button small" id="create_collection_submit_btn">
+        </div>
+        <div id="modal-message"></div>
+      </form>
     </div>
-</div>
+  </div>
 
-<!-- Warning Modal -->
-<div id="warningModal_id" class="modal">
+  <!-- Warning Modal -->
+  <div id="warningModal_id" class="modal">
     <!-- Modal content -->
     <div class="modal-content warningModalContent">
-        <div class="modal-header" >
-            <div style="text-align: center; margin-bottom: -12px;"><strong>WARNING:</strong> Some file names already exist in this collection. Do you want to skip uploading or replace files with <div><br> duplicated names? (listed below):</div> </div><br>
-            <div id="warningHeader" style="text-align: center;">
-            </div>
+      <div class="modal-header" >
+        <div style="text-align: center; margin-bottom: -12px;"><strong>WARNING:</strong> Some file names already exist in this collection. Do you want to skip uploading or replace files with <div><br> duplicated names? (listed below):</div> </div><br>
+        <div id="warningHeader" style="text-align: center;">
         </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<script type="text/javascript">
+  <script type="text/javascript">
     const URLS = {
-        api_flow_chunk: '{{ url("api_flow_chunk") }}',
-        api_deposit_status: '{{ url("api_deposit_status") }}',
-        api_warning_deposit: '{{ url("api_warning_deposit") }}',
-        api_register_deposit: '{{ url("api_register_deposit") }}',
+      api_flow_chunk: '{{ url("api_flow_chunk") }}',
+      api_deposit_status: '{{ url("api_deposit_status") }}',
+      api_warning_deposit: '{{ url("api_warning_deposit") }}',
+      api_register_deposit: '{{ url("api_register_deposit") }}',
     };
     const PARENT_NODE_ID = {{ parent_node.id if parent_node else "undefined" }};
-</script>
+  </script>
 
-<script src="{{ static("js/ext/flow/flow.min.js") }}"></script>
-<script src="{{ static("js/ext/md5_hash/md5_hash.js") }}"></script>
-<script src="{{ static("js/pages/deposit-flow.js") }}"></script>
-<script src="{{ static("digipres/js/chartalign.js") }}"></script>
-<script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
+  <script src="{{ static("js/ext/flow/flow.min.js") }}"></script>
+  <script src="{{ static("js/ext/md5_hash/md5_hash.js") }}"></script>
+  <script src="{{ static("js/pages/deposit-flow.js") }}"></script>
+  <script src="{{ static("digipres/js/chartalign.js") }}"></script>
+  <script src="{{ static("digipres/js/Chart.bundle.min.js") }}"></script>
 {% endblock content %}

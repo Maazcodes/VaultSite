@@ -1,114 +1,114 @@
-{% extends "vault/base.html" %} 
+{% extends "vault/base.html" %}
 
-{% block sticky_message %}{% endblock sticky_message %} 
+{% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}
 
 {% block header %}
 
-<header>
+  <header>
 
-	<div class="row" style="font-size: 0.6875rem; color: #888;">
-		<div class="small-12 columns" >
-      <template id="collection-breadcrumbs" >
-        <style>
-          
-          .breadcrumbs_list {
-            display: inline;
-            color: #888;
-            margin-top: 18px;
-            margin-right: 10px;
-            margin-left: 10px;
-            list-style: none;
-            
-          }
-          .breadcrumbs_list a{
-            color: #888;
-            font-size: 0.6875rem;
-            text-decoration: none;
-          }
-          .breadcrumbs_list:hover{
-            text-decoration: underline;
-          }  
-        </style>
-        <div><slot name="my-text" ></slot></div>
-      </template>
-      <collection-breadcrumbs data-path = '{{ path | tojson }}' >
-        <ul slot="my-text" style="font-size: 0.6875rem;" id="elements_list">
-        </ul>
-      </collection-breadcrumbs>
-		</div>
-	</div>
-	<div class="row">
-		<div class="large-12 columns" style="height: 55px;">
-			<div class="bottom medium-8" style="height: 60px;">
-				<h1>
-					{% block header_title %}All Files{% endblock header_title %}
-				</h1>
-			</div>
-		</div>
-	</div>
-</header>
+    <div class="row" style="font-size: 0.6875rem; color: #888;">
+      <div class="small-12 columns" >
+        <template id="collection-breadcrumbs" >
+          <style>
+
+            .breadcrumbs_list {
+              display: inline;
+              color: #888;
+              margin-top: 18px;
+              margin-right: 10px;
+              margin-left: 10px;
+              list-style: none;
+
+            }
+            .breadcrumbs_list a{
+              color: #888;
+              font-size: 0.6875rem;
+              text-decoration: none;
+            }
+            .breadcrumbs_list:hover{
+              text-decoration: underline;
+            }
+          </style>
+          <div><slot name="my-text" ></slot></div>
+        </template>
+        <collection-breadcrumbs data-path = '{{ path | tojson }}' >
+          <ul slot="my-text" style="font-size: 0.6875rem;" id="elements_list">
+          </ul>
+        </collection-breadcrumbs>
+      </div>
+    </div>
+    <div class="row">
+      <div class="large-12 columns" style="height: 55px;">
+        <div class="bottom medium-8" style="height: 60px;">
+          <h1>
+            {% block header_title %}All Files{% endblock header_title %}
+          </h1>
+        </div>
+      </div>
+    </div>
+  </header>
 
 {% endblock header %}
 
 {% block content %}
 
-<style>
-  table {
-    margin-top: 4rem;
-    margin-bottom: -5rem;
-  }
-  table thead tr th,
-  table thead tr td {
-    padding: 0 0.7rem 0rem 0.7rem;
-  }
-</style>
+  <style>
+    table {
+      margin-top: 4rem;
+      margin-bottom: -5rem;
+    }
+    table thead tr th,
+    table thead tr td {
+      padding: 0 0.7rem 0rem 0.7rem;
+    }
+  </style>
 
-<div class="row" >
-  <div class="small-12 columns">
-    <div id="first_element"></div>
-    
-    <table>
-      <thead>
-        <th>Name</th>
-        <th>Date Modified</th>
-        <th>Size</th>
-        <th>Type</th>
-      </thead>
-      <tbody>
-        {% if path != "" %}
-        <td>
-          <a
-            class="notepad"
-            href="{{ url("files", args=['/'.join(path[:-1].split('/')[:-1])[1:]]) }}"
-            >Back</a
-          >
-        </td>
-        {% endif %} 
-        {% for item in items %}
-        <tr>
-          {% if item.node_type == "COLLECTION" or item.node_type == "FOLDER"
-          %}
-          <td class="item_name" id="{{item.id}}">
+  <div class="row" >
+    <div class="small-12 columns">
+      <div id="first_element"></div>
 
-            <a
-              class="notepad"
-              href="{{ url("files", args=[path[1:] + '/' + item.name if path else item.name]) }}"
-            >
-              {{item.name}}
-            </a>
-          </td>
+      <table>
+        <thead>
+          <th>Name</th>
+          <th>Date Modified</th>
+          <th>Size</th>
+          <th>Type</th>
+        </thead>
+        <tbody>
+          {% if path != "" %}
+            <td>
+              <a
+                class="notepad"
+                href="{{ url("files", args=['/'.join(path[:-1].split('/')[:-1])[1:]]) }}"
+              >Back</a
+                >
+              </td>
+          {% endif %}
+          {% for item in items %}
+            <tr>
+              {% if item.node_type == "COLLECTION" or item.node_type == "FOLDER"
+              %}
+              <td class="item_name" id="{{item.id}}">
+
+                <a
+                  class="notepad"
+                  href="{{ url("files", args=[path[1:] + '/' + item.name if path else item.name]) }}"
+                >
+                  {{item.name}}
+                </a>
+              </td>
           {% else %}
-          <td>{{item.name.split("/")[-1] }}</td>
+            <td>{{item.name.split("/")[-1] }}</td>
           {% endif %}
           <td>{% if item.pre_deposit_modified_at is none %}{% if item.modified_at is none %}-{% else %}{{ item.modified_at.strftime('%Y-%m-%d') }}{% endif %}{% else %}{{item.pre_deposit_modified_at.strftime('%Y-%m-%d')}}{% endif %}</td>
           <td>{% if item.size is none %}-{% else %}{{item.size|filesizeformat(binary=True) }}{% endif %}</td>
           <td>{{ item.node_type|title }}</td>
         </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% endfor %}
+</tbody>
+</table>
+</div>
 </div>
 
 <script src="/vault/static/js/components/files_breadcrumbs.js"></script>

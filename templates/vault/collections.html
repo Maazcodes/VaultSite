@@ -4,60 +4,60 @@
 {% block sticky_message %}{% endblock sticky_message %}
 {% block subnav %}{% endblock subnav %}
 {% block content %}
-    <div class="row">
-        <div class="small-12 columns">
-            <br>
-            <br>
-            {% if collections %}
-                <div class="panel">
-                <form action="{{ url("collections") }}" method="post">
-                    {{ csrf_input }}
-                    {{ form }}
-                    <input type="submit" value="Create Collection" class="button small padding-top padding-bottom half" style="margin:0">
-                </form>
-                </div>
-                {% set headers = ("Collection Name", "Total Size", "File Count", "Last Modified", "Most Recent Fixity Report", "View Files", "Edit Settings") %}
-                <table class="small-12 columns">
-                <thead>
-                {% for header in headers %}
-                    <th>{{ header }}</th>
-                {% endfor %}
-                <tr></tr>
-                </thead>
-                {% for collection in collections %}
-                    <tbody>
-                    <tr>
-                        <td><a href="{{ url("collection", args=(collection.collection_id,)) }}">{{ collection.name }}</a></td>
-                        {% if collection.total_size is none %}
-                            <td>-</td>
-                        {% else %}
-                            <td>{{ collection.total_size|filesizeformat(binary=true) }}</td>
-                        {% endif %}
-                        <td>{{ collection.file_count }}</td>
-                        {% if collection.last_modified is none %}
-                            <td>-</td>
-                        {% else %}
-                            <td>{{ collection.last_modified.strftime('%B %-d, %Y') }}</td>
-                        {% endif %}
-                        {% if collection.last_fixity_report is none %}
-                            <td>-</td>
-                        {% else %}
-                            <td>{{ collection.last_fixity_report().ended_at.strftime('%B %-d, %Y') }}</td>
-                        {% endif %}
-                        <td>{% if collection.file_count is gt 0 %}<a href="{{ url("files", args=[collection.name]) }}" target="_blank">View Files</a>{% else %} - {% endif %}</td>
-                        <td><a href="{{ url("collection", args=(collection.collection_id,)) }}">Edit Settings</a></td>
-                    </tr>
-                    </tbody>
-                {% endfor %}
-                </table>
-            {% else %}
-                <h3>Create your first collection</h3>
-                <form action="{{ url("collections") }}" method="post">
-                    {{ csrf_input }}
-                    {{ form }}
-                    <input type="submit" value="Create Collection" class="button small padding-top padding-bottom half left">
-                </form>
-            {% endif %}
+  <div class="row">
+    <div class="small-12 columns">
+      <br>
+      <br>
+      {% if collections %}
+        <div class="panel">
+          <form action="{{ url("collections") }}" method="post">
+            {{ csrf_input }}
+            {{ form }}
+            <input type="submit" value="Create Collection" class="button small padding-top padding-bottom half" style="margin:0">
+          </form>
         </div>
+        {% set headers = ("Collection Name", "Total Size", "File Count", "Last Modified", "Most Recent Fixity Report", "View Files", "Edit Settings") %}
+        <table class="small-12 columns">
+          <thead>
+            {% for header in headers %}
+              <th>{{ header }}</th>
+            {% endfor %}
+            <tr></tr>
+          </thead>
+          {% for collection in collections %}
+            <tbody>
+              <tr>
+                <td><a href="{{ url("collection", args=(collection.collection_id,)) }}">{{ collection.name }}</a></td>
+                {% if collection.total_size is none %}
+                  <td>-</td>
+                {% else %}
+                  <td>{{ collection.total_size|filesizeformat(binary=true) }}</td>
+                {% endif %}
+                <td>{{ collection.file_count }}</td>
+                {% if collection.last_modified is none %}
+                  <td>-</td>
+                {% else %}
+                  <td>{{ collection.last_modified.strftime('%B %-d, %Y') }}</td>
+                {% endif %}
+                {% if collection.last_fixity_report is none %}
+                  <td>-</td>
+                {% else %}
+                  <td>{{ collection.last_fixity_report().ended_at.strftime('%B %-d, %Y') }}</td>
+                {% endif %}
+                <td>{% if collection.file_count is gt 0 %}<a href="{{ url("files", args=[collection.name]) }}" target="_blank">View Files</a>{% else %} - {% endif %}</td>
+                <td><a href="{{ url("collection", args=(collection.collection_id,)) }}">Edit Settings</a></td>
+              </tr>
+            </tbody>
+          {% endfor %}
+        </table>
+      {% else %}
+        <h3>Create your first collection</h3>
+        <form action="{{ url("collections") }}" method="post">
+          {{ csrf_input }}
+          {{ form }}
+          <input type="submit" value="Create Collection" class="button small padding-top padding-bottom half left">
+        </form>
+      {% endif %}
     </div>
+  </div>
 {% endblock content %}
