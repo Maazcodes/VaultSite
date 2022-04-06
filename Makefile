@@ -18,6 +18,15 @@ VAULT_SITE_EGG_LINK = ./venv/lib/python$(PYTHON_VERSION)/site-packages/vault.egg
 ENV ?= LOCAL
 PYTEST_REPORT ?= pytest.xml
 PYLINT_REPORT ?= pylint.json
+MD_FILES = $(shell \
+	grep \
+	--perl-regexp \
+	--files-with-matches \
+	--include='*.md' \
+	--dereference-recursive \
+	'<!--\s+toc\s+-->' \
+	. \
+)
 
 export AIT_CONF = $(DPS_DIR)/vault.yml
 
@@ -100,9 +109,12 @@ migrate: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 run: $(VAULT_SITE_EGG_LINK) $(AIT_CONF)
 	venv/bin/python ./vault/utilities/process_chunked_files.py & venv/bin/python manage.py runserver
 
+# generates tables of contents in markdown files. To opt in, make sure your
+# file matches the glob *.md, and then add `<!-- toc -->` to the document in
+# the spot you'd like the ToC to appear.
 .PHONY: md-toc
-md-toc:
-	npx markdown-toc -i README.md
+md-toc: $(MD_FILES)
+	for fname in $^; do npx markdown-toc -i $$fname; done
 
 .PHONY: clean
 clean:

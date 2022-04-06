@@ -19,6 +19,7 @@ Vault digital preservation service.
 - [Releases](#releases)
 - [Operations](#operations)
   * [Triggers](#triggers)
+- [Other documentation](#other-documentation)
 
 <!-- tocstop -->
 
@@ -229,3 +230,6 @@ ALTER TABLE "vault_treenode" ENABLE TRIGGER <trigger-name>;
 # also, if necessary, trigger enablement can be programmatically determined:
 SELECT tgenabled FROM pg_trigger WHERE tgname = '<trigger-name>';
 ```
+
+## Other documentation
+[See also](./docs/README.md)
