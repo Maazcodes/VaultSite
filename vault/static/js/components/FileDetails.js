@@ -234,7 +234,7 @@ export default class FileDetails extends HTMLElement {
           <div class="activity-content">
               ${Object.keys(event)
                 .map((k) =>
-                  k !== "Event Id"
+                !(["Event Id", "Link"].includes(k))
                     ? `<div class="content-group">
               <ui5-title level="H6" class="activity-title-desc" style="margin-bottom: 0.5rem;">${k}</ui5-title>
               <ui5-label class="activity-title-desc">${
@@ -244,12 +244,7 @@ export default class FileDetails extends HTMLElement {
                     : ""
                 )
                 .join("")}
-              <ui5-link class="view-details-link activity-title-desc" href = "${basePath}/${
-            event["Event Type"] === "Deposit" ||
-            event["Event Type"] === "Migration"
-              ? "deposit"
-              : "reports"
-          }/${event["Event Id"]}" target = "_blank">View Details</ui5-link>
+              <ui5-link class="view-details-link activity-title-desc" href="${event["Link"]}" target = "_blank">View Details</ui5-link>
           </div>
       </ui5-card>`;
         });

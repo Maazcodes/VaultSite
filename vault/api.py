@@ -19,6 +19,7 @@ from django.http import (
     HttpResponseNotAllowed,
 )
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 import fs.errors
@@ -699,31 +700,38 @@ def get_events(request, collection_id):
             # filter out the "Migration" deposits
             if is_migration(event.id):
                 continue
-            deposit_events.append(
-                {
-                    "Event Id": event.id,
-                    "Event Type": "Deposit",
-                    "Started": event.registered_at.strftime(DATE_FORMAT),
-                    "File Count": event.file_count,
-                    "Completed": event.hashed_at.strftime(DATE_FORMAT)
-                    if event.hashed_at
-                    else "--",
-                    "Total Size": event.total_size,
-                    "Error Count": event.error_count,
-                }
-            )
+            link = reverse("deposit_report", kwargs={"deposit_id": event.id})
+            formatted = {
+                "Event Id": event.id,
+                "Event Type": "Deposit",
+                "Link": link,
+                "Started": event.registered_at.strftime(DATE_FORMAT),
+                "File Count": event.file_count,
+                "Completed": event.hashed_at.strftime(DATE_FORMAT)
+                if event.hashed_at
+                else "--",
+                "Total Size": event.total_size,
+                "Error Count": event.error_count,
+            }
+            deposit_events.append(formatted)
+            formatted_events.append(formatted)
         elif isinstance(event, models.Report):
-            fixity_events.append(
-                {
-                    "Event Id": event.id,
-                    "Event Type": event.get_report_type_display(),
-                    "Started": event.started_at.strftime(DATE_FORMAT),
-                    "Completed": event.ended_at.strftime(DATE_FORMAT),
-                    "File Count": event.file_count,
-                    "Error Count": event.error_count,
-                    "Total Size": event.total_size,
-                }
-            )
+            if event.report_type == models.Report.ReportType.FIXITY:
+                link = reverse("fixity_report", kwargs={"report_id": event.id})
+            else:
+                link = reverse("report", kwargs={"report_id": event.id})
+            formatted = {
+                "Event Id": event.id,
+                "Event Type": event.get_report_type_display(),
+                "Link": link,
+                "Started": event.started_at.strftime(DATE_FORMAT),
+                "Completed": event.ended_at.strftime(DATE_FORMAT),
+                "File Count": event.file_count,
+                "Error Count": event.error_count,
+                "Total Size": event.total_size,
+            }
+            fixity_events.append(formatted)
+            formatted_events.append(formatted)
     formatted_events = list(chain(deposit_events, fixity_events))
     return JsonResponse(
         {
