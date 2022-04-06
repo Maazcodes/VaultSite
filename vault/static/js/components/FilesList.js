@@ -218,7 +218,7 @@ export default class FilesList extends HTMLElement {
       // node.node_type === "FILE" && numSelectedNodes < 2 && "Preview",
       numSelectedNodes < 2 && "Rename",
       !isCollection && "Move",
-      node.node_type === "FILE" && numSelectedNodes < 2 && "Download",
+      node.node_type === "FILE" && isDownloadable && numSelectedNodes < 2 && "Download",
       !isCollection && "Delete",
       isFolder && numSelectedNodes === 0 && "Deposit Here",
     ].filter((x) => x !== false);
