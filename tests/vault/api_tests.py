@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 from django.urls import reverse
 from model_bakery import baker
 import pytest
@@ -24,7 +25,11 @@ def test_api_collections(rf, coll_count):
 
 
 @pytest.mark.django_db
-def test_api_reports(rf):
+@patch("vault.api.is_migration")
+def test_api_reports(mock_is_migration, rf):
+    # is_migration returns True for a hard-coded list of IDs.
+    # This causes the test to be flaky as ID sequences may not reset between runs.
+    mock_is_migration.return_value = False
     user = baker.make("vault.User", _fill_optional=["organization"])
     collection = baker.make("Collection", organization=user.organization)
     deposit = baker.make(
@@ -188,7 +193,11 @@ class TestEventsApi:
     API path: api/get_events
     """
 
-    def test_deposit_events(self, rf):
+    @patch("vault.api.is_migration")
+    def test_deposit_events(self, mock_is_migration, rf):
+        # is_migration returns True for a hard-coded list of IDs.
+        # This causes the test to be flaky as ID sequences may not reset between runs.
+        mock_is_migration.return_value = False
         user, collection = self.create_collection()
         self.deposit_files_in_db(user, collection)
         response = self.request_response(rf, collection, user)
