@@ -1,7 +1,3 @@
-/******************************************************************************
-   Generic Helpers
-******************************************************************************/
-
 export function humanBytes(bytes, decPlaces = 3) {
   for (const prefix of ["", "Ki", "Mi", "Gi", "Ti", "Pi"]) {
     if (bytes < 1024) {
@@ -19,7 +15,7 @@ export function toTitleCase(text) {
   if (text.includes("_")) {
     text = text.replaceAll("_", " ");
   }
-  let textArray = text.split(" ");
+  const textArray = text.split(" ");
   // Eg: pre_deposit_modified_at ---> Pre Deposit Modified At
   return textArray
     .map((word) => {

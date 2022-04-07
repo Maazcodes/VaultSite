@@ -1,13 +1,10 @@
-// Get the modal
-let modal = document.getElementById("myModal");
+/* global $ */
 
-// Get the button that opens the modal
-let btn = document.getElementById("myBtn");
-
-// Get the <span> element that closes the modal
-let span = document.getElementsByClassName("close")[0];
+const modal = document.getElementById("myModal");
+const span = document.getElementsByClassName("close")[0];
 
 // When the user clicks on the button, open the modal
+// eslint-disable-next-line no-unused-vars, camelcase
 function show_modal() {
   modal.style.display = "block";
   document.querySelector("#modal-message").innerHTML = "";
@@ -21,40 +18,40 @@ if (span) {
   };
 }
 
-//Closing modal on pressing escape key
+// Closing modal on pressing escape key
 $(document).keydown(function (event) {
-  if (event.keyCode == 27) {
+  if (event.keyCode === 27) {
     span.click();
   }
 });
 
 // When the user clicks anywhere outside of the modal, close it
 window.onclick = function (event) {
-  if (event.target == modal) {
+  if (event.target === modal) {
     modal.style.display = "none";
   }
 };
 
-const create_collection_form = document.querySelector("#create_collection");
-if (create_collection_form) {
-  create_collection_form.addEventListener("submit", (event) => {
+const createCollectionForm = document.querySelector("#create_collection");
+if (createCollectionForm) {
+  createCollectionForm.addEventListener("submit", (event) => {
     event.preventDefault();
 
     document.querySelector("#modal-message").innerHTML = "";
     $("#create_collection_submit_btn").attr("disabled", true);
 
-    let xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
     xhr.open("POST", "/vault/create_collection");
 
-    let name = $("#collection_name").val();
+    const name = $("#collection_name").val();
 
-    let data = new FormData();
+    const data = new FormData();
     data.append("name", name);
 
     xhr.onloadend = function () {
-      response = JSON.parse(xhr.response);
+      const response = JSON.parse(xhr.response);
 
-      if (response["code"] == 1) {
+      if (response["code"] === 1) {
         document.getElementById("modal-message").style.color = "green";
         document.querySelector("#modal-message").innerHTML =
           response["message"];

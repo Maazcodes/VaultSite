@@ -4,20 +4,20 @@ class CollectionBreadcrumbs extends HTMLElement {
 
     const path = JSON.parse(this.dataset.path).split("/").slice(1);
 
-    let template = document.getElementById("collection-breadcrumbs");
-    let templateContent = template.content;
+    const template = document.getElementById("collection-breadcrumbs");
+    const templateContent = template.content;
     const shadowRoot = this.attachShadow({ mode: "open" }).appendChild(
       templateContent.cloneNode(true)
     );
-    this.shadowRoot.innerHTML +=
+    shadowRoot.innerHTML +=
       '<li class = "breadcrumbs_list"><a href="/vault/meta/files" style="margin-left: -7px;">All Collections</a></li><div style="display: inline; margin-left: -1px; margin-right: -2px; text-decoration: none;">/</div>';
 
-    this.shadowRoot.innerHTML += `${path
+    shadowRoot.innerHTML += `${path
       .map(
-        (path_element) =>
+        (pathElement) =>
           `<li class = "breadcrumbs_list" ><a href="/vault/meta/files/${path
-            .slice(0, path.indexOf(path_element) + 1)
-            .join("/")}" >${path_element}</a></li>`
+            .slice(0, path.indexOf(pathElement) + 1)
+            .join("/")}" >${pathElement}</a></li>`
       )
       .join("/")}`;
   }

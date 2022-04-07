@@ -1,3 +1,5 @@
+/* global $ */
+
 import { subscribe, publish } from "../lib/pubsub.js";
 
 import Modal from "./Modal.js";

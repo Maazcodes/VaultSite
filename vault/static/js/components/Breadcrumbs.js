@@ -4,9 +4,9 @@ class Breadcrumbs extends HTMLElement {
 
     const breadcrumbs = JSON.parse(this.dataset.breadcrumbs);
 
-    let generalTemplate = document.getElementById("general-breadcrumbs");
-    let generalTemplateContent = generalTemplate.content;
-    const shadowRoot = this.attachShadow({ mode: "open" }).appendChild(
+    const generalTemplate = document.getElementById("general-breadcrumbs");
+    const generalTemplateContent = generalTemplate.content;
+    this.attachShadow({ mode: "open" }).appendChild(
       generalTemplateContent.cloneNode(true)
     );
 

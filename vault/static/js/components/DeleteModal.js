@@ -41,15 +41,15 @@ export default class DeleteModal extends Modal {
     super.open();
   }
 
-  fileContextMenuItemSelectedHandler({ value: context_action, context }) {
-    if (context_action !== "Delete") {
+  fileContextMenuItemSelectedHandler({ value: contextAction, context }) {
+    if (contextAction !== "Delete") {
       return;
     }
     this.state.nodes = context.selectedNodes;
     this.open();
   }
 
-  submitHandler(nameInputMap) {
+  submitHandler(_nameInputMap) {
     const { nodes } = this.state;
     publish("NODES_DELETE_REQUEST", { nodes });
     this.setBusyState(true);

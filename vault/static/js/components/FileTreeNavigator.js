@@ -1,3 +1,5 @@
+/* global $ */
+
 import { publish, subscribe } from "../lib/pubsub.js";
 
 export default class FileTreeNavigator extends HTMLElement {
@@ -44,7 +46,7 @@ export default class FileTreeNavigator extends HTMLElement {
     if (!!currentNode) {
       currentNode.setAttribute("selected", "");
     }
-    if (node.id == this.orgId || !document.getElementById("treeDynamic")) {
+    if (node.id === this.orgId || !document.getElementById("treeDynamic")) {
       // initiate tree view and add event listeners only at initial stage
       // Add event listeners only if this condition is true - this is done to avoid addition of multiple event listeners
       this.innerHTML = `
@@ -71,10 +73,10 @@ export default class FileTreeNavigator extends HTMLElement {
       const firstTreeElement = document.querySelectorAll("ui5-tree-item")[0];
       dynamicTree.addEventListener("item-toggle", async function (event) {
         const item = event.detail.item; // get the node that is toggled
-        if (item.text != firstTreeElement.text && item.expanded) {
+        if (item.text !== firstTreeElement.text && item.expanded) {
           item.innerHTML = "";
         }
-        if (item.text == firstTreeElement.text && !item.expanded) {
+        if (item.text === firstTreeElement.text && !item.expanded) {
           // clearing previous tree data for first element
           firstTreeElement.innerHTML = "";
         }
@@ -91,7 +93,7 @@ export default class FileTreeNavigator extends HTMLElement {
         const nodeItem = event.detail.item; // get the node that is clicked
         const nodeItemId = nodeItem.id;
         let nodePublishPath = $(nodeItem).attr("path");
-        if (nodeItem.text == firstTreeElement.text) {
+        if (nodeItem.text === firstTreeElement.text) {
           // publish path for first tree element
           nodePublishPath = "/";
         }

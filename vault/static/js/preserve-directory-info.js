@@ -1,20 +1,24 @@
+/* global $, ChunkedFileReader, SparkMD5, createCollectionsChart */
+
 window.onload = function () {
   if (!document.querySelector("#id_dir_field")) {
     return;
   }
 
-  globalStartTime = performance.now();
-  retryDelay408 = 60000; //1 minute
-  retryTimeout408 = (retryDelay408 / 1000) * 20; //20 minutes
-  retryTimeoutID408 = {};
-  ABORT_REQUESTED = false;
-  RETRYING_ON_408 = false;
+  let globalStartTime = performance.now();
+  const retryDelay408 = 60000; // 1 minute
+  const retryTimeout408 = (retryDelay408 / 1000) * 20; // 20 minutes
+  let retryTimeoutID408 = {};
+  let ABORT_REQUESTED = false;
+  let RETRYING_ON_408 = false;
 
   document.querySelector("#cancel_button").value = "Reset Form";
   document.querySelector("#cancel_button").addEventListener("click", resetForm);
 
   const formatBytes = (bytes, decimals = 2) => {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) {
+      return "0 Bytes";
+    }
 
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
@@ -36,7 +40,7 @@ window.onload = function () {
   };
 
   const createQuotaDonut = () => {
-    let data = [];
+    const data = [];
     data.push(
       (
         parseInt(document.querySelector("#total_used_quota").value) /
@@ -58,8 +62,10 @@ window.onload = function () {
   createQuotaDonut();
 
   function enforceQuota(totalUploadSize, files) {
-    let quota = parseInt(document.querySelector("#organization_quota").value);
-    let usedQuota = parseInt(document.querySelector("#total_used_quota").value);
+    const quota = parseInt(document.querySelector("#organization_quota").value);
+    const usedQuota = parseInt(
+      document.querySelector("#total_used_quota").value
+    );
 
     document.querySelector("#stats").innerHTML = "";
 
@@ -85,11 +91,11 @@ window.onload = function () {
     .addEventListener("change", function () {
       document.querySelector("#id_file_field").disabled = true;
       globalStartTime = performance.now();
-      let directories = [];
-      let sizes = [];
-      let files = document.querySelector("#id_dir_field").files;
+      const directories = [];
+      const sizes = [];
+      const files = document.querySelector("#id_dir_field").files;
 
-      for (var file of files) {
+      for (const file of files) {
         directories.push(file.webkitRelativePath);
         sizes.push(file.size);
       }
@@ -108,11 +114,11 @@ window.onload = function () {
     .addEventListener("change", function () {
       document.querySelector("#id_dir_field").disabled = true;
       globalStartTime = performance.now();
-      let directories = [];
-      let sizes = [];
-      let files = document.querySelector("#id_file_field").files;
+      const directories = [];
+      const sizes = [];
+      const files = document.querySelector("#id_file_field").files;
 
-      for (var file of files) {
+      for (const file of files) {
         directories.push(file.name);
         sizes.push(file.size);
       }
@@ -146,7 +152,7 @@ window.onload = function () {
 
     // Checking if either the file/directory is selected for upload
     if (document.querySelector("#id_directories").value) {
-      //Showing progress bar
+      // Showing progress bar
       document.getElementById("progress_bar").style.display = "inline-block";
       // Changing the text of upload button
       $("#Submit").val("Uploading...");
@@ -167,32 +173,32 @@ window.onload = function () {
   });
 
   async function XHRuploadFiles(form) {
-    let total_size = 0;
-    let num_files = 0;
+    let totalSize = 0;
+    let numFiles = 0;
     let files = [];
 
     setAllTargets("_blank");
 
-    if (RETRYING_ON_408 == false) {
+    if (RETRYING_ON_408 === false) {
       ABORT_REQUESTED = false;
     }
-    start = performance.now();
+    let start = performance.now();
 
-    if (document.querySelector("#id_file_field").disabled == true) {
+    if (document.querySelector("#id_file_field").disabled === true) {
       files = document.querySelector("#id_dir_field").files;
     } else {
       files = document.querySelector("#id_file_field").files;
     }
 
-    let data = new FormData(form);
+    const data = new FormData(form);
 
-    for (var f of files) {
-      total_size = total_size + f.size;
-      num_files = num_files + 1;
+    for (const f of files) {
+      totalSize = totalSize + f.size;
+      numFiles = numFiles + 1;
       data.append("file", f);
     }
 
-    let xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
 
     function abortXHR() {
       if (xhr) {
@@ -200,7 +206,7 @@ window.onload = function () {
         document.querySelector("#cancel_button").value = "Cancelling Job...";
         ABORT_REQUESTED = 1;
         if (RETRYING_ON_408) {
-          RETRY_ON_408 = false;
+          RETRYING_ON_408 = false;
           clearTimeout(retryTimeoutID408);
           XHRuploadFiles(form);
         } else {
@@ -228,13 +234,13 @@ window.onload = function () {
     xhr.open("POST", "/vault/deposit/web", true);
 
     xhr.onerror = function () {
-      let msg = "Request FAILED - Network Error.";
+      const msg = "Request FAILED - Network Error.";
       console.error(msg);
       document.querySelector("#stats").innerHTML = "<b>" + msg + "</b>";
     };
 
     xhr.onabort = function () {
-      let msg = "Upload Cancelled";
+      const msg = "Upload Cancelled";
       console.info(msg);
       document.querySelector("#stats").innerHTML = "<b>" + msg + "</b>";
       setTimeout(function () {
@@ -245,7 +251,7 @@ window.onload = function () {
 
     xhr.upload.onprogress = function (e) {
       if (e.lengthComputable) {
-        let progress = Math.round((e.loaded / e.total) * 100);
+        const progress = Math.round((e.loaded / e.total) * 100);
         document.querySelector("#progress_bar").value = progress;
       }
     };
@@ -253,47 +259,46 @@ window.onload = function () {
     xhr.onloadend = function () {
       let msg = "";
       let res = {};
-      let report_id = "";
-      let end = performance.now();
-      let delay = retryDelay408 / 1000;
-      let runtime = ((end - start) / 1000).toFixed(2);
-      let ttime = ((end - globalStartTime) / 1000).toFixed(2);
+      let reportId = "";
+      const end = performance.now();
+      const delay = retryDelay408 / 1000;
+      const runtime = ((end - start) / 1000).toFixed(2);
+      const ttime = ((end - globalStartTime) / 1000).toFixed(2);
 
-      if (xhr.status == 200) {
+      if (xhr.status === 200) {
         start = end;
 
         try {
           res = JSON.parse(xhr.response);
-          report_id = res[res.length - 2]["report_id"];
+          reportId = res[res.length - 2]["report_id"];
         } catch (err) {
-          if (xhr.response.length == 0) {
+          if (xhr.response.length === 0) {
             res = "No Data.";
           } else {
             res = xhr.response;
           }
           console.error("JSON parse error: " + err + "Data: " + res);
-          report_id = "undefined";
+          reportId = "undefined";
         }
 
         try {
-          total_used_quota = res[res.length - 1]["total_used_quota"];
-          document.querySelector("#total_used_quota").value = total_used_quota;
+          const totalUsedQuota = res[res.length - 1]["total_used_quota"];
+          document.querySelector("#total_used_quota").value = totalUsedQuota;
         } catch (err) {
-          if (xhr.response.length == 0) {
+          if (xhr.response.length === 0) {
             res = "No Data.";
           } else {
             res = xhr.response;
           }
           console.error("JSON parse error: " + err + "Data: " + res);
-          total_used_quota = 0;
         }
 
-        msg += " Files transfered: " + num_files + ",";
-        msg += " Size: " + formatBytes(total_size);
+        msg += " Files transfered: " + numFiles + ",";
+        msg += " Size: " + formatBytes(totalSize);
         msg += " and Runtime: " + runtime + "s";
         msg +=
           '<a href="/vault/reports/' +
-          String(report_id) +
+          String(reportId) +
           '" target="_blank"> View Report </a>';
         document.querySelector("#stats").innerHTML = "<b>" + msg + "</b>";
 
@@ -305,7 +310,7 @@ window.onload = function () {
         } else {
           msg += "Status: " + xhr.status;
         }
-      } else if (xhr.status == 408 && ABORT_REQUESTED == false) {
+      } else if (xhr.status === 408 && ABORT_REQUESTED === false) {
         if (ttime < retryTimeout408) {
           RETRYING_ON_408 = true;
           msg += "Upload Timed Out in " + runtime;
@@ -317,7 +322,7 @@ window.onload = function () {
           document.querySelector("#stats").innerHTML +=
             "<br><b>" + msg + "</b>";
         }
-      } else if (ABORT_REQUESTED == false) {
+      } else if (ABORT_REQUESTED === false) {
         start = end;
         msg +=
           "Status: " +
@@ -339,9 +344,9 @@ window.onload = function () {
       }
 
       if (
-        xhr.status == 408 &&
+        xhr.status === 408 &&
         ttime < retryTimeout408 &&
-        ABORT_REQUESTED == false
+        ABORT_REQUESTED === false
       ) {
         retryTimeoutID408 = setTimeout(function () {
           XHRuploadFiles(form);
@@ -385,45 +390,50 @@ window.onload = function () {
   }
 
   function bytesToHexString(bytes) {
-    if (!bytes) return null;
+    if (!bytes) {
+      return null;
+    }
     bytes = new Uint8Array(bytes);
-    let hexBytes = [];
+    const hexBytes = [];
     for (let i = 0; i < bytes.length; ++i) {
       let byteString = bytes[i].toString(16);
-      if (byteString.length < 2) byteString = "0" + byteString;
+      if (byteString.length < 2) {
+        byteString = "0" + byteString;
+      }
       hexBytes.push(byteString);
     }
     return hexBytes.join("");
   }
 
+  // eslint-disable-next-line no-unused-vars
   async function sha256HashFile(file, idx) {
-    let buffer = await file.arrayBuffer();
+    const buffer = await file.arrayBuffer();
     return crypto.subtle.digest("SHA-256", buffer).then(function (hash) {
       shasumsList[idx] = bytesToHexString(hash);
     });
   }
 
   async function doSomeSums(files) {
-    let tooBig = 1024 * 1024 * 1024; // 1GiB
-    promises = []; //GLOBAL
+    const tooBig = 1024 * 1024 * 1024; // 1GiB
+    promises = []; // GLOBAL
     let idx = 0;
     shasumsList = [];
-    for (var file of files) {
+    for (const file of files) {
       if (ABORT_REQUESTED) {
         continue;
       }
       if (file.size < tooBig) {
         shasumsList[idx] =
           "0000000000000000000000000000000000000000000000000000000000000000";
-        //promises.push(sha256HashFile(file, idx));
+        // promises.push(sha256HashFile(file, idx));
       } else {
         shasumsList[idx] =
           "0000000000000000000000000000000000000000000000000000000000000000";
-        //document.querySelector('#stats').innerHTML = 'Calculating MD5sum of ' + formatBytes(file.size) + ' file ' + file.name;
-        //await MD5HashFile(file, idx).then((data) => {
+        // document.querySelector('#stats').innerHTML = 'Calculating MD5sum of ' + formatBytes(file.size) + ' file ' + file.name;
+        // await MD5HashFile(file, idx).then((data) => {
         //          shasumsList[idx] = data;
-        //      });
-        //document.querySelector('#stats').innerHTML = 'Done calculating MD5sums!';
+        //       });
+        // document.querySelector('#stats').innerHTML = 'Done calculating MD5sums!';
       }
       idx++;
     }
@@ -432,24 +442,24 @@ window.onload = function () {
     });
   }
 
-  // call: await sleep(ms)
+  // eslint-disable-next-line no-unused-vars
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function MD5HashFile(file, idx) {
-    return new Promise((resolve, reject) => {
-      let spark = new SparkMD5.ArrayBuffer();
-      let reader = new ChunkedFileReader();
+  // eslint-disable-next-line no-unused-vars
+  async function MD5HashFile(file, _idx) {
+    return new Promise((resolve, _reject) => {
+      const spark = new SparkMD5.ArrayBuffer();
+      const reader = new ChunkedFileReader();
 
       reader.subscribe("chunk", function (e) {
         spark.append(e.chunk);
       });
 
-      reader.subscribe("end", function (e) {
-        let hash = spark.end();
+      reader.subscribe("end", function (_e) {
+        const hash = spark.end();
         resolve(hash);
-        //console.log(hash);
       });
 
       reader.readChunks(file);

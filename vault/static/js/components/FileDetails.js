@@ -1,3 +1,5 @@
+/* global $ */
+
 import { publish, subscribe } from "../lib/pubsub.js";
 import { humanBytes, toTitleCase } from "../lib/lib.js";
 export default class FileDetails extends HTMLElement {
@@ -48,7 +50,6 @@ export default class FileDetails extends HTMLElement {
       return;
     }
 
-    const nodeSize = this.nodeSize;
     const contentUrl = node?.content_url;
     const attributesToExclude = [
       "id",
@@ -178,7 +179,7 @@ export default class FileDetails extends HTMLElement {
           str += `<dt>Type</dt><dd>${node[key]}</dd>`;
         } else if (key === "size") {
           str += `<dt>${toTitleCase(key)}</dt><dd class="size-text">${
-            node.id == this.folderNodeId
+            node.id === this.folderNodeId
               ? humanBytes(this.nodeSize)
               : humanBytes(node.size)
           }</dd>`;
@@ -218,14 +219,14 @@ export default class FileDetails extends HTMLElement {
     this.activityEl.classList[showDetails ? "add" : "remove"]("hidden");
     if (node.node_type === "COLLECTION" && !showDetails) {
       // call api only when Activity tab is clicked
-      let collectionId = collectionIdDict[node.id];
+      const collectionId = collectionIdDict[node.id];
       const response = await fetch(`${basePath}/api/get_events/${collectionId}`)
         .then((data) => data.json())
         .catch((error) => {
           console.error("Server error ", error);
           return;
         });
-      let events = response["formatted_events"];
+      const events = response["formatted_events"];
       if (events.length !== 0) {
         events.forEach((event) => {
           eventsContainer.innerHTML += `

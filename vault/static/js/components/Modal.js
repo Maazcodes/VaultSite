@@ -136,6 +136,7 @@ export default class Modal extends HTMLElement {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   submitHandler(nameInputMap) {
     /* Implement in subclass.
      */

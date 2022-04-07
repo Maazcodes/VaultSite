@@ -1,3 +1,5 @@
+/* global $ */
+
 import { subscribe, publish } from "../lib/pubsub.js";
 import { humanBytes } from "../lib/lib.js";
 import { getCsrfHeader } from "../services/API.js";
@@ -69,7 +71,7 @@ export default class MovePopover extends HTMLElement {
     </div>
     <ui5-list mode="SingleSelect" id="folder-selector" no-data-text="No Data Available" >
     ${this.allNodes
-      .filter((node) => node.node_type != "FILE")
+      .filter((node) => node.node_type !== "FILE")
       .map(
         (node) =>
           `<ui5-li data-value="${node.name}" id="${node.id}" url="${node.url}" type="${node.node_type}">${node.name}</ui5-li>`
@@ -99,7 +101,7 @@ export default class MovePopover extends HTMLElement {
       // if parent node name is not equal to undefined truncate it
       ParentElement.innerHTML = this.truncate(parentNode.name);
     }
-    if (parentNode.id == this.nodePathList[0]) {
+    if (parentNode.id === this.nodePathList[0]) {
       // disable back button if the parent id == org id
       document.getElementById("back-button").setAttribute("disabled", true);
       ParentElement.innerHTML = "Collections";
@@ -119,14 +121,24 @@ export default class MovePopover extends HTMLElement {
     this.backButtonEventHandler(ChildParentIdDict, ParentNodeId, AllNodes);
   }
 
-  moveButtonEventHandler(popover, contextElement, parentNode) {
+  /**
+   * XXX: this function should be rewritten to avoid the use of global
+   * variables (destinationNodeUrl, destinationId)
+   * Mon  4 Apr 16:47:36 PDT 2022
+   */
+  moveButtonEventHandler(
+    popover,
+    contextElement,
+    parentNode // eslint-disable-line no-unused-vars
+  ) {
     const tableParentElement = document.querySelector("ui5-table");
     const { selectedRows, selectedNodes, nodes } = contextElement;
     const selectedRowNames = selectedRows.map((row) => row.attributes[1].value);
     this.button = this.querySelector("ui5-button[id='move-button']");
     this.button.addEventListener("click", async function () {
-      let payload = { parent: destinationNodeUrl };
-      let options = {
+      // eslint-disable-next-line no-undef
+      const payload = { parent: destinationNodeUrl };
+      const options = {
         credentials: "same-origin",
         method: "PATCH",
         headers: {
@@ -139,6 +151,7 @@ export default class MovePopover extends HTMLElement {
 
       let error = false;
       const ParentNode = document.querySelector(
+        // eslint-disable-next-line no-undef
         `ui5-tree-item[id='${destinationId}']`
       );
       await Promise.all(
@@ -170,7 +183,7 @@ export default class MovePopover extends HTMLElement {
       });
 
       selectedNodes.map((node) => {
-        if (node.node_type != "FILE") {
+        if (node.node_type !== "FILE") {
           // remove the moved node from popover menu
           const nodeIndexInNodes = nodes.indexOf(node);
           nodes.splice(nodeIndexInNodes, 1);
@@ -190,17 +203,25 @@ export default class MovePopover extends HTMLElement {
 
       // If the user moves the file/files into a folder in the same collection on the same page, update folder size instantly
       if (
+        // eslint-disable-next-line no-undef
         destinationType === "FOLDER" &&
         !!document.querySelector(
+          // eslint-disable-next-line no-undef
           `ui5-table-row[data-name='${destinationName}']`
         )
       ) {
         // call api for folder node to update its size instantly
+        // eslint-disable-next-line no-undef
         publish("NODE_REQUEST", { nodeId: destinationId, action: "MOVE" });
       }
     });
   }
 
+  /**
+   * XXX: this function should be rewritten to avoid the use of global
+   * variables (destinationId)
+   * Mon  4 Apr 16:47:36 PDT 2022
+   */
   folderSelectorEventHandler(moveButton, fileParentId, selectedRowIds) {
     const folderSelectorElement = document.getElementById("folder-selector");
     folderSelectorElement.addEventListener(
@@ -213,7 +234,9 @@ export default class MovePopover extends HTMLElement {
         globalThis.destinationName = selectedItem[0].getAttribute("data-value");
         globalThis.destinationType = selectedItem[0].getAttribute("type");
         if (
-          fileParentId == destinationId ||
+          // eslint-disable-next-line no-undef
+          fileParentId === destinationId ||
+          // eslint-disable-next-line no-undef
           selectedRowIds.includes(parseInt(destinationId))
         ) {
           // disable move button if the parent element of source element is selected OR destination id is present in
@@ -227,6 +250,7 @@ export default class MovePopover extends HTMLElement {
     );
     folderSelectorElement.addEventListener("dblclick", function (event) {
       const selectedItemId = event.target.id;
+      // eslint-disable-next-line no-undef
       if (selectedRowIds.includes(parseInt(destinationId))) {
         // No action if double clicked on the element whose id is same as destination id
         return;
@@ -243,7 +267,7 @@ export default class MovePopover extends HTMLElement {
     this.backButton = this.querySelector("ui5-button[id='back-button']");
     let BackNodeId = "";
     this.backButton.addEventListener("click", function () {
-      if (AllNodes.length == 0) {
+      if (AllNodes.length === 0) {
         // if there is no children of parent, call the parent id of the current node and call its children after clicking on back button
         BackNodeId = ChildParentIdDict[ParentNodeId];
       } else {

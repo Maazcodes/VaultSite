@@ -1,33 +1,35 @@
-/* global URLS, Flow, md5, $ */
+/* global URLS, Flow, md5, $, Chart, chartalign, PARENT_NODE_ID */
 
 function secondsToString(seconds) {
-  var remaining_min = Math.floor(seconds / 60);
-  var remaining_sec = seconds - remaining_min * 60;
+  const remainingMin = Math.floor(seconds / 60);
+  const remainingSec = seconds - remainingMin * 60;
 
   // For hours
-  var remaining_hours = Math.floor(seconds / 3600);
-  var total_remaining_sec_hr = seconds - remaining_hours * 3600; // Total remaining seconds after hours
-  var remaining_seconds_after_mins = Math.floor(total_remaining_sec_hr / 60); // Converting remaining seconds into minutes to get remaining minutes
-  var actual_remaining_sec = seconds - remaining_seconds_after_mins * 60; // Getting remaining seconds after minutes
+  const remainingHours = Math.floor(seconds / 3600);
+  const totalRemainingSecHr = seconds - remainingHours * 3600; // Total remaining seconds after hours
+  const remainingSecondsAfterMin = Math.floor(totalRemainingSecHr / 60); // Converting remaining seconds into minutes to get remaining minutes
+  const actualRemainingSecs = seconds - remainingSecondsAfterMin * 60; // Getting remaining seconds after minutes
 
   if (seconds <= 60) {
     return seconds + " s ";
   } else if (seconds > 60 && seconds <= 3600) {
-    return remaining_min + " m " + remaining_sec + " s ";
+    return remainingMin + " m " + remainingSec + " s ";
   } else if (seconds > 3600) {
     return (
-      remaining_hours +
+      remainingHours +
       " h " +
-      remaining_seconds_after_mins +
+      remainingSecondsAfterMin +
       " m " +
-      actual_remaining_sec +
+      actualRemainingSecs +
       " s "
     );
   }
 }
 
 const formatBytes = (bytes, decimals = 2) => {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) {
+    return "0 Bytes";
+  }
 
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
@@ -48,8 +50,9 @@ const formatBytes = (bytes, decimals = 2) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 };
 
-var flow = new Flow({
+const flow = new Flow({
   target: URLS.api_flow_chunk,
+  // eslint-disable-next-line camelcase
   query: { upload_token: "my_token" },
   simultaneousUploads: 3,
   speedSmoothingFactor: 0.005,
@@ -59,7 +62,7 @@ var flow = new Flow({
   chunkRetryInterval: 5000,
   allowDuplicateUploads: true,
   generateUniqueIdentifier: function (file) {
-    var relativePath =
+    const relativePath =
       file.relativePath ||
       file.webkitRelativePath ||
       file.fileName ||
@@ -76,57 +79,59 @@ flow.assignBrowse(document.getElementById("uploadFoldersButton"), true);
 flow.assignDrop(document.getElementById("dropTarget"));
 
 let files = [];
-let upload_size = 0;
+let uploadSize = 0;
 let currentDepositId = undefined;
-let files_dict = {};
-let flowfile_objects_dict = {};
+const filesDict = {};
+const flowfileObjectsDict = {};
 
-let flow_object_array = [];
-flow.on("fileAdded", function (file, event) {
-  let new_file = {
+flow.on("fileAdded", function (file, _event) {
+  const newFile = {
+    // eslint-disable-next-line camelcase
     flow_identifier: file.uniqueIdentifier,
     name: file.name,
+    // eslint-disable-next-line camelcase
     relative_path: file.relativePath,
     size: file.size,
     type: file.file.type,
+    // eslint-disable-next-line camelcase
     pre_deposit_modified_at: new Date(file.file.lastModified).toISOString(),
   };
-  files.push(new_file);
-  flowfile_objects_dict[String(file["relativePath"])] = file;
+  files.push(newFile);
+  flowfileObjectsDict[String(file["relativePath"])] = file;
   // dictionary with relative path as key
-  files_dict[String(new_file["relative_path"])] = new_file;
-  upload_size += new_file["size"];
+  filesDict[String(newFile["relative_path"])] = newFile;
+  uploadSize += newFile["size"];
   document.querySelector("#dropTargetMsg").innerHTML =
     "<div>" +
     files.length +
     pluralizeWord(" file ", " files ", files.length) +
     " selected. Total Upload Size: " +
-    formatBytes(upload_size) +
+    formatBytes(uploadSize) +
     "</div>";
 });
 
-flow.on("fileSuccess", function (file, message) {});
+flow.on("fileSuccess", function (_file, _message) {});
 
 function pluralizeWord(singularWord, pluralWord, count) {
-  return count != 1 ? pluralWord : singularWord;
+  return count !== 1 ? pluralWord : singularWord;
 }
 
 flow.on("fileError", function (file, message) {
   console.log(file, message);
-  btn = document.getElementById("flowPost");
+  const btn = document.getElementById("flowPost");
   btn.innerHTML = "Upload";
   btn.disabled = false;
   document.querySelector("#flow-stats").innerHTML = "Error Uploading";
 });
 
 function changeStats() {
-  if ($("#id_collection").find(":selected").val() != "") {
+  if ($("#id_collection").find(":selected").val() !== "") {
     document.querySelector("#dropTargetMsg").innerHTML =
       "<div>" +
       files.length +
       pluralizeWord(" file ", " files ", files.length) +
       " selected. Total Upload Size: " +
-      formatBytes(upload_size) +
+      formatBytes(uploadSize) +
       "</div>";
   }
 }
@@ -135,20 +140,21 @@ document
   .getElementById("id_collection")
   ?.addEventListener("change", changeStats);
 
+// eslint-disable-next-line camelcase
 function deposit_status(time) {
-  if (currentDepositId == undefined) {
+  if (!currentDepositId) {
     console.error("Deposit Id not defined");
   }
-  let xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
   xhr.open("GET", `${URLS.api_deposit_status}?deposit_id=${currentDepositId}`);
   xhr.setRequestHeader("Content-Type", "application/json");
   xhr.send();
   xhr.onloadend = function () {
-    if (xhr.status == 200) {
-      res = JSON.parse(xhr.response);
-      let processing =
+    if (xhr.status === 200) {
+      const res = JSON.parse(xhr.response);
+      const processing =
         res["hashed_files"] + res["replicated_files"] + res["errored_files"];
-      let message =
+      const message =
         "Processing Files: " +
         processing +
         "/" +
@@ -165,11 +171,11 @@ function deposit_status(time) {
         document.getElementById("progress_bar_flow").innerHTML = "";
         document.querySelector("#flow-stats").innerHTML = "Upload Complete";
       }
-    } else if (xhr.status == 400) {
+    } else if (xhr.status === 400) {
       console.error("Deposit Error: No Deposit ID");
       document.querySelector("#flow-stats").innerHTML =
         "Deposit Error: No Deposit ID";
-    } else if (xhr.status == 404) {
+    } else if (xhr.status === 404) {
       console.error("Deposit Error: No Deposit for ID");
       document.querySelector("#flow-stats").innerHTML =
         "Deposit Error: No Deposit for ID";
@@ -188,46 +194,45 @@ function deposit_status(time) {
 
 flow.on("complete", function () {
   document.querySelector("#flow-stats").innerHTML = "Upload Complete";
-  btn = document.getElementById("flowPost");
+  const btn = document.getElementById("flowPost");
   btn.innerHTML = "Upload";
   btn.disabled = false;
   files = [];
-  upload_size = 0;
+  uploadSize = 0;
   document.querySelector("#progress_bar_flow").style.display = "none";
   deposit_status(0);
 });
 
-let initial_time = 0;
-let sum_speed = 0;
+let initialTime = 0;
+let sumSpeed = 0;
 let counter = 0;
 flow.on("progress", function () {
-  if (counter == 0) {
-    initial_time = Date.now();
+  if (counter === 0) {
+    initialTime = Date.now();
     counter++;
     return;
   }
   counter++;
-  let uploaded_size = flow.sizeUploaded();
-  let passed_time = Date.now() - initial_time;
-  let speed = uploaded_size / passed_time;
-  sum_speed += speed;
-  avg_speed = sum_speed / counter;
-  let total_file_size = flow.getSize();
-  let time_remaining = (total_file_size - uploaded_size) / avg_speed;
+  const uploadedSize = flow.sizeUploaded();
+  const passedTime = Date.now() - initialTime;
+  const speed = uploadedSize / passedTime;
+  sumSpeed += speed;
+  const avgSpeed = sumSpeed / counter;
+  const totalFileSize = flow.getSize();
+  const timeRemaining = (totalFileSize - uploadedSize) / avgSpeed;
   document.querySelector("#flow-stats").innerHTML =
     "Uploading Files (" +
     " Time left: " +
-    secondsToString(Math.floor(time_remaining / 1000)) +
+    secondsToString(Math.floor(timeRemaining / 1000)) +
     ") ";
   document.querySelector("#progress_bar_flow").value = flow.progress() * 100;
 });
 
-let warning_tag = document.getElementById("warning");
+const warningheader = document.getElementById("warningHeader");
 
-let warningheader = document.getElementById("warningHeader");
-
+// eslint-disable-next-line no-unused-vars, camelcase
 function start_deposit(flow, files) {
-  if ($("#id_collection").find(":selected").val() == "") {
+  if ($("#id_collection").find(":selected").val() === "") {
     document.querySelector("#flow-stats").innerHTML =
       "<b>Please select a collection</b>";
     return;
@@ -240,44 +245,47 @@ function start_deposit(flow, files) {
   }
 
   document.querySelector("#progress_bar_flow").value = flow.progress() * 0;
-  let coll_input = document.getElementById("id_collection");
-  let collection_id = coll_input?.options[coll_input.selectedIndex].value;
+  const collInput = document.getElementById("id_collection");
+  const collectionId = collInput?.options[collInput.selectedIndex].value;
 
-  btn = document.getElementById("flowPost");
+  const btn = document.getElementById("flowPost");
   btn.innerHTML = "Uploading...";
   btn.disabled = true;
 
-  let xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
 
   xhr.open("POST", URLS.api_warning_deposit, true);
   xhr.setRequestHeader("Content-Type", "application/json");
-  let payload = {
-    collection_id: collection_id,
+  const payload = {
+    // eslint-disable-next-line camelcase
+    collection_id: collectionId,
     files: files,
-    total_size: upload_size,
+    // eslint-disable-next-line camelcase
+    total_size: uploadSize,
+    // eslint-disable-next-line camelcase
     parent_node_id: PARENT_NODE_ID || null,
   };
   xhr.send(JSON.stringify(payload));
   xhr.onloadend = function () {
-    if (xhr.status == 200) {
-      response = JSON.parse(xhr.response);
-      let objects_list = response["objects"]; // All matched files
-      let path_list = response["relative_path"];
-      const files_list = [];
+    if (xhr.status === 200) {
+      const response = JSON.parse(xhr.response);
+      const objectsList = response["objects"]; // All matched files
+      const pathList = response["relative_path"];
+      const filesList = [];
       const paths = [];
-      for (let index = 0; index < objects_list.length; index++) {
-        let element = objects_list[index];
-        let file_name = element["name"];
-        files_list.push(file_name);
+      for (let index = 0; index < objectsList.length; index++) {
+        const element = objectsList[index];
+        const fileName = element["name"];
+        filesList.push(fileName);
       }
 
-      for (let index = 0; index < path_list.length; index++) {
-        let path_element = path_list[index];
-        paths.push(path_element);
+      for (let index = 0; index < pathList.length; index++) {
+        const pathElement = pathList[index];
+        paths.push(pathElement);
       }
 
-      if (files_list.length > 0) {
-        overlappedFiles(files_list, false);
+      if (filesList.length > 0) {
+        overlappedFiles(filesList, false);
       } else if (paths.length > 0) {
         overlappedFiles(paths, false);
       } else {
@@ -285,7 +293,7 @@ function start_deposit(flow, files) {
       }
 
       // reversing all the actions after clicking outside the window and again on upload button
-      SkipreplaceBtns = $(".skipreplace");
+      const SkipreplaceBtns = $(".skipreplace");
       for (let index = 0; index < SkipreplaceBtns.length; index++) {
         const button = SkipreplaceBtns[index];
         if (button.disabled) {
@@ -299,37 +307,37 @@ function start_deposit(flow, files) {
   };
 }
 
-function replaceClass(skip_or_replace_element) {
-  if (skip_or_replace_element.hasClass("path-not-selected")) {
-    skip_or_replace_element.removeClass("path-not-selected");
-    skip_or_replace_element.addClass("path-selected");
+function replaceClass(skipOrReplaceElement) {
+  if (skipOrReplaceElement.hasClass("path-not-selected")) {
+    skipOrReplaceElement.removeClass("path-not-selected");
+    skipOrReplaceElement.addClass("path-selected");
   }
 }
 
-skip_path_array = [];
+let skipPathArray = [];
 
-skip_replace_id_dict = {};
+const skipReplaceIdDict = {};
 
 // Start of warning function
 
-function overlappedFiles(overlapped_files_list, confirm_button_status) {
+function overlappedFiles(overlappedFilesList, confirmButtonStatus) {
   // Get the modal
-  let warning_modal = document.getElementById("warningModal_id");
+  const warningModal = document.getElementById("warningModal_id");
 
   // When the user clicks on the button, open the modal
-  warning_modal.style.display = "block";
+  warningModal.style.display = "block";
 
   // Skip All and Replace All Buttons
   warningheader.innerHTML =
     "<br>" +
     '<button class="button small skipBtn" id="skipall" style = "margin-right: 10px; margin-left: 10px; border-radius: 20px; padding: 10px 20px 10px 20px;"> Skip All </button><button class="button small replaceBtn" id="replaceall" style = "border-radius: 20px; padding: 10px 20px 10px 20px;"> Replace All</button>' +
-    `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to make skip/replace selection: </b>${overlapped_files_list.length} </div>`;
+    `<div id = "files_count" style = "font-style: italic; margin-bottom: 20px;"><b>Remaining files to make skip/replace selection: </b>${overlappedFilesList.length} </div>`;
 
   // Adding Confirm button before all rows
   warningheader.innerHTML += `<br><button class="confirm-button"> Confirm </button><div id="confirmBtn1text"></div><br><br>`;
 
-  for (let index = 0; index < overlapped_files_list.length; index++) {
-    let file_element = overlapped_files_list[index];
+  for (let index = 0; index < overlappedFilesList.length; index++) {
+    const fileElement = overlappedFilesList[index];
 
     // Adding Skip and Replace buttons after every matched path
     warningheader.innerHTML +=
@@ -337,7 +345,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
       String(index) +
       '" style = " margin-bottom: 0px; display: flex; box-sizing: border-box; flex-wrap: wrap; height: 32px; vertical-align: middle;">' +
       '<div style="margin-top: 7px; height: 42px; display:inline-block; box-sizing: border-box; flex: 60%; max-width: 500px; left: 0px; text-align: left; vertical-align: middle;" id = "text" >' +
-      file_element +
+      fileElement +
       "</div>" +
       '<button class="button small skip-button skipreplace skipBtn " style = "border-radius: 20px; right: -190px; height: 36px; padding: 7px 15px 7px 15px; position: relative;"> Skip </button><button class="button small replace-button skipreplace replaceBtn " style = "border-radius: 20px; height: 36px; right: -200px; padding: 7px 15px 7px 15px; margin-right: 0px;"> Replace </button></div><hr>';
   }
@@ -345,7 +353,7 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
   // Adding another Confirm button after all rows
   warningheader.innerHTML += `<br><button class="confirm-button"> Confirm </button>`;
 
-  if (confirm_button_status) {
+  if (confirmButtonStatus) {
     // displaying the message if no action is performed on all the paths
     document.getElementById("confirmBtn1text").innerHTML =
       "<b>Please select skip or replace on all files</b>";
@@ -357,15 +365,15 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
     document.getElementById("replaceall").innerHTML = "Replace Remaining";
 
     // maintaining all the previous actions after clicking on confirm button
-    for (var key in skip_replace_id_dict) {
+    for (const key in skipReplaceIdDict) {
       // here key is id and value is skip or replace
       // getting skip and replace elements from the same id
-      skip_element = $("#" + key)[0].childNodes[1];
-      replaceElement = $("#" + key)[0].childNodes[2];
+      const skipElement = $("#" + key)[0].childNodes[1];
+      const replaceElement = $("#" + key)[0].childNodes[2];
 
-      value = skip_replace_id_dict[key];
-      if (value == "skip") {
-        skip_element.disabled = true;
+      const value = skipReplaceIdDict[key];
+      if (value === "skip") {
+        skipElement.disabled = true;
       } else {
         replaceElement.disabled = true;
       }
@@ -374,55 +382,55 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
       $("#" + key).removeClass("path-not-selected");
     }
 
-    not_selected_paths = document.querySelectorAll(".path-not-selected");
+    const notSelectedPaths = document.querySelectorAll(".path-not-selected");
     document.getElementById("files_count").innerHTML =
       "<b>Remaining files to make skip/replace selection: </b>" +
-      not_selected_paths.length;
+      notSelectedPaths.length;
   }
 
   // collecting both the confirm buttons to add event listeners
-  confirm_buttons = document.querySelectorAll(".confirm-button");
-  confirm_buttons.forEach(function (button) {
+  const confirmButtons = document.querySelectorAll(".confirm-button");
+  confirmButtons.forEach(function (button) {
     button.addEventListener("click", function () {
-      not_selected_paths = document.querySelectorAll(".path-not-selected");
+      const notSelectedPaths = document.querySelectorAll(".path-not-selected");
       // if no action is performed on all paths, repeat the same function with previous changes
-      if (not_selected_paths.length > 0) {
+      if (notSelectedPaths.length > 0) {
         // setting confirm button status as true after the user clicks on confirm button
-        overlappedFiles(overlapped_files_list, true);
+        overlappedFiles(overlappedFilesList, true);
       } else {
-        warning_modal.style.display = "none";
+        warningModal.style.display = "none";
 
-        for (let index = 0; index < skip_path_array.length; index++) {
-          const path = skip_path_array[index];
+        for (let index = 0; index < skipPathArray.length; index++) {
+          const path = skipPathArray[index];
           // Removing the skipped file from upload queue by relative path
-          flow.removeFile(flowfile_objects_dict[path]);
+          flow.removeFile(flowfileObjectsDict[path]);
 
           // Deleting elements from dictionary by relative path
-          delete files_dict[path];
+          delete filesDict[path];
         }
 
-        let final_deposit_list = Object.values(files_dict);
-        registerDeposit(final_deposit_list);
+        const finalDepositList = Object.values(filesDict);
+        registerDeposit(finalDepositList);
       }
     });
   });
 
   // Skip All Button
-  SkipAllBtn = document.getElementById("skipall");
-  ReplaceAllBtn = document.getElementById("replaceall");
+  const SkipAllBtn = document.getElementById("skipall");
+  const ReplaceAllBtn = document.getElementById("replaceall");
   SkipAllBtn.onclick = function () {
     SkipAllBtn.style.backgroundColor = "darkgreen";
-    not_selected_elements = $(".path-not-selected");
-    for (let index = 0; index < not_selected_elements.length; index++) {
-      let parent_element = not_selected_elements[index];
-      file_path = parent_element.childNodes[0].innerText;
+    const notSelectedElements = $(".path-not-selected");
+    for (let index = 0; index < notSelectedElements.length; index++) {
+      const parentElement = notSelectedElements[index];
+      const filePath = parentElement.childNodes[0].innerText;
       // appending skip path array with the file path
-      skip_path_array.push(file_path);
+      skipPathArray.push(filePath);
       // Disable all not selected skip buttons after clicking on Skip All/Skip remaining button
-      parent_element.childNodes[1].disabled = true;
+      parentElement.childNodes[1].disabled = true;
       // Replacing the class by path-selected
-      $(parent_element).removeClass("path-not-selected");
-      $(parent_element).addClass("path-selected");
+      $(parentElement).removeClass("path-not-selected");
+      $(parentElement).addClass("path-selected");
     }
 
     document.getElementById("files_count").innerHTML =
@@ -433,14 +441,14 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
   ReplaceAllBtn.onclick = function () {
     ReplaceAllBtn.style.backgroundColor = "red";
     // Disable all replace buttons after clicking on Replace All button
-    not_selected_elements = $(".path-not-selected");
-    for (let index = 0; index < not_selected_elements.length; index++) {
-      let parent_element = not_selected_elements[index];
+    const notSelectedElements = $(".path-not-selected");
+    for (let index = 0; index < notSelectedElements.length; index++) {
+      const parentElement = notSelectedElements[index];
       // Disable all not selected replace buttons after clicking on Replace All/Replace remaining button
-      parent_element.childNodes[2].disabled = true;
+      parentElement.childNodes[2].disabled = true;
       // Replacing the class by path-selected
-      $(parent_element).removeClass("path-not-selected");
-      $(parent_element).addClass("path-selected");
+      $(parentElement).removeClass("path-not-selected");
+      $(parentElement).addClass("path-selected");
     }
 
     document.getElementById("files_count").innerHTML =
@@ -456,39 +464,36 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
       // disable the button after a click
       el.disabled = true;
 
-      replace_id = $(this).parent()[0].id;
-      replace_parent_element = $(this).parent();
-
-      file_path = $(this).prev().prev()[0].innerText;
-
-      skip_button = $(this).prev()[0];
+      const replaceId = $(this).parent()[0].id;
+      const replaceParentElement = $(this).parent();
+      const filePath = $(this).prev().prev()[0].innerText;
+      const skipButton = $(this).prev()[0];
 
       // Storing the ids of path in dictionary with respect to specific action
-      skip_replace_id_dict[parseInt(replace_id)] = "replace";
+      skipReplaceIdDict[parseInt(replaceId)] = "replace";
       // e.g. - skip_replace_id_dict = {0: replace}
 
       // Replacing the class by 'path-selected' after clicking on replace button
 
-      replaceClass(replace_parent_element);
+      replaceClass(replaceParentElement);
 
       // if the user clicks first on skip button, and then clicks on replace button, skip button should get enabled
-      if (skip_button.disabled == true) {
-        skip_button.disabled = false;
+      if (skipButton.disabled === true) {
+        skipButton.disabled = false;
 
         // Remove the path from skip path array after clicking on replace button
-        var path_index = skip_path_array.indexOf(file_path);
-        skip_path_array.splice(path_index, 1);
+        const pathIndex = skipPathArray.indexOf(filePath);
+        skipPathArray.splice(pathIndex, 1);
       }
 
-      not_selected_paths = document.querySelectorAll(".path-not-selected");
+      const notSelectedPaths = document.querySelectorAll(".path-not-selected");
       document.getElementById("files_count").innerHTML =
         "<b>Remaining files to make skip/replace selection: </b>" +
-        not_selected_paths.length;
+        notSelectedPaths.length;
     });
   });
 
   // Skip Button
-  skip_list = [];
   document.querySelectorAll(".skip-button").forEach(function (el) {
     el.addEventListener("click", function () {
       SkipAllBtn.innerHTML = "Skip Remaining";
@@ -496,70 +501,67 @@ function overlappedFiles(overlapped_files_list, confirm_button_status) {
 
       el.disabled = true;
 
-      skip_id = $(this).parent()[0].id;
-
-      skip_parent_element = $(this).parent();
-
-      file_path = $(this).prev()[0].innerText;
-
-      replace_button = $(this).next()[0];
+      const skipId = $(this).parent()[0].id;
+      const skipParentElement = $(this).parent();
+      const filePath = $(this).prev()[0].innerText;
+      const replaceButton = $(this).next()[0];
 
       // Storing the ids of path in dictionary with respect to specific action
-      skip_replace_id_dict[parseInt(skip_id)] = "skip";
+      skipReplaceIdDict[parseInt(skipId)] = "skip";
       // e.g. - skip_replace_id_dict = {0: skip}
 
       // Replacing the class by 'path-selected' after clicking on skip button
-      replaceClass(skip_parent_element);
+      replaceClass(skipParentElement);
 
       // if the user clicks first on replace button, and then clicks on skip button, replace button should get enabled
-      if (replace_button.disabled == true) {
-        replace_button.disabled = false;
+      if (replaceButton.disabled === true) {
+        replaceButton.disabled = false;
       }
 
-      skip_path_array.push(file_path);
+      skipPathArray.push(filePath);
 
-      not_selected_paths = document.querySelectorAll(".path-not-selected");
+      const notSelectedPaths = document.querySelectorAll(".path-not-selected");
 
       document.getElementById("files_count").innerHTML =
         "<b>Remaining files to make skip/replace selection: </b>" +
-        not_selected_paths.length;
+        notSelectedPaths.length;
     });
   });
 
   // When the user clicks anywhere outside the window, close it
   window.onclick = function (event) {
-    if (event.target == warning_modal) {
-      warning_modal.style.display = "none";
-      btn = document.getElementById("flowPost");
+    if (event.target === warningModal) {
+      warningModal.style.display = "none";
+      const btn = document.getElementById("flowPost");
       btn.innerHTML = "Upload";
       btn.disabled = false;
       document.getElementById("progress_bar_flow").style.display = "none";
       // Empty skip files array to undo skip actions
-      skip_path_array = [];
+      skipPathArray = [];
     }
   };
 }
 
 function start(response) {
-  let res = JSON.parse(response);
+  const res = JSON.parse(response);
   flow.opts.query.depositId = res.deposit_id;
   currentDepositId = flow.opts.query.depositId;
 
   flow.upload();
 }
 
-function registerDeposit(remaining_files) {
-  btn = document.getElementById("flowPost");
+function registerDeposit(remainingFiles) {
+  const btn = document.getElementById("flowPost");
   btn.innerHTML = "Uploading...";
   btn.disabled = true;
 
-  //Showing progress bar
+  // Showing progress bar
   document.getElementById("progress_bar_flow").style.display = "inline-block";
 
-  let coll_input = document.getElementById("id_collection");
-  let collection_id = coll_input?.options[coll_input.selectedIndex].value;
+  const collInput = document.getElementById("id_collection");
+  const collectionId = collInput?.options[collInput.selectedIndex].value;
 
-  let xhr = new XMLHttpRequest();
+  const xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) {
       start(xhr.response);
@@ -568,23 +570,20 @@ function registerDeposit(remaining_files) {
 
   xhr.open("POST", URLS.api_register_deposit, true);
   xhr.setRequestHeader("Content-Type", "application/json");
-  let payload = {
-    collection_id: collection_id,
-    files: remaining_files,
-    total_size: upload_size,
+  const payload = {
+    // eslint-disable-next-line camelcase
+    collection_id: collectionId,
+    files: remainingFiles,
+    // eslint-disable-next-line camelcase
+    total_size: uploadSize,
+    // eslint-disable-next-line camelcase
     parent_node_id: PARENT_NODE_ID || null,
   };
   xhr.send(JSON.stringify(payload));
-  xhr.onloadend = function () {
-    if (xhr.status == 200) {
-      response = JSON.parse(xhr.response);
-      let deposit_id = response["deposit_id"];
-    }
-  };
 }
 
 const createQuotaDonut = () => {
-  let data = [];
+  const data = [];
   data.push(
     (
       parseInt(document.querySelector("#total_used_quota").value) /
@@ -651,6 +650,7 @@ const createCollectionsChart = (collections, fileCounts) => {
   );
 };
 
+// eslint-disable-next-line no-unused-vars
 const resetForm = () => {
   const newLocation = window.location.href.split("?")[0];
   window.location = newLocation;

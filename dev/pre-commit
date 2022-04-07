@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # pre-commit.sh
 # -------------
 # An optional script which runs checks on code before commits.
@@ -7,3 +9,8 @@
 make test
 #make lint
 make ck-format
+
+pushd vault/static/js
+
+make ck-format
+make lint

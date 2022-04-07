@@ -16,6 +16,9 @@ Vault digital preservation service.
   * [Black -- opinionated formatting](#black----opinionated-formatting)
   * [Pylint -- linting and static analysis](#pylint----linting-and-static-analysis)
   * [Frontend](#frontend)
+  * [Disabling lints](#disabling-lints)
+    + [In Pylint](#in-pylint)
+    + [In eslint](#in-eslint)
 - [Releases](#releases)
 - [Operations](#operations)
   * [Triggers](#triggers)
@@ -114,7 +117,7 @@ ansible-playbook --ask-vault-password -i qa setup_vault_site.yml --extra-vars gi
 * [Pylint message descriptions](https://pycodequ.al/docs/pylint-messages.html)
 * [Ignoring issues](https://pycodequ.al/docs/ignore-issues.html)
 
-### Frontend
+### [Frontend](Frontend)
 The vault frontend uses [`eslint`](https://eslint.org/),
 [`prettier`](https://prettier.io/) to assert baseline code quality.
 [`nvm`](https://github.com/nvm-sh/nvm) is used to make it simpler for all
@@ -149,6 +152,34 @@ make ck-format
 
 # Modify JavaScript source for formatting compliance:
 make format
+```
+
+### Disabling lints
+Lints can be disabled on a case-by-case basis if they're not applicable in a
+given instance. Before disabling lints, however, please question whether the
+lint truly should be disabled, or if the lint in fact highlights a problem.
+
+#### In Pylint
+
+More info on controlling lint messages: https://pylint.pycqa.org/en/latest/user_guide/message-control.html
+
+```python
+# disables `unused-argument` lint on one line only
+unused = "foobar" # pylint: disable=unused-argument
+
+# disables the `unused-argument` lint for all following lines in the current
+# lexical scope:
+# pylint: disable=unused-argument
+an_unused_variable = 42
+```
+
+#### In eslint
+
+More info on disabling eslint rules: https://eslint.org/docs/user-guide/configuring/rules#disabling-rules
+
+```js
+// eslint-disable-next-line no-unused-vars
+const my_unused_var = 42
 ```
 
 ## Releases

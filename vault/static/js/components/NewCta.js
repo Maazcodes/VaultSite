@@ -40,7 +40,7 @@ export default class NewCta extends HTMLElement {
     this.popover.close();
   }
 
-  changeDirectoryMessageHandler({ path, childNodes }) {
+  changeDirectoryMessageHandler({ path, _childNodes }) {
     /* Set the "folder" option enabled stated based on the current path.
      */
     const folderEl = this.querySelector("ui5-li[data-value=folder]");

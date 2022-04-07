@@ -14,9 +14,6 @@ import FileTreeNavigator from "./FileTreeNavigator.js";
 import FilesList from "./FilesList.js";
 import BreadcrumbsView from "./BreadcrumbsView.js";
 
-/******************************************************************************
-   Conductor
- *****************************************************************************/
 class Conductor {
   constructor({ basePath, appPath, path, node, orgId }) {
     const API_BASE_PATH = `${window.location.origin}${basePath}/api/`;
@@ -93,7 +90,7 @@ class Conductor {
       // The topic waitlist is not empty, so remove this one.
       this.state.topicsUntilInit.delete(topic);
       // If the waitlist is now empty, call init().
-      if (this.state.topicsUntilInit.size == 0) {
+      if (this.state.topicsUntilInit.size === 0) {
         this.init();
       }
     }
@@ -159,7 +156,7 @@ class Conductor {
     this.path = path;
     // Fetch the selected node's children.
     const { limit, ordering } = this.state.childQuery;
-    if (nodeId && node == undefined) {
+    if (nodeId && node === undefined) {
       node = await this.api.treenodes.get(null, {
         id: nodeId,
         limit,
@@ -203,6 +200,7 @@ class Conductor {
   async createFolderRequestHandler({ name, parentNode }) {
     const response = await this.api.treenodes.post({
       name,
+      // eslint-disable-next-line camelcase
       node_type: "FOLDER",
       parent: parentNode.url,
     });
@@ -242,9 +240,7 @@ class Conductor {
     publish("NODES_DELETE_RESPONSE", { results });
   }
 }
-/******************************************************************************
-   FilesView Component
- *****************************************************************************/
+
 export default class FilesView extends HTMLElement {
   constructor() {
     super();
@@ -262,6 +258,7 @@ export default class FilesView extends HTMLElement {
       parentChildDict: JSON.parse(this.getAttribute("parentChildDict")),
     };
 
+    // eslint-disable-next-line no-unused-vars
     const { basePath, appPath, path, node, orgId } = this.props;
     // Prepend the internal representation of appPath with basePath.
     this.props.appPath = `${basePath}${appPath}`;

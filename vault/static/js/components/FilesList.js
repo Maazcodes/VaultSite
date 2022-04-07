@@ -122,7 +122,7 @@ export default class FilesList extends HTMLElement {
   }
 
   getRowTarget(e) {
-    let { target } = e;
+    const { target } = e;
     return target.tagName === "UI5-TABLE-ROW"
       ? target
       : target.closest("ui5-table-row");
@@ -155,12 +155,13 @@ export default class FilesList extends HTMLElement {
     /* Fire the selectHandle when Enter is pressed on an active row.
      */
     switch (e.key) {
-      case "Enter":
+      case "Enter": {
         const tr = this.getRowTarget(e);
         if (tr) {
           this.selectHandler(e);
         }
         break;
+      }
     }
   }
 
@@ -218,7 +219,10 @@ export default class FilesList extends HTMLElement {
       // node.node_type === "FILE" && numSelectedNodes < 2 && "Preview",
       numSelectedNodes < 2 && "Rename",
       !isCollection && "Move",
-      node.node_type === "FILE" && isDownloadable && numSelectedNodes < 2 && "Download",
+      node.node_type === "FILE" &&
+        isDownloadable &&
+        numSelectedNodes < 2 &&
+        "Download",
       !isCollection && "Delete",
       isFolder && numSelectedNodes === 0 && "Deposit Here",
     ].filter((x) => x !== false);
@@ -271,23 +275,23 @@ export default class FilesList extends HTMLElement {
     ui5TableCell.textContent = newName;
   }
 
-  fileContextMenuItemSelectedMessageHandler({
-    value: context_action,
-    context,
-  }) {
+  fileContextMenuItemSelectedMessageHandler({ value: contextAction, context }) {
+    // eslint-disable-next-line no-unused-vars
     const { currentRow, selectedRows, selectedNodes } = context;
-    switch (context_action) {
-      case "Download":
+    switch (contextAction) {
+      case "Download": {
         const contentUrl = selectedNodes[0]?.content_url;
         if (contentUrl) {
           window.open(contentUrl, "_blank");
         }
         break;
-      case "Deposit Here":
+      }
+      case "Deposit Here": {
         const parentId = selectedNodes[0].id;
         const url = `${this.props.basePath}/deposit/flow?parentId=${parentId}`;
         window.location = url;
         break;
+      }
     }
   }
 
@@ -302,7 +306,7 @@ export default class FilesList extends HTMLElement {
     this.nodesChangedHandler();
   }
 
-  async loadMoreHandler(e) {
+  async loadMoreHandler(_e) {
     /* If there are more child nodes, load them and append them to the table.
      */
     if (!this.state.nextChildrenUrl) {

@@ -52,13 +52,11 @@ qa-deploy:
    # Run this job when commits are pushed or merged to the default branch
    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ENABLE_CD == 'true'
 
-# TODO (mwilson): enable JS CI automated QA once formatting and lint
-# violations have been corrected
-#test-js:
-#  stage: test
-#  image: node:16
-#  interruptible: true
-#  script:
-#    - cd vault/static/js
-#    - make lint
-#    - make ck-format
+test-js:
+  stage: test
+  image: node:16
+  interruptible: true
+  script:
+    - cd vault/static/js
+    - make lint
+    - make ck-format
