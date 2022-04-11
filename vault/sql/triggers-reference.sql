@@ -46,6 +46,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION _do_treenode_insert_file_accounting() RETURNS TRIGGER AS
 $$
 BEGIN
+    IF NEW.deleted THEN
+        -- case: TreeNode perversely inserted as soft-deleted, in which case
+        -- its ancestors' accounting shouldn't reflect the new node
+        RETURN NULL;
+    END IF;
+
     UPDATE vault_treenode
     SET
         file_count = file_count + 1,
@@ -67,6 +73,12 @@ $$
 DECLARE
     size_delta int;
 BEGIN
+    IF OLD.deleted THEN
+        -- case: TreeNode in question already soft-deleted; skip updating
+        -- ancestors' accounting to prevent double-counting deletion metrics
+        RETURN NULL;
+    END IF;
+
     IF OLD.node_type != 'FILE' THEN
         size_delta = 0;
     ELSE

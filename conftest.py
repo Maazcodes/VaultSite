@@ -2,7 +2,6 @@ import json
 
 from pytest import fixture
 
-from django.conf import settings
 from model_bakery import baker
 
 from vault.models import (

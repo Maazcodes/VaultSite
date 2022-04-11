@@ -863,6 +863,65 @@ class TestTreeNodeAccountingTriggers:
         # Then: the change is accepted by postgres
         file.save()
 
+    @mark.django_db
+    def test_no_soft_then_hard_deletion_double_counting(self, treenode_stack):
+        """Treenode soft then hard deletes don't double apply accounting"""
+        # Given: a treenode hierarchy
+        file = treenode_stack["FILE"]
+        folder = treenode_stack["FOLDER"]
+        assert file.size == 420
+        assert folder.size == 420
+        assert folder.file_count == 1
+
+        # When: the file is soft-deleted
+        file.deleted = True
+        file.save()
+
+        # Then: the ancestors' size and file_count accounting is correct
+        folder.refresh_from_db()
+        assert folder.size == 0
+        assert folder.file_count == 0
+
+        # When: the file is then hard-deleted
+        file.hard_delete()
+
+        # Then: the ancestor's size and file_count accounting is still correct,
+        # i.e., the deletion of size and/or file_count hasn't been
+        # double-counted
+        folder.refresh_from_db()
+        assert folder.size == 0
+        assert folder.file_count == 0
+
+    @mark.django_db
+    def test_soft_deleted_inserts_dont_affect_ancestors(
+        self,
+        treenode_stack,
+        make_treenode,
+    ):
+        """New soft-deleted TreeNodes don't affect ancestors' accounting"""
+        # Given: a treenode hierarchy
+        file = treenode_stack["FILE"]
+        folder = treenode_stack["FOLDER"]
+        assert file.size == 420
+        assert folder.size == 420
+        assert folder.file_count == 1
+
+        # When: a TreeNode is added as soft deleted
+        deleted_file = make_treenode(
+            parent=folder,
+            node_type="FILE",
+            deleted=True,
+            size=42,
+        )
+        assert deleted_file.deleted
+        assert deleted_file.size == 42
+
+        # Then: folder accounting is unchanged by the insertion of a
+        # soft-deleted file node
+        folder.refresh_from_db()
+        assert folder.size == 420
+        assert folder.file_count == 1
+
 
 class TestReport:
     """Tests for the Report model"""
