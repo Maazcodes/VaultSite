@@ -2,70 +2,70 @@
 <html lang="en">
   <head>
     {% block head %}
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>Vault: Digital Repository & Preservation Service</title>
-	<meta name="description" content="">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="/vault/static/css/html5-bp/css/normalize.css">
-	<link rel="stylesheet" href="/vault/static/css/html5-bp/css/main.css">
-	<link rel="stylesheet" href="/vault/static/css/app.css">
-	<link rel="stylesheet" href="/vault/static/css/vault.css">
-	<link rel="apple-touch-icon" sizes="57x57" href="/vault/static/favicon/apple-57x57-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="60x60" href="/vault/static/favicon/apple-60x60-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="72x72" href="/vault/static/favicon/apple-72x72-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="76x76" href="/vault/static/favicon/apple-76x76-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="114x114" href="/vault/static/favicon/apple-114x114-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="120x120" href="/vault/static/favicon/apple-120x120-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="144x144" href="/vault/static/favicon/apple-144x144-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="152x152" href="/vault/static/favicon/apple-152x152-touch-icon.png">
-	<link rel="apple-touch-icon" sizes="180x180" href="/vault/static/favicon/apple-180x180-touch-icon.png">
-	<link rel="icon" type="image/png" href="/vault/static/favicon/favicon-32x32.png" sizes="32x32">
-	<link rel="icon" type="image/png" href="/vault/static/favicon/favicon-194x194.png" sizes="194x194">
-	<link rel="icon" type="image/png" href="/vault/static/favicon/favicon-96x96.png" sizes="96x96">
-	<link rel="icon" type="image/png" href="/vault/static/favicon/android-chrome-192x192.png" sizes="192x192">
-	<link rel="icon"  type="image/png" href="/vault/static/favicon/favicon-16x16.png" sizes="16x16">
-	<link rel="manifest" href="/vault/static/favicon/manifest.json" crossorigin="use-credentials">
-	<link rel="mask-icon" href="/vault/static/favicon/safari-pinned-tab.svg%22%20color%3D%22%235bbad5">
-	<link rel="shortcut icon"  type="image/png" href="/vault/static/favicon/favicon.ico">
-	<meta name="msapplication-TileColor" content="#da532c">
-	<meta name="msapplication-TileImage" content="/vault/static/favicon/mstile-144x144.png">
-	<meta name="msapplication-config" content="/vault/static/favicon/browserconfig.xml">
-	<meta class="foundation-mq-topbar">
-	<meta class="foundation-mq-small">
-	<meta class="foundation-mq-medium">
-	<meta class="foundation-mq-large">
-	<script src="/vault/static/js/ext/jquery/jquery.min.js"></script>
-	<script src="/vault/static/js/ext/sentry/bundle.js"></script>
-	<script src="/vault/static/js/ext/sentry/captureconsole.min.js"></script>
-	<script src="/vault/static/js/components/Breadcrumbs.js" type="module"></script>
-	<script type="text/javascript">
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>Vault: Digital Repository & Preservation Service</title>
+      <meta name="description" content="">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="stylesheet" href="/vault/static/css/html5-bp/css/normalize.css">
+      <link rel="stylesheet" href="/vault/static/css/html5-bp/css/main.css">
+      <link rel="stylesheet" href="/vault/static/css/app.css">
+      <link rel="stylesheet" href="/vault/static/css/vault.css">
+      <link rel="apple-touch-icon" sizes="57x57" href="/vault/static/favicon/apple-57x57-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="60x60" href="/vault/static/favicon/apple-60x60-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="72x72" href="/vault/static/favicon/apple-72x72-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="76x76" href="/vault/static/favicon/apple-76x76-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="114x114" href="/vault/static/favicon/apple-114x114-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="120x120" href="/vault/static/favicon/apple-120x120-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="144x144" href="/vault/static/favicon/apple-144x144-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="152x152" href="/vault/static/favicon/apple-152x152-touch-icon.png">
+      <link rel="apple-touch-icon" sizes="180x180" href="/vault/static/favicon/apple-180x180-touch-icon.png">
+      <link rel="icon" type="image/png" href="/vault/static/favicon/favicon-32x32.png" sizes="32x32">
+      <link rel="icon" type="image/png" href="/vault/static/favicon/favicon-194x194.png" sizes="194x194">
+      <link rel="icon" type="image/png" href="/vault/static/favicon/favicon-96x96.png" sizes="96x96">
+      <link rel="icon" type="image/png" href="/vault/static/favicon/android-chrome-192x192.png" sizes="192x192">
+      <link rel="icon" type="image/png" href="/vault/static/favicon/favicon-16x16.png" sizes="16x16">
+      <link rel="manifest" href="/vault/static/favicon/manifest.json" crossorigin="use-credentials">
+      <link rel="mask-icon" href="/vault/static/favicon/safari-pinned-tab.svg%22%20color%3D%22%235bbad5">
+      <link rel="shortcut icon" href="/vault/static/favicon/favicon.ico">
+      <meta name="msapplication-TileColor" content="#da532c">
+      <meta name="msapplication-TileImage" content="/vault/static/favicon/mstile-144x144.png">
+      <meta name="msapplication-config" content="/vault/static/favicon/browserconfig.xml">
+      <meta class="foundation-mq-topbar">
+      <meta class="foundation-mq-small">
+      <meta class="foundation-mq-medium">
+      <meta class="foundation-mq-large">
+      <script src="/vault/static/js/ext/jquery/jquery.min.js"></script>
+      <script src="/vault/static/js/ext/sentry/bundle.js"></script>
+      <script src="/vault/static/js/ext/sentry/captureconsole.min.js"></script>
+      <script src="/vault/static/js/components/Breadcrumbs.js" type="module"></script>
+      <script type="text/javascript">
 
-		if (typeof Sentry == "undefined") {
-			console.error("Sentry/ Sentry Integrations Undefined");
-			} else {
-				Sentry.init({
-				dsn: "{{ SENTRY_DSN }}",
-				integrations: [
-					new Sentry.Integrations.CaptureConsole({
-						levels: ['error']
-					})
-				],
-				// Alternatively, use `process.env.npm_package_version` for a dynamic release version
-				// if your build tool supports it.
-				release: "vault@1.0.0",
+        if (typeof Sentry == "undefined") {
+          console.error("Sentry/ Sentry Integrations Undefined");
+        } else {
+          Sentry.init({
+            dsn: "{{ SENTRY_DSN }}",
+            integrations: [
+              new Sentry.Integrations.CaptureConsole({
+                levels: ['error']
+              })
+            ],
+            // Alternatively, use `process.env.npm_package_version` for a dynamic release version
+            // if your build tool supports it.
+            release: "vault@{{ VAULT_VERSION }}-{{ VAULT_GIT_COMMIT_HASH }}",
 
-				// Set tracesSampleRate to 1.0 to capture 100%
-				// of transactions for performance monitoring.
-				// We recommend adjusting this value in production
-				tracesSampleRate: 1.0,
-				maxBreadcrumbs: 50
-				});
-			}
-	</script>
+            // Set tracesSampleRate to 1.0 to capture 100%
+            // of transactions for performance monitoring.
+            // We recommend adjusting this value in production
+            tracesSampleRate: 1.0,
+            maxBreadcrumbs: 50
+          });
+        }
+      </script>
 
-	{# Upload specific JS not loaded by default #}
-	{% block head_deposit %}{% endblock head_deposit %}
+      {# Upload specific JS not loaded by default #}
+      {% block head_deposit %}{% endblock head_deposit %}
 
     {% endblock head %}
   </head>
