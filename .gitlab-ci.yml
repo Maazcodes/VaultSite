@@ -16,12 +16,11 @@ cache:
     - .cache/pip
     - venv/
 
-services:
-- postgres:10
-
 test-py:
   stage: test
   image: python:3.8
+  services:
+  - postgres:10
   # job can be preempted by subsequent requests to re-run
   # https://git.archive.org/help/ci/yaml/README.md#interruptible
   interruptible: true
@@ -38,6 +37,15 @@ test-py:
       codequality: $PYLINT_REPORT
       cobertura: coverage.xml
 
+test-js:
+  stage: test
+  image: node:16
+  interruptible: true
+  script:
+    - cd vault/static/js
+    - make lint
+    - make ck-format
+
 qa-deploy:
   stage: deploy
   variables:
@@ -51,12 +59,3 @@ qa-deploy:
   rules:
    # Run this job when commits are pushed or merged to the default branch
    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ENABLE_CD == 'true'
-
-test-js:
-  stage: test
-  image: node:16
-  interruptible: true
-  script:
-    - cd vault/static/js
-    - make lint
-    - make ck-format

@@ -193,6 +193,7 @@ function deposit_status(time) {
 }
 
 flow.on("complete", function () {
+  warnOnNavigation(false);
   document.querySelector("#flow-stats").innerHTML = "Upload Complete";
   const btn = document.getElementById("flowPost");
   btn.innerHTML = "Upload";
@@ -285,10 +286,13 @@ function start_deposit(flow, files) {
       }
 
       if (filesList.length > 0) {
+        warnOnNavigation(false);
         overlappedFiles(filesList, false);
       } else if (paths.length > 0) {
+        warnOnNavigation(false);
         overlappedFiles(paths, false);
       } else {
+        warnOnNavigation(true);
         registerDeposit(files);
       }
 
@@ -654,6 +658,20 @@ const createCollectionsChart = (collections, fileCounts) => {
 const resetForm = () => {
   const newLocation = window.location.href.split("?")[0];
   window.location = newLocation;
+};
+
+const handleBeforeUnload = (e) => {
+  // see: https://developer.mozilla.org/en-US/docs/Web/API/WindowEventHandlers/onbeforeunload#examples
+  e.preventDefault();
+  return "";
+};
+
+const warnOnNavigation = (doWarn) => {
+  if (doWarn) {
+    window.addEventListener("beforeunload", handleBeforeUnload);
+  } else {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  }
 };
 
 $(() => {
