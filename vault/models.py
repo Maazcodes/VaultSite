@@ -400,9 +400,7 @@ class TreeNode(models.Model):
     #: PLPGSQL function: ``_do_treenode_set_new_file_count``
     file_count = models.PositiveBigIntegerField(blank=True, default=0, null=False)
     file_type = models.CharField(max_length=255, blank=True, null=True)
-    # TODO (mwilson): expand/remove char limit:
-    # https://webarchive.jira.com/browse/WT-1167
-    pbox_path = models.CharField(max_length=255, blank=True, null=True)
+    pbox_path = models.TextField(blank=True, null=True)
 
     uploaded_at = models.DateTimeField(
         blank=True, null=True
